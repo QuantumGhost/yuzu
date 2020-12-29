@@ -4,9 +4,14 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 
 
 
-cd pineapple-src
+
 
 ls .
+echo $pwd
+echo $PWD
+
+yuzupatch=( $(ls -d patches/* ) )
+for i in "${yuzupatch[@]}"; do echo "$i"; done
 
 mkdir build && cd build 
 
