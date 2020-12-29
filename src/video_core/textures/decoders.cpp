@@ -19,7 +19,6 @@
 namespace Tegra::Texture {
 
 namespace {
-
 /**
  * This table represents the internal swizzle of a gob, in format 16 bytes x 2 sector packing.
  * Calculates the offset of an (x, y) position within a swizzled texture.
@@ -41,11 +40,15 @@ constexpr SwizzleTable SWIZZLE_TABLE = MakeSwizzleTableConst();
 template <bool TO_LINEAR>
 void Swizzle(std::span<u8> output, std::span<const u8> input, u32 bytes_per_pixel, u32 width,
              u32 height, u32 depth, u32 block_height, u32 block_depth, u32 stride_alignment) {
-    static constexpr u32 origin_x = 0; // TODO
-    static constexpr u32 origin_y = 0; // TODO
-    static constexpr u32 origin_z = 0; // TODO
+    // The origin of the transformation can be configured here, leave it as zero as the current API
+    // doesn't expose it.
+    static constexpr u32 origin_x = 0;
+    static constexpr u32 origin_y = 0;
+    static constexpr u32 origin_z = 0;
 
-    const u32 pitch = width * bytes_per_pixel; // TODO
+    // We can configure here a custom pitch
+    // As it's not exposed 'width * bpp' will be the expected pitch.
+    const u32 pitch = width * bytes_per_pixel;
     const u32 stride = Common::AlignBits(width, stride_alignment) * bytes_per_pixel;
 
     const u32 gobs_in_x = Common::DivCeilLog2(stride, GOB_SIZE_X_SHIFT);
@@ -86,7 +89,6 @@ void Swizzle(std::span<u8> output, std::span<const u8> input, u32 bytes_per_pixe
         }
     }
 }
-
 } // Anonymous namespace
 
 SwizzleTable MakeSwizzleTable() {
