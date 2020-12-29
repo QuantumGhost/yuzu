@@ -2,16 +2,11 @@
 
 BRANCH=`echo ${GITHUB_REF##*/}`
 
+title=$(cat /yuzu/readme.md | grep 'early-access [[:digit:]]*' | cut -c 14-17)
 
-
-
-
-ls .
-echo $pwd
-echo $PWD
 
 yuzupatch=( $(ls -d patches/* ) )
-for i in "${yuzupatch[@]}"; do echo "$i"; done
+for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
 
 mkdir build && cd build 
 
