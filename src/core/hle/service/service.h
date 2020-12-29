@@ -5,11 +5,9 @@
 #pragma once
 
 #include <cstddef>
-#include <mutex>
 #include <string>
 #include <boost/container/flat_map.hpp>
 #include "common/common_types.h"
-#include "common/spin_lock.h"
 #include "core/hle/kernel/hle_ipc.h"
 #include "core/hle/kernel/object.h"
 
@@ -70,20 +68,17 @@ public:
     void InstallAsService(SM::ServiceManager& service_manager);
     /// Creates a port pair and registers it on the kernel's global port registry.
     void InstallAsNamedPort(Kernel::KernelCore& kernel);
-    /// Invokes a service request routine.
+    /// Creates and returns an unregistered port for the service.
+    std::shared_ptr<Kernel::ClientPort> CreatePort(Kernel::KernelCore& kernel);
+
     void InvokeRequest(Kernel::HLERequestContext& ctx);
-    /// Handles a synchronization request for the service.
+
     ResultCode HandleSyncRequest(Kernel::HLERequestContext& context) override;
 
 protected:
     /// Member-function pointer type of SyncRequest handlers.
     template <typename Self>
     using HandlerFnP = void (Self::*)(Kernel::HLERequestContext&);
-
-    /// Used to gain exclusive access to the service members, e.g. from CoreTiming thread.
-    [[nodiscard]] std::scoped_lock<Common::SpinLock> LockService() {
-        return std::scoped_lock{lock_service};
-    }
 
     /// System context that the service operates under.
     Core::System& system;
@@ -120,9 +115,6 @@ private:
     /// Function used to safely up-cast pointers to the derived class before invoking a handler.
     InvokerFn* handler_invoker;
     boost::container::flat_map<u32, FunctionInfoBase> handlers;
-
-    /// Used to gain exclusive access to the service members, e.g. from CoreTiming thread.
-    Common::SpinLock lock_service;
 };
 
 /**

@@ -178,12 +178,13 @@ void BSD::Poll(Kernel::HLERequestContext& ctx) {
 
     LOG_DEBUG(Service, "called. nfds={} timeout={}", nfds, timeout);
 
-    ExecuteWork(ctx, PollWork{
-                         .nfds = nfds,
-                         .timeout = timeout,
-                         .read_buffer = ctx.ReadBuffer(),
-                         .write_buffer = std::vector<u8>(ctx.GetWriteBufferSize()),
-                     });
+    ExecuteWork(ctx, "BSD:Poll", timeout != 0,
+                PollWork{
+                    .nfds = nfds,
+                    .timeout = timeout,
+                    .read_buffer = ctx.ReadBuffer(),
+                    .write_buffer = std::vector<u8>(ctx.GetWriteBufferSize()),
+                });
 }
 
 void BSD::Accept(Kernel::HLERequestContext& ctx) {
@@ -192,10 +193,11 @@ void BSD::Accept(Kernel::HLERequestContext& ctx) {
 
     LOG_DEBUG(Service, "called. fd={}", fd);
 
-    ExecuteWork(ctx, AcceptWork{
-                         .fd = fd,
-                         .write_buffer = std::vector<u8>(ctx.GetWriteBufferSize()),
-                     });
+    ExecuteWork(ctx, "BSD:Accept", IsBlockingSocket(fd),
+                AcceptWork{
+                    .fd = fd,
+                    .write_buffer = std::vector<u8>(ctx.GetWriteBufferSize()),
+                });
 }
 
 void BSD::Bind(Kernel::HLERequestContext& ctx) {
@@ -213,10 +215,11 @@ void BSD::Connect(Kernel::HLERequestContext& ctx) {
 
     LOG_DEBUG(Service, "called. fd={} addrlen={}", fd, ctx.GetReadBufferSize());
 
-    ExecuteWork(ctx, ConnectWork{
-                         .fd = fd,
-                         .addr = ctx.ReadBuffer(),
-                     });
+    ExecuteWork(ctx, "BSD:Connect", IsBlockingSocket(fd),
+                ConnectWork{
+                    .fd = fd,
+                    .addr = ctx.ReadBuffer(),
+                });
 }
 
 void BSD::GetPeerName(Kernel::HLERequestContext& ctx) {
@@ -324,11 +327,12 @@ void BSD::Recv(Kernel::HLERequestContext& ctx) {
 
     LOG_DEBUG(Service, "called. fd={} flags=0x{:x} len={}", fd, flags, ctx.GetWriteBufferSize());
 
-    ExecuteWork(ctx, RecvWork{
-                         .fd = fd,
-                         .flags = flags,
-                         .message = std::vector<u8>(ctx.GetWriteBufferSize()),
-                     });
+    ExecuteWork(ctx, "BSD:Recv", IsBlockingSocket(fd),
+                RecvWork{
+                    .fd = fd,
+                    .flags = flags,
+                    .message = std::vector<u8>(ctx.GetWriteBufferSize()),
+                });
 }
 
 void BSD::RecvFrom(Kernel::HLERequestContext& ctx) {
@@ -340,12 +344,13 @@ void BSD::RecvFrom(Kernel::HLERequestContext& ctx) {
     LOG_DEBUG(Service, "called. fd={} flags=0x{:x} len={} addrlen={}", fd, flags,
               ctx.GetWriteBufferSize(0), ctx.GetWriteBufferSize(1));
 
-    ExecuteWork(ctx, RecvFromWork{
-                         .fd = fd,
-                         .flags = flags,
-                         .message = std::vector<u8>(ctx.GetWriteBufferSize(0)),
-                         .addr = std::vector<u8>(ctx.GetWriteBufferSize(1)),
-                     });
+    ExecuteWork(ctx, "BSD:RecvFrom", IsBlockingSocket(fd),
+                RecvFromWork{
+                    .fd = fd,
+                    .flags = flags,
+                    .message = std::vector<u8>(ctx.GetWriteBufferSize(0)),
+                    .addr = std::vector<u8>(ctx.GetWriteBufferSize(1)),
+                });
 }
 
 void BSD::Send(Kernel::HLERequestContext& ctx) {
@@ -356,11 +361,12 @@ void BSD::Send(Kernel::HLERequestContext& ctx) {
 
     LOG_DEBUG(Service, "called. fd={} flags=0x{:x} len={}", fd, flags, ctx.GetReadBufferSize());
 
-    ExecuteWork(ctx, SendWork{
-                         .fd = fd,
-                         .flags = flags,
-                         .message = ctx.ReadBuffer(),
-                     });
+    ExecuteWork(ctx, "BSD:Send", IsBlockingSocket(fd),
+                SendWork{
+                    .fd = fd,
+                    .flags = flags,
+                    .message = ctx.ReadBuffer(),
+                });
 }
 
 void BSD::SendTo(Kernel::HLERequestContext& ctx) {
@@ -371,12 +377,13 @@ void BSD::SendTo(Kernel::HLERequestContext& ctx) {
     LOG_DEBUG(Service, "called. fd={} flags=0x{} len={} addrlen={}", fd, flags,
               ctx.GetReadBufferSize(0), ctx.GetReadBufferSize(1));
 
-    ExecuteWork(ctx, SendToWork{
-                         .fd = fd,
-                         .flags = flags,
-                         .message = ctx.ReadBuffer(0),
-                         .addr = ctx.ReadBuffer(1),
-                     });
+    ExecuteWork(ctx, "BSD:SendTo", IsBlockingSocket(fd),
+                SendToWork{
+                    .fd = fd,
+                    .flags = flags,
+                    .message = ctx.ReadBuffer(0),
+                    .addr = ctx.ReadBuffer(1),
+                });
 }
 
 void BSD::Write(Kernel::HLERequestContext& ctx) {
@@ -385,11 +392,12 @@ void BSD::Write(Kernel::HLERequestContext& ctx) {
 
     LOG_DEBUG(Service, "called. fd={} len={}", fd, ctx.GetReadBufferSize());
 
-    ExecuteWork(ctx, SendWork{
-                         .fd = fd,
-                         .flags = 0,
-                         .message = ctx.ReadBuffer(),
-                     });
+    ExecuteWork(ctx, "BSD:Write", IsBlockingSocket(fd),
+                SendWork{
+                    .fd = fd,
+                    .flags = 0,
+                    .message = ctx.ReadBuffer(),
+                });
 }
 
 void BSD::Close(Kernel::HLERequestContext& ctx) {
@@ -402,9 +410,24 @@ void BSD::Close(Kernel::HLERequestContext& ctx) {
 }
 
 template <typename Work>
-void BSD::ExecuteWork(Kernel::HLERequestContext& ctx, Work work) {
-    work.Execute(this);
+void BSD::ExecuteWork(Kernel::HLERequestContext& ctx, std::string_view sleep_reason,
+                      bool is_blocking, Work work) {
+    if (!is_blocking) {
+        work.Execute(this);
+        work.Response(ctx);
+        return;
+    }
+
+    // Signal a dummy response to make IPC validation happy
+    // This will be overwritten by the SleepClientThread callback
     work.Response(ctx);
+
+    auto worker = worker_pool.CaptureWorker();
+
+    ctx.SleepClientThread(std::string(sleep_reason), std::numeric_limits<u64>::max(),
+                          worker->Callback<Work>(), worker->KernelEvent());
+
+    worker->SendWork(std::move(work));
 }
 
 std::pair<s32, Errno> BSD::SocketImpl(Domain domain, Type type, Protocol protocol) {
@@ -784,6 +807,18 @@ bool BSD::IsFileDescriptorValid(s32 fd) const noexcept {
     return true;
 }
 
+bool BSD::IsBlockingSocket(s32 fd) const noexcept {
+    // Inform invalid sockets as non-blocking
+    // This way we avoid using a worker thread as it will fail without blocking host
+    if (fd > static_cast<s32>(MAX_FD) || fd < 0) {
+        return false;
+    }
+    if (!file_descriptors[fd]) {
+        return false;
+    }
+    return (file_descriptors[fd]->flags & FLAG_O_NONBLOCK) != 0;
+}
+
 void BSD::BuildErrnoResponse(Kernel::HLERequestContext& ctx, Errno bsd_errno) const noexcept {
     IPC::ResponseBuilder rb{ctx, 4};
 
@@ -792,7 +827,8 @@ void BSD::BuildErrnoResponse(Kernel::HLERequestContext& ctx, Errno bsd_errno) co
     rb.PushEnum(bsd_errno);
 }
 
-BSD::BSD(Core::System& system_, const char* name) : ServiceFramework{system_, name} {
+BSD::BSD(Core::System& system_, const char* name)
+    : ServiceFramework{system_, name}, worker_pool{system_, this} {
     // clang-format off
     static const FunctionInfo functions[] = {
         {0, &BSD::RegisterClient, "RegisterClient"},

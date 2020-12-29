@@ -536,7 +536,8 @@ private:
         LOG_DEBUG(Service_VI, "called. id=0x{:08X} transaction={:X}, flags=0x{:08X}", id,
                   transaction, flags);
 
-        auto& buffer_queue = *nv_flinger.FindBufferQueue(id);
+        const auto guard = nv_flinger.Lock();
+        auto& buffer_queue = nv_flinger.FindBufferQueue(id);
 
         switch (transaction) {
         case TransactionId::Connect: {
@@ -546,9 +547,6 @@ private:
                                  Settings::values.resolution_factor.GetValue()),
                 static_cast<u32>(static_cast<u32>(DisplayResolution::UndockedHeight) *
                                  Settings::values.resolution_factor.GetValue())};
-
-            buffer_queue.Connect();
-
             ctx.WriteBuffer(response.Serialize());
             break;
         }
@@ -565,25 +563,40 @@ private:
             IGBPDequeueBufferRequestParcel request{ctx.ReadBuffer()};
             const u32 width{request.data.width};
             const u32 height{request.data.height};
+            auto result = buffer_queue.DequeueBuffer(width, height);
 
-            do {
-                if (auto result = buffer_queue.DequeueBuffer(width, height); result) {
-                    // Buffer is available
-                    IGBPDequeueBufferResponseParcel response{result->first, *result->second};
-                    ctx.WriteBuffer(response.Serialize());
-                    break;
-                }
-            } while (buffer_queue.IsConnected());
+            if (result) {
+                // Buffer is available
+                IGBPDequeueBufferResponseParcel response{result->first, *result->second};
+                ctx.WriteBuffer(response.Serialize());
+            } else {
+                // Wait the current thread until a buffer becomes available
+                ctx.SleepClientThread(
+                    "IHOSBinderDriver::DequeueBuffer", UINT64_MAX,
+                    [=, this](std::shared_ptr<Kernel::Thread> thread,
+                              Kernel::HLERequestContext& ctx, Kernel::ThreadWakeupReason reason) {
+                        // Repeat TransactParcel DequeueBuffer when a buffer is available
+                        const auto guard = nv_flinger.Lock();
+                        auto& buffer_queue = nv_flinger.FindBufferQueue(id);
+                        auto result = buffer_queue.DequeueBuffer(width, height);
+                        ASSERT_MSG(result != std::nullopt, "Could not dequeue buffer.");
 
+                        IGBPDequeueBufferResponseParcel response{result->first, *result->second};
+                        ctx.WriteBuffer(response.Serialize());
+                        IPC::ResponseBuilder rb{ctx, 2};
+                        rb.Push(RESULT_SUCCESS);
+                    },
+                    buffer_queue.GetWritableBufferWaitEvent());
+            }
             break;
         }
         case TransactionId::RequestBuffer: {
             IGBPRequestBufferRequestParcel request{ctx.ReadBuffer()};
 
             auto& buffer = buffer_queue.RequestBuffer(request.slot);
+
             IGBPRequestBufferResponseParcel response{buffer};
             ctx.WriteBuffer(response.Serialize());
-
             break;
         }
         case TransactionId::QueueBuffer: {
@@ -669,7 +682,7 @@ private:
 
         LOG_WARNING(Service_VI, "(STUBBED) called id={}, unknown={:08X}", id, unknown);
 
-        const auto& buffer_queue = *nv_flinger.FindBufferQueue(id);
+        const auto& buffer_queue = nv_flinger.FindBufferQueue(id);
 
         // TODO(Subv): Find out what this actually is.
         IPC::ResponseBuilder rb{ctx, 2, 1};

@@ -25,12 +25,7 @@ void BufferQueue::SetPreallocatedBuffer(u32 slot, const IGBPBuffer& igbp_buffer)
     ASSERT(slot < buffer_slots);
     LOG_WARNING(Service, "Adding graphics buffer {}", slot);
 
-    {
-        std::unique_lock lock{queue_mutex};
-        free_buffers.push_back(slot);
-    }
-    condition.notify_one();
-
+    free_buffers.push_back(slot);
     buffers[slot] = {
         .slot = slot,
         .status = Buffer::Status::Free,
@@ -46,20 +41,10 @@ void BufferQueue::SetPreallocatedBuffer(u32 slot, const IGBPBuffer& igbp_buffer)
 
 std::optional<std::pair<u32, Service::Nvidia::MultiFence*>> BufferQueue::DequeueBuffer(u32 width,
                                                                                        u32 height) {
-    // Wait for first request before trying to dequeue
-    {
-        std::unique_lock lock{queue_mutex};
-        condition.wait(lock, [this] { return !free_buffers.empty() || !is_connect; });
-    }
 
-    if (!is_connect) {
-        // Buffer was disconnected while the thread was blocked, this is most likely due to
-        // emulation being stopped
+    if (free_buffers.empty()) {
         return std::nullopt;
     }
-
-    std::unique_lock lock{queue_mutex};
-
     auto f_itr = free_buffers.begin();
     auto slot = buffers.size();
 
@@ -112,11 +97,7 @@ void BufferQueue::CancelBuffer(u32 slot, const Service::Nvidia::MultiFence& mult
     buffers[slot].multi_fence = multi_fence;
     buffers[slot].swap_interval = 0;
 
-    {
-        std::unique_lock lock{queue_mutex};
-        free_buffers.push_back(slot);
-    }
-    condition.notify_one();
+    free_buffers.push_back(slot);
 
     buffer_wait_event.writable->Signal();
 }
@@ -146,28 +127,15 @@ void BufferQueue::ReleaseBuffer(u32 slot) {
     ASSERT(buffers[slot].slot == slot);
 
     buffers[slot].status = Buffer::Status::Free;
-    {
-        std::unique_lock lock{queue_mutex};
-        free_buffers.push_back(slot);
-    }
-    condition.notify_one();
+    free_buffers.push_back(slot);
 
     buffer_wait_event.writable->Signal();
-}
-
-void BufferQueue::Connect() {
-    queue_sequence.clear();
-    id = 1;
-    layer_id = 1;
-    is_connect = true;
 }
 
 void BufferQueue::Disconnect() {
     buffers.fill({});
     queue_sequence.clear();
     buffer_wait_event.writable->Signal();
-    is_connect = false;
-    condition.notify_one();
 }
 
 u32 BufferQueue::Query(QueryType type) {

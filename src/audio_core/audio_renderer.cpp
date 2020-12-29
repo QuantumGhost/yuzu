@@ -11,6 +11,7 @@
 #include "audio_core/info_updater.h"
 #include "audio_core/voice_context.h"
 #include "common/logging/log.h"
+#include "core/hle/kernel/writable_event.h"
 #include "core/memory.h"
 #include "core/settings.h"
 
@@ -70,9 +71,10 @@ namespace {
 namespace AudioCore {
 AudioRenderer::AudioRenderer(Core::Timing::CoreTiming& core_timing, Core::Memory::Memory& memory_,
                              AudioCommon::AudioRendererParameter params,
-                             Stream::ReleaseCallback&& release_callback,
+                             std::shared_ptr<Kernel::WritableEvent> buffer_event_,
                              std::size_t instance_number)
-    : worker_params{params}, memory_pool_info(params.effect_count + params.voice_count * 4),
+    : worker_params{params}, buffer_event{buffer_event_},
+      memory_pool_info(params.effect_count + params.voice_count * 4),
       voice_context(params.voice_count), effect_context(params.effect_count), mix_context(),
       sink_context(params.sink_count), splitter_context(),
       voices(params.voice_count), memory{memory_},
@@ -83,9 +85,10 @@ AudioRenderer::AudioRenderer(Core::Timing::CoreTiming& core_timing, Core::Memory
                                 params.num_splitter_send_channels);
     mix_context.Initialize(behavior_info, params.submix_count + 1, params.effect_count);
     audio_out = std::make_unique<AudioCore::AudioOut>();
-    stream = audio_out->OpenStream(
-        core_timing, params.sample_rate, AudioCommon::STREAM_NUM_CHANNELS,
-        fmt::format("AudioRenderer-Instance{}", instance_number), std::move(release_callback));
+    stream =
+        audio_out->OpenStream(core_timing, params.sample_rate, AudioCommon::STREAM_NUM_CHANNELS,
+                              fmt::format("AudioRenderer-Instance{}", instance_number),
+                              [=]() { buffer_event_->Signal(); });
     audio_out->StartStream(stream);
 
     QueueMixedBuffer(0);

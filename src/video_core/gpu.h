@@ -15,8 +15,6 @@
 #include "core/hle/service/nvflinger/buffer_queue.h"
 #include "video_core/cdma_pusher.h"
 #include "video_core/dma_pusher.h"
-#include "video_core/framebuffer_config.h"
-#include "video_core/gpu_thread.h"
 
 using CacheAddr = std::uintptr_t;
 [[nodiscard]] inline CacheAddr ToCacheAddr(const void* host_ptr) {
@@ -103,6 +101,28 @@ enum class DepthFormat : u32 {
 struct CommandListHeader;
 class DebugContext;
 
+/**
+ * Struct describing framebuffer configuration
+ */
+struct FramebufferConfig {
+    enum class PixelFormat : u32 {
+        A8B8G8R8_UNORM = 1,
+        RGB565_UNORM = 4,
+        B8G8R8A8_UNORM = 5,
+    };
+
+    VAddr address;
+    u32 offset;
+    u32 width;
+    u32 height;
+    u32 stride;
+    PixelFormat pixel_format;
+
+    using TransformFlags = Service::NVFlinger::BufferQueue::BufferTransformFlags;
+    TransformFlags transform_flags;
+    Common::Rectangle<int> crop_rect;
+};
+
 namespace Engines {
 class Fermi2D;
 class Maxwell3D;
@@ -121,7 +141,7 @@ enum class EngineID {
 
 class MemoryManager;
 
-class GPU final {
+class GPU {
 public:
     struct MethodCall {
         u32 method{};
@@ -139,7 +159,7 @@ public:
     };
 
     explicit GPU(Core::System& system_, bool is_async_, bool use_nvdec_);
-    ~GPU();
+    virtual ~GPU();
 
     /// Binds a renderer to the GPU.
     void BindRenderer(std::unique_ptr<VideoCore::RendererBase> renderer);
@@ -156,7 +176,7 @@ public:
     /// Synchronizes CPU writes with Host GPU memory.
     void SyncGuestHost();
     /// Signal the ending of command list.
-    void OnCommandListEnd();
+    virtual void OnCommandListEnd();
 
     /// Request a host GPU memory flush from the CPU.
     [[nodiscard]] u64 RequestFlush(VAddr addr, std::size_t size);
@@ -220,7 +240,7 @@ public:
     }
 
     // Waits for the GPU to finish working
-    void WaitIdle() const;
+    virtual void WaitIdle() const = 0;
 
     /// Allows the CPU/NvFlinger to wait on the GPU before presenting a frame.
     void WaitFence(u32 syncpoint_id, u32 value);
@@ -310,34 +330,34 @@ public:
     /// Performs any additional setup necessary in order to begin GPU emulation.
     /// This can be used to launch any necessary threads and register any necessary
     /// core timing events.
-    void Start();
+    virtual void Start() = 0;
 
     /// Obtain the CPU Context
-    void ObtainContext();
+    virtual void ObtainContext() = 0;
 
     /// Release the CPU Context
-    void ReleaseContext();
+    virtual void ReleaseContext() = 0;
 
     /// Push GPU command entries to be processed
-    void PushGPUEntries(Tegra::CommandList&& entries);
+    virtual void PushGPUEntries(Tegra::CommandList&& entries) = 0;
 
     /// Push GPU command buffer entries to be processed
-    void PushCommandBuffer(Tegra::ChCommandHeaderList& entries);
+    virtual void PushCommandBuffer(Tegra::ChCommandHeaderList& entries) = 0;
 
     /// Swap buffers (render frame)
-    void SwapBuffers(const Tegra::FramebufferConfig* framebuffer);
+    virtual void SwapBuffers(const Tegra::FramebufferConfig* framebuffer) = 0;
 
     /// Notify rasterizer that any caches of the specified region should be flushed to Switch memory
-    void FlushRegion(VAddr addr, u64 size);
+    virtual void FlushRegion(VAddr addr, u64 size) = 0;
 
     /// Notify rasterizer that any caches of the specified region should be invalidated
-    void InvalidateRegion(VAddr addr, u64 size);
+    virtual void InvalidateRegion(VAddr addr, u64 size) = 0;
 
     /// Notify rasterizer that any caches of the specified region should be flushed and invalidated
-    void FlushAndInvalidateRegion(VAddr addr, u64 size);
+    virtual void FlushAndInvalidateRegion(VAddr addr, u64 size) = 0;
 
 protected:
-    void TriggerCpuInterrupt(u32 syncpoint_id, u32 value) const;
+    virtual void TriggerCpuInterrupt(u32 syncpoint_id, u32 value) const = 0;
 
 private:
     void ProcessBindMethod(const MethodCall& method_call);
@@ -407,9 +427,6 @@ private:
     std::mutex flush_request_mutex;
 
     const bool is_async;
-
-    VideoCommon::GPUThread::ThreadManager gpu_thread;
-    std::unique_ptr<Core::Frontend::GraphicsContext> cpu_context;
 };
 
 #define ASSERT_REG_POSITION(field_name, position)                                                  \

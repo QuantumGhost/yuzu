@@ -1589,12 +1589,14 @@ void Config::WriteSettingGlobal(const QString& name, const QVariant& value, bool
 
 void Config::Reload() {
     ReadValues();
+    Settings::Sanitize();
     // To apply default value changes
     SaveValues();
     Settings::Apply(Core::System::GetInstance());
 }
 
 void Config::Save() {
+    Settings::Sanitize();
     SaveValues();
 }
 

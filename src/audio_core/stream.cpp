@@ -130,11 +130,7 @@ bool Stream::ContainsBuffer([[maybe_unused]] Buffer::Tag tag) const {
 std::vector<Buffer::Tag> Stream::GetTagsAndReleaseBuffers(std::size_t max_count) {
     std::vector<Buffer::Tag> tags;
     for (std::size_t count = 0; count < max_count && !released_buffers.empty(); ++count) {
-        if (released_buffers.front()) {
-            tags.push_back(released_buffers.front()->GetTag());
-        } else {
-            ASSERT_MSG(false, "Invalid tag in released_buffers!");
-        }
+        tags.push_back(released_buffers.front()->GetTag());
         released_buffers.pop();
     }
     return tags;
@@ -144,11 +140,7 @@ std::vector<Buffer::Tag> Stream::GetTagsAndReleaseBuffers() {
     std::vector<Buffer::Tag> tags;
     tags.reserve(released_buffers.size());
     while (!released_buffers.empty()) {
-        if (released_buffers.front()) {
-            tags.push_back(released_buffers.front()->GetTag());
-        } else {
-            ASSERT_MSG(false, "Invalid tag in released_buffers!");
-        }
+        tags.push_back(released_buffers.front()->GetTag());
         released_buffers.pop();
     }
     return tags;
