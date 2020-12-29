@@ -186,18 +186,18 @@ void RendererOpenGL::LoadFBToScreenInfo(const Tegra::FramebufferConfig& framebuf
     // Reset the screen info's display texture to its own permanent texture
     screen_info.display_texture = screen_info.texture.resource.handle;
 
+    // TODO(Rodrigo): Read this from HLE
+    constexpr u32 block_height_log2 = 4;
     const auto pixel_format{
         VideoCore::Surface::PixelFormatFromGPUPixelFormat(framebuffer.pixel_format)};
     const u32 bytes_per_pixel{VideoCore::Surface::BytesPerBlock(pixel_format)};
-    const u64 size_in_bytes{framebuffer.stride * framebuffer.height * bytes_per_pixel};
-    u8* const host_ptr{cpu_memory.GetPointer(framebuffer_addr)};
-    rasterizer->FlushRegion(ToCacheAddr(host_ptr), size_in_bytes);
-
-    // TODO(Rodrigo): Read this from HLE
-    constexpr u32 block_height_log2 = 4;
-    Tegra::Texture::UnswizzleTexture(gl_framebuffer_data, std::span<u8>(host_ptr, size_in_bytes),
-                                     bytes_per_pixel, framebuffer.width, framebuffer.height, 1,
-                                     block_height_log2, 0);
+    const u64 size_in_bytes{Tegra::Texture::CalculateSize(
+        true, bytes_per_pixel, framebuffer.stride, framebuffer.height, 1, block_height_log2, 0)};
+    const u8* const host_ptr{cpu_memory.GetPointer(framebuffer_addr)};
+    const std::span<const u8> input_data(host_ptr, size_in_bytes);
+    Tegra::Texture::UnswizzleTexture(gl_framebuffer_data, input_data, bytes_per_pixel,
+                                     framebuffer.width, framebuffer.height, 1, block_height_log2,
+                                     0);
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, static_cast<GLint>(framebuffer.stride));

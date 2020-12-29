@@ -25,10 +25,7 @@
 namespace Kernel {
 
 ServerSession::ServerSession(KernelCore& kernel) : SynchronizationObject{kernel} {}
-
-ServerSession::~ServerSession() {
-    kernel.ReleaseServiceThread(service_thread);
-}
+ServerSession::~ServerSession() = default;
 
 ResultVal<std::shared_ptr<ServerSession>> ServerSession::Create(KernelCore& kernel,
                                                                 std::shared_ptr<Session> parent,
@@ -37,7 +34,7 @@ ResultVal<std::shared_ptr<ServerSession>> ServerSession::Create(KernelCore& kern
 
     session->name = std::move(name);
     session->parent = std::move(parent);
-    session->service_thread = kernel.CreateServiceThread(session->name);
+    session->service_thread = std::make_unique<ServiceThread>(kernel, 1);
 
     return MakeResult(std::move(session));
 }
@@ -142,11 +139,7 @@ ResultCode ServerSession::QueueSyncRequest(std::shared_ptr<Thread> thread,
         std::make_shared<HLERequestContext>(kernel, memory, SharedFrom(this), std::move(thread));
 
     context->PopulateFromIncomingCommandBuffer(kernel.CurrentProcess()->GetHandleTable(), cmd_buf);
-
-    if (auto strong_ptr = service_thread.lock()) {
-        strong_ptr->QueueSyncRequest(*this, std::move(context));
-        return RESULT_SUCCESS;
-    }
+    service_thread->QueueSyncRequest(*this, std::move(context));
 
     return RESULT_SUCCESS;
 }

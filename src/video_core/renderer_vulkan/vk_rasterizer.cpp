@@ -477,14 +477,13 @@ void RasterizerVulkan::Draw(bool is_indexed, bool is_instanced) {
         return;
     }
 
-    UpdateDynamicStates();
-
     buffer_bindings.Bind(device, scheduler);
 
     BeginTransformFeedback();
 
     scheduler.RequestRenderpass(framebuffer);
     scheduler.BindGraphicsPipeline(pipeline->GetHandle());
+    UpdateDynamicStates();
 
     const auto pipeline_layout = pipeline->GetLayout();
     const auto descriptor_set = pipeline->CommitDescriptorSet();

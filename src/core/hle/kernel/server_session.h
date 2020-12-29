@@ -167,7 +167,7 @@ private:
     std::string name;
 
     /// Thread to dispatch service requests
-    std::weak_ptr<ServiceThread> service_thread;
+    std::unique_ptr<ServiceThread> service_thread;
 };
 
 } // namespace Kernel

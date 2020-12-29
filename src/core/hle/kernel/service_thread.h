@@ -5,7 +5,6 @@
 #pragma once
 
 #include <memory>
-#include <string>
 
 namespace Kernel {
 
@@ -15,7 +14,7 @@ class ServerSession;
 
 class ServiceThread final {
 public:
-    explicit ServiceThread(KernelCore& kernel, std::size_t num_threads, const std::string& name);
+    explicit ServiceThread(KernelCore& kernel, std::size_t num_threads);
     ~ServiceThread();
 
     void QueueSyncRequest(ServerSession& session, std::shared_ptr<HLERequestContext>&& context);

@@ -132,6 +132,8 @@ std::vector<Buffer::Tag> Stream::GetTagsAndReleaseBuffers(std::size_t max_count)
     for (std::size_t count = 0; count < max_count && !released_buffers.empty(); ++count) {
         if (released_buffers.front()) {
             tags.push_back(released_buffers.front()->GetTag());
+        } else {
+            ASSERT_MSG(false, "Invalid tag in released_buffers!");
         }
         released_buffers.pop();
     }
@@ -144,6 +146,8 @@ std::vector<Buffer::Tag> Stream::GetTagsAndReleaseBuffers() {
     while (!released_buffers.empty()) {
         if (released_buffers.front()) {
             tags.push_back(released_buffers.front()->GetTag());
+        } else {
+            ASSERT_MSG(false, "Invalid tag in released_buffers!");
         }
         released_buffers.pop();
     }

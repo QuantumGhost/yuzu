@@ -116,32 +116,12 @@ constexpr std::array DYNAMIC_STATES{
     VK_DYNAMIC_STATE_VIEWPORT,
     VK_DYNAMIC_STATE_SCISSOR,
 };
-constexpr std::array EXTENDED_DYNAMIC_STATES{
-    VK_DYNAMIC_STATE_VIEWPORT,
-    VK_DYNAMIC_STATE_SCISSOR,
-    VK_DYNAMIC_STATE_CULL_MODE_EXT,
-    VK_DYNAMIC_STATE_FRONT_FACE_EXT,
-    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT,
-    VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT,
-    VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
-    VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT,
-    VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT,
-    VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT,
-    VK_DYNAMIC_STATE_STENCIL_OP_EXT,
-};
 constexpr VkPipelineDynamicStateCreateInfo PIPELINE_DYNAMIC_STATE_CREATE_INFO{
     .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
     .dynamicStateCount = static_cast<u32>(DYNAMIC_STATES.size()),
     .pDynamicStates = DYNAMIC_STATES.data(),
-};
-constexpr VkPipelineDynamicStateCreateInfo PIPELINE_EXTENDED_DYNAMIC_STATE_CREATE_INFO{
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-    .pNext = nullptr,
-    .flags = 0,
-    .dynamicStateCount = static_cast<u32>(EXTENDED_DYNAMIC_STATES.size()),
-    .pDynamicStates = EXTENDED_DYNAMIC_STATES.data(),
 };
 constexpr VkPipelineColorBlendStateCreateInfo PIPELINE_COLOR_BLEND_STATE_EMPTY_CREATE_INFO{
     .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -309,7 +289,7 @@ void UpdateTwoTexturesDescriptorSet(const VKDevice& device, VkDescriptorSet desc
     device.GetLogical().UpdateDescriptorSets(write_descriptor_sets, nullptr);
 }
 
-void BindBlitState(const VKDevice& device, vk::CommandBuffer cmdbuf, VkPipelineLayout layout,
+void BindBlitState(vk::CommandBuffer cmdbuf, VkPipelineLayout layout,
                    const std::array<Offset2D, 2>& dst_region,
                    const std::array<Offset2D, 2>& src_region) {
     const VkOffset2D offset{
@@ -341,22 +321,6 @@ void BindBlitState(const VKDevice& device, vk::CommandBuffer cmdbuf, VkPipelineL
     };
     cmdbuf.SetViewport(0, viewport);
     cmdbuf.SetScissor(0, scissor);
-    if (device.IsExtExtendedDynamicStateSupported()) {
-        // Workaround bug on Nvidia's drivers where the state is not properly handled when switching
-        // from one pipeline without dynamic state to one with.
-        // To workaround the bug, we manually set the pipeline state as dynamic state and keep the
-        // relevant bits enabled.
-        cmdbuf.SetCullModeEXT(PIPELINE_RASTERIZATION_STATE_CREATE_INFO.cullMode);
-        cmdbuf.SetFrontFaceEXT(PIPELINE_RASTERIZATION_STATE_CREATE_INFO.frontFace);
-        cmdbuf.SetDepthTestEnableEXT(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO.depthTestEnable);
-        cmdbuf.SetDepthWriteEnableEXT(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO.depthWriteEnable);
-        cmdbuf.SetDepthCompareOpEXT(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO.depthCompareOp);
-        cmdbuf.SetDepthBoundsTestEnableEXT(
-            PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO.depthBoundsTestEnable);
-        cmdbuf.SetStencilTestEnableEXT(PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO.stencilTestEnable);
-        cmdbuf.SetStencilOpEXT(VK_STENCIL_FACE_FRONT_AND_BACK, VK_STENCIL_OP_KEEP,
-                               VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP, VK_COMPARE_OP_NEVER);
-    }
     cmdbuf.PushConstants(layout, VK_SHADER_STAGE_VERTEX_BIT, push_constants);
 }
 
@@ -411,7 +375,7 @@ void BlitImageHelper::BlitColor(const Framebuffer* dst_framebuffer, const ImageV
         cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, descriptor_set,
                                   nullptr);
-        BindBlitState(device, cmdbuf, layout, dst_region, src_region);
+        BindBlitState(cmdbuf, layout, dst_region, src_region);
         cmdbuf.Draw(3, 1, 0, 0);
     });
     scheduler.InvalidateState();
@@ -440,7 +404,7 @@ void BlitImageHelper::BlitDepthStencil(const Framebuffer* dst_framebuffer,
         cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, descriptor_set,
                                   nullptr);
-        BindBlitState(device, cmdbuf, layout, dst_region, src_region);
+        BindBlitState(cmdbuf, layout, dst_region, src_region);
         cmdbuf.Draw(3, 1, 0, 0);
     });
     scheduler.InvalidateState();
@@ -562,9 +526,7 @@ VkPipeline BlitImageHelper::FindOrEmplacePipeline(const BlitImagePipelineKey& ke
         .pMultisampleState = &PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .pDepthStencilState = nullptr,
         .pColorBlendState = &color_blend_create_info,
-        .pDynamicState = device.IsExtExtendedDynamicStateSupported()
-                             ? &PIPELINE_EXTENDED_DYNAMIC_STATE_CREATE_INFO
-                             : &PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pDynamicState = &PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .layout = *one_texture_pipeline_layout,
         .renderPass = key.renderpass,
         .subpass = 0,
@@ -593,9 +555,7 @@ VkPipeline BlitImageHelper::BlitDepthStencilPipeline(VkRenderPass renderpass) {
         .pMultisampleState = &PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .pDepthStencilState = &PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .pColorBlendState = &PIPELINE_COLOR_BLEND_STATE_EMPTY_CREATE_INFO,
-        .pDynamicState = device.IsExtExtendedDynamicStateSupported()
-                             ? &PIPELINE_EXTENDED_DYNAMIC_STATE_CREATE_INFO
-                             : &PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pDynamicState = &PIPELINE_DYNAMIC_STATE_CREATE_INFO,
         .layout = *two_textures_pipeline_layout,
         .renderPass = renderpass,
         .subpass = 0,
