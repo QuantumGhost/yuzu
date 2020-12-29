@@ -53,7 +53,7 @@ mv /tmp/update/* $HOME/squashfs-root/usr/lib/
 mkdir $HOME/artifacts/
 mkdir -p /yuzu/artifacts/version
 mv yuzu-x86_64.AppImage* /yuzu/artifacts
-version=$(cat /yuzu/README.md | grep 'early-access [[:digit:]]*' | cut -c 14-17) 
+version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
 cp /yuzu/artifacts/yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 cp -R $HOME/artifacts/ /yuzu/
 cp "$BUILDBIN"/yuzu /yuzu/artifacts
