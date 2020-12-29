@@ -2,7 +2,7 @@
 
 BRANCH=`echo ${GITHUB_REF##*/}`
 
-ver=$(cat /yuzu/README.md | grep 'early-access [[:digit:]]*' | cut -c 14-17)
+ver=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17)
 title="yuzu Early Access $ver"
 
 
