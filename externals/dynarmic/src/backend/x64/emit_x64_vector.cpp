@@ -439,6 +439,14 @@ void EmitX64::EmitVectorAnd(EmitContext& ctx, IR::Inst* inst) {
 }
 
 static void ArithmeticShiftRightByte(EmitContext& ctx, BlockOfCode& code, const Xbyak::Xmm& result, u8 shift_amount) {
+    if (code.HasAVX512_Icelake()) {
+        // Do a logical shift right upon the 8x8 bit-matrix, but shift in
+        // `0x80` bytes into the matrix to repeat the most significant bit.
+        const u64 zero_extend = ~(0xFFFFFFFFFFFFFFFF << (shift_amount * 8)) & 0x8080808080808080;
+        const u64 shift_matrix = (0x0102040810204080 >> (shift_amount * 8)) | zero_extend;
+        code.vgf2p8affineqb(result, result, code.MConst(xword_b, shift_matrix), 0);
+        return;
+    }
     const Xbyak::Xmm tmp = ctx.reg_alloc.ScratchXmm();
 
     code.punpckhbw(tmp, result);
@@ -1460,11 +1468,17 @@ void EmitX64::EmitVectorLogicalShiftLeft8(EmitContext& ctx, IR::Inst* inst) {
     if (shift_amount == 1) {
         code.paddb(result, result);
     } else if (shift_amount > 0) {
-        const u64 replicand = (0xFFULL << shift_amount) & 0xFF;
-        const u64 mask = Common::Replicate(replicand, Common::BitSize<u8>());
+        if (code.HasAVX512_Icelake()) {
+            // Galois 8x8 identity matrix, bit-shifted by the shift-amount
+            const u64 shift_matrix = 0x0102040810204080 >> (shift_amount * 8);
+            code.vgf2p8affineqb(result, result, code.MConst(xword_b, shift_matrix), 0);
+        } else {
+            const u64 replicand = (0xFFULL << shift_amount) & 0xFF;
+            const u64 mask = Common::Replicate(replicand, Common::BitSize<u8>());
 
-        code.psllw(result, shift_amount);
-        code.pand(result, code.MConst(xword, mask, mask));
+            code.psllw(result, shift_amount);
+            code.pand(result, code.MConst(xword, mask, mask));
+        }
     }
 
     ctx.reg_alloc.DefineValue(inst, result);
@@ -1510,11 +1524,17 @@ void EmitX64::EmitVectorLogicalShiftRight8(EmitContext& ctx, IR::Inst* inst) {
     const u8 shift_amount = args[1].GetImmediateU8();
 
     if (shift_amount > 0) {
-        const u64 replicand = 0xFEULL >> shift_amount;
-        const u64 mask = Common::Replicate(replicand, Common::BitSize<u8>());
+        if (code.HasAVX512_Icelake()) {
+            // Galois 8x8 identity matrix, bit-shifted by the shift-amount
+            const u64 shift_matrix = 0x0102040810204080 << (shift_amount * 8);
+            code.vgf2p8affineqb(result, result, code.MConst(xword_b, shift_matrix), 0);
+        } else {
+            const u64 replicand = 0xFEULL >> shift_amount;
+            const u64 mask = Common::Replicate(replicand, Common::BitSize<u8>());
 
-        code.psrlw(result, shift_amount);
-        code.pand(result, code.MConst(xword, mask, mask));
+            code.psrlw(result, shift_amount);
+            code.pand(result, code.MConst(xword, mask, mask));
+        }
     }
 
     ctx.reg_alloc.DefineValue(inst, result);
@@ -2747,40 +2767,48 @@ void EmitX64::EmitVectorReverseBits(EmitContext& ctx, IR::Inst* inst) {
     auto args = ctx.reg_alloc.GetArgumentInfo(inst);
 
     const Xbyak::Xmm data = ctx.reg_alloc.UseScratchXmm(args[0]);
-    const Xbyak::Xmm high_nibble_reg = ctx.reg_alloc.ScratchXmm();
 
-    code.movdqa(high_nibble_reg, code.MConst(xword, 0xF0F0F0F0F0F0F0F0, 0xF0F0F0F0F0F0F0F0));
-    code.pand(high_nibble_reg, data);
-    code.pxor(data, high_nibble_reg);
-    code.psrld(high_nibble_reg, 4);
-
-    if (code.HasSSSE3()) {
-        // High lookup
-        const Xbyak::Xmm high_reversed_reg = ctx.reg_alloc.ScratchXmm();
-        code.movdqa(high_reversed_reg, code.MConst(xword, 0xE060A020C0408000, 0xF070B030D0509010));
-        code.pshufb(high_reversed_reg, data);
-
-        // Low lookup (low nibble equivalent of the above)
-        code.movdqa(data, code.MConst(xword, 0x0E060A020C040800, 0x0F070B030D050901));
-        code.pshufb(data, high_nibble_reg);
-        code.por(data, high_reversed_reg);
+    if (code.HasAVX512_Icelake() && code.HasSSSE3()) {
+        // GFNI(vgf2p8affineqb) and SSSE3(pshuf)
+        // Reverse bits within bytes
+        code.vgf2p8affineqb(data, data, code.MConst(xword_b, 0x8040201008040201), 0);
+        // Reverse bytes within vector
+        code.pshufb(data, code.MConst(xword, 0x0001020304050607, 0x08090a0b0c0d0e0f));
     } else {
-        code.pslld(data, 4);
-        code.por(data, high_nibble_reg);
-
-        code.movdqa(high_nibble_reg, code.MConst(xword, 0xCCCCCCCCCCCCCCCC, 0xCCCCCCCCCCCCCCCC));
+        const Xbyak::Xmm high_nibble_reg = ctx.reg_alloc.ScratchXmm();
+        code.movdqa(high_nibble_reg, code.MConst(xword, 0xF0F0F0F0F0F0F0F0, 0xF0F0F0F0F0F0F0F0));
         code.pand(high_nibble_reg, data);
         code.pxor(data, high_nibble_reg);
-        code.psrld(high_nibble_reg, 2);
-        code.pslld(data, 2);
-        code.por(data, high_nibble_reg);
+        code.psrld(high_nibble_reg, 4);
 
-        code.movdqa(high_nibble_reg, code.MConst(xword, 0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA));
-        code.pand(high_nibble_reg, data);
-        code.pxor(data, high_nibble_reg);
-        code.psrld(high_nibble_reg, 1);
-        code.paddd(data, data);
-        code.por(data, high_nibble_reg);
+        if (code.HasSSSE3()) {
+            // High lookup
+            const Xbyak::Xmm high_reversed_reg = ctx.reg_alloc.ScratchXmm();
+            code.movdqa(high_reversed_reg, code.MConst(xword, 0xE060A020C0408000, 0xF070B030D0509010));
+            code.pshufb(high_reversed_reg, data);
+
+            // Low lookup (low nibble equivalent of the above)
+            code.movdqa(data, code.MConst(xword, 0x0E060A020C040800, 0x0F070B030D050901));
+            code.pshufb(data, high_nibble_reg);
+            code.por(data, high_reversed_reg);
+        } else {
+            code.pslld(data, 4);
+            code.por(data, high_nibble_reg);
+
+            code.movdqa(high_nibble_reg, code.MConst(xword, 0xCCCCCCCCCCCCCCCC, 0xCCCCCCCCCCCCCCCC));
+            code.pand(high_nibble_reg, data);
+            code.pxor(data, high_nibble_reg);
+            code.psrld(high_nibble_reg, 2);
+            code.pslld(data, 2);
+            code.por(data, high_nibble_reg);
+
+            code.movdqa(high_nibble_reg, code.MConst(xword, 0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA));
+            code.pand(high_nibble_reg, data);
+            code.pxor(data, high_nibble_reg);
+            code.psrld(high_nibble_reg, 1);
+            code.paddd(data, data);
+            code.por(data, high_nibble_reg);
+        }
     }
 
     ctx.reg_alloc.DefineValue(inst, data);
