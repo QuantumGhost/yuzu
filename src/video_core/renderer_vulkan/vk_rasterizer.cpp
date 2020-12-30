@@ -670,6 +670,7 @@ void Vulkan::RasterizerVulkan::InvalidateTextureCache(VAddr addr, u64 size) {
     if (addr == 0 || size == 0) {
         return;
     }
+    auto lock = texture_cache.AcquireLock();
     texture_cache.UnmapMemory(addr, size);
 }
 
