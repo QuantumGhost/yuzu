@@ -292,12 +292,48 @@ GMainWindow::GMainWindow()
     connect(&mouse_hide_timer, &QTimer::timeout, this, &GMainWindow::HideMouseCursor);
     connect(ui.menubar, &QMenuBar::hovered, this, &GMainWindow::ShowMouseCursor);
 
+    MigrateConfigFiles();
+
+    ui.action_Fullscreen->setChecked(false);
+
     QStringList args = QApplication::arguments();
-    if (args.length() >= 2) {
-        BootGame(args[1]);
+
+    if (args.size() < 2) {
+        return;
     }
 
-    MigrateConfigFiles();
+    QString game_path;
+
+    for (int i = 1; i < args.size(); ++i) {
+        // Preserves drag/drop functionality
+        if (args.size() == 2 && !args[1].startsWith(QChar::fromLatin1('-'))) {
+            game_path = args[1];
+            break;
+        }
+
+        // Launch game in fullscreen mode
+        if (args[i] == QStringLiteral("-f")) {
+            ui.action_Fullscreen->setChecked(true);
+            continue;
+        }
+
+        // Launch game at path
+        if (args[i] == QStringLiteral("-g")) {
+            if (i >= args.size() - 1) {
+                continue;
+            }
+
+            if (args[i + 1].startsWith(QChar::fromLatin1('-'))) {
+                continue;
+            }
+
+            game_path = args[++i];
+        }
+    }
+
+    if (!game_path.isEmpty()) {
+        BootGame(game_path);
+    }
 }
 
 GMainWindow::~GMainWindow() {
@@ -580,9 +616,8 @@ void GMainWindow::InitializeWidgets() {
         if (emulation_running) {
             return;
         }
-        const bool is_async = !Settings::values.use_asynchronous_gpu_emulation.GetValue() ||
-                              Settings::values.use_multi_core.GetValue();
-        Settings::values.use_asynchronous_gpu_emulation.SetValue(is_async);
+        Settings::values.use_asynchronous_gpu_emulation.SetValue(
+            !Settings::values.use_asynchronous_gpu_emulation.GetValue());
         async_status_button->setChecked(Settings::values.use_asynchronous_gpu_emulation.GetValue());
         Settings::Apply(Core::System::GetInstance());
     });
@@ -599,16 +634,13 @@ void GMainWindow::InitializeWidgets() {
             return;
         }
         Settings::values.use_multi_core.SetValue(!Settings::values.use_multi_core.GetValue());
-        const bool is_async = Settings::values.use_asynchronous_gpu_emulation.GetValue() ||
-                              Settings::values.use_multi_core.GetValue();
-        Settings::values.use_asynchronous_gpu_emulation.SetValue(is_async);
-        async_status_button->setChecked(Settings::values.use_asynchronous_gpu_emulation.GetValue());
         multicore_status_button->setChecked(Settings::values.use_multi_core.GetValue());
         Settings::Apply(Core::System::GetInstance());
     });
     multicore_status_button->setText(tr("MULTICORE"));
     multicore_status_button->setCheckable(true);
     multicore_status_button->setChecked(Settings::values.use_multi_core.GetValue());
+
     statusBar()->insertPermanentWidget(0, multicore_status_button);
     statusBar()->insertPermanentWidget(0, async_status_button);
 
@@ -2533,9 +2565,6 @@ void GMainWindow::UpdateStatusBar() {
 void GMainWindow::UpdateStatusButtons() {
     dock_status_button->setChecked(Settings::values.use_docked_mode.GetValue());
     multicore_status_button->setChecked(Settings::values.use_multi_core.GetValue());
-    Settings::values.use_asynchronous_gpu_emulation.SetValue(
-        Settings::values.use_asynchronous_gpu_emulation.GetValue() ||
-        Settings::values.use_multi_core.GetValue());
     async_status_button->setChecked(Settings::values.use_asynchronous_gpu_emulation.GetValue());
     renderer_status_button->setChecked(Settings::values.renderer_backend.GetValue() ==
                                        Settings::RendererBackend::Vulkan);

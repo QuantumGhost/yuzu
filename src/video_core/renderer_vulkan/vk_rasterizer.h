@@ -51,11 +51,6 @@ struct VKScreenInfo;
 class StateTracker;
 class BufferBindings;
 
-struct Transition {
-    ImageView* view;
-    VkImageLayout* layout;
-};
-
 class RasterizerVulkan final : public VideoCore::RasterizerAccelerated {
 public:
     explicit RasterizerVulkan(Core::Frontend::EmuWindow& emu_window_, Tegra::GPU& gpu_,

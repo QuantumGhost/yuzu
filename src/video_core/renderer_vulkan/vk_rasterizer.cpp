@@ -657,7 +657,7 @@ void RasterizerVulkan::FlushRegion(VAddr addr, u64 size) {
     query_cache.FlushRegion(addr, size);
 }
 
-void RasterizerVulkan::InvalidateExceptTextureCache(VAddr addr, u64 size) {
+void Vulkan::RasterizerVulkan::InvalidateExceptTextureCache(VAddr addr, u64 size) {
     if (addr == 0 || size == 0) {
         return;
     }
@@ -666,7 +666,7 @@ void RasterizerVulkan::InvalidateExceptTextureCache(VAddr addr, u64 size) {
     query_cache.InvalidateRegion(addr, size);
 }
 
-void RasterizerVulkan::InvalidateTextureCache(VAddr addr, u64 size) {
+void Vulkan::RasterizerVulkan::InvalidateTextureCache(VAddr addr, u64 size) {
     if (addr == 0 || size == 0) {
         return;
     }

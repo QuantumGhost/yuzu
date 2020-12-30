@@ -55,9 +55,11 @@ Module::Module(Core::System& system) : syncpoint_manager{system.GPU()} {
     devices["/dev/nvdisp_disp0"] = std::make_shared<Devices::nvdisp_disp0>(system, nvmap_dev);
     devices["/dev/nvhost-ctrl"] =
         std::make_shared<Devices::nvhost_ctrl>(system, events_interface, syncpoint_manager);
-    devices["/dev/nvhost-nvdec"] = std::make_shared<Devices::nvhost_nvdec>(system, nvmap_dev);
+    devices["/dev/nvhost-nvdec"] =
+        std::make_shared<Devices::nvhost_nvdec>(system, nvmap_dev, syncpoint_manager);
     devices["/dev/nvhost-nvjpg"] = std::make_shared<Devices::nvhost_nvjpg>(system);
-    devices["/dev/nvhost-vic"] = std::make_shared<Devices::nvhost_vic>(system, nvmap_dev);
+    devices["/dev/nvhost-vic"] =
+        std::make_shared<Devices::nvhost_vic>(system, nvmap_dev, syncpoint_manager);
 }
 
 Module::~Module() = default;
@@ -91,7 +93,7 @@ DeviceFD Module::Open(const std::string& device_name) {
 }
 
 NvResult Module::Ioctl1(DeviceFD fd, Ioctl command, const std::vector<u8>& input,
-                        std::vector<u8>& output, IoctlCtrl& ctrl) {
+                        std::vector<u8>& output) {
     if (fd < 0) {
         LOG_ERROR(Service_NVDRV, "Invalid DeviceFD={}!", fd);
         return NvResult::InvalidState;
@@ -104,12 +106,11 @@ NvResult Module::Ioctl1(DeviceFD fd, Ioctl command, const std::vector<u8>& input
         return NvResult::NotImplemented;
     }
 
-    return itr->second->Ioctl1(command, input, output, ctrl);
+    return itr->second->Ioctl1(command, input, output);
 }
 
 NvResult Module::Ioctl2(DeviceFD fd, Ioctl command, const std::vector<u8>& input,
-                        const std::vector<u8>& inline_input, std::vector<u8>& output,
-                        IoctlCtrl& ctrl) {
+                        const std::vector<u8>& inline_input, std::vector<u8>& output) {
     if (fd < 0) {
         LOG_ERROR(Service_NVDRV, "Invalid DeviceFD={}!", fd);
         return NvResult::InvalidState;
@@ -122,11 +123,11 @@ NvResult Module::Ioctl2(DeviceFD fd, Ioctl command, const std::vector<u8>& input
         return NvResult::NotImplemented;
     }
 
-    return itr->second->Ioctl2(command, input, inline_input, output, ctrl);
+    return itr->second->Ioctl2(command, input, inline_input, output);
 }
 
 NvResult Module::Ioctl3(DeviceFD fd, Ioctl command, const std::vector<u8>& input,
-                        std::vector<u8>& output, std::vector<u8>& inline_output, IoctlCtrl& ctrl) {
+                        std::vector<u8>& output, std::vector<u8>& inline_output) {
     if (fd < 0) {
         LOG_ERROR(Service_NVDRV, "Invalid DeviceFD={}!", fd);
         return NvResult::InvalidState;
@@ -139,7 +140,7 @@ NvResult Module::Ioctl3(DeviceFD fd, Ioctl command, const std::vector<u8>& input
         return NvResult::NotImplemented;
     }
 
-    return itr->second->Ioctl3(command, input, output, inline_output, ctrl);
+    return itr->second->Ioctl3(command, input, output, inline_output);
 }
 
 NvResult Module::Close(DeviceFD fd) {

@@ -354,7 +354,7 @@ void ApplySwizzle(GLuint handle, PixelFormat format, std::array<SwizzleSource, 4
         };
     default:
         UNIMPLEMENTED_MSG("Unimplemented copy target={}", target);
-        return CopyOrigin{.x = 0, .y = 0, .z = 0};
+        return CopyOrigin{.level = 0, .x = 0, .y = 0, .z = 0};
     }
 }
 
