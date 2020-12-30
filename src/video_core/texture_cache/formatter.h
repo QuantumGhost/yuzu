@@ -8,7 +8,8 @@
 
 #include <fmt/format.h>
 
-#include "video_core/texture_cache/texture_cache.h"
+#include "video_core/surface.h"
+#include "video_core/texture_cache/types.h"
 
 template <>
 struct fmt::formatter<VideoCore::Surface::PixelFormat> : fmt::formatter<fmt::string_view> {

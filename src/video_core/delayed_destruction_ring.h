@@ -11,6 +11,7 @@
 
 namespace VideoCommon {
 
+/// Container to push objects to be destroyed a few ticks in the future
 template <typename T, size_t TICKS_TO_DESTROY>
 class DelayedDestructionRing {
 public:

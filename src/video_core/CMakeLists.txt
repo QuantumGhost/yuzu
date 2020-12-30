@@ -246,7 +246,6 @@ add_library(video_core STATIC
     texture_cache/samples_helper.h
     texture_cache/slot_vector.h
     texture_cache/texture_cache.h
-    texture_cache/texture_cache.inl
     texture_cache/types.h
     texture_cache/util.cpp
     texture_cache/util.h

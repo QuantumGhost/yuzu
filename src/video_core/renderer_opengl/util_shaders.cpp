@@ -114,7 +114,6 @@ void UtilShaders::BlockLinearUpload3D(Image& image, const ImageBufferMap& map, s
 
     const GLenum store_format = StoreFormat(BytesPerBlock(image.info.format));
     for (const SwizzleParameters& swizzle : swizzles) {
-        const Extent3D block = swizzle.block;
         const Extent3D num_tiles = swizzle.num_tiles;
         const size_t input_offset = swizzle.buffer_offset + buffer_offset;
 
