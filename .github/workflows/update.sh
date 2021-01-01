@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export QT_QPA_PLATFORMTHEME=gtk3
+
 zenity --question --timeout=10 --title="yuzu updater" --text="New update available. Update now?" --icon-name=yuzu --window-icon=yuzu.svg --height=80 --width=400
 answer=$?
 

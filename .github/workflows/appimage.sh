@@ -49,6 +49,10 @@ chmod a+x ./squashfs-root/AppRun
 # /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -appimage -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 /tmp/squashfs-root/AppRun $HOME/squashfs-root/usr/bin/yuzu -unsupported-allow-new-glibc -no-copy-copyright-files -no-translations -bundle-non-qt-libs
 export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH
+	mkdir $HOME/squashfs-root/usr/plugins/platformthemes/
+	cp /opt/qt514/plugins/platformthemes/libqgtk3.so $HOME/squashfs-root/usr/plugins/platformthemes/
+	mkdir $HOME/squashfs-root/dist/
+	cp /yuzu/dist/yuzu.ico $HOME/squashfs-root/dist/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root
 version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
