@@ -8,6 +8,7 @@ add_executable(tests
     core/arm/arm_test_common.h
     core/core_timing.cpp
     tests.cpp
+    video_core/buffer_base.cpp
 )
 
 create_target_directory_groups(tests)
