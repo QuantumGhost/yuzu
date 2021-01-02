@@ -1080,29 +1080,40 @@ static void EmitSub(BlockOfCode& code, EmitContext& ctx, IR::Inst* inst, int bit
 
     auto args = ctx.reg_alloc.GetArgumentInfo(inst);
     auto& carry_in = args[2];
+    const bool is_cmp = inst->UseCount() == size_t(!!carry_inst + !!overflow_inst + !!nzcv_inst) && carry_in.IsImmediate() && carry_in.GetImmediateU1();
 
     const Xbyak::Reg64 nzcv = DoNZCV(code, ctx.reg_alloc, nzcv_inst);
-    const Xbyak::Reg result = ctx.reg_alloc.UseScratchGpr(args[0]).changeBit(bitsize);
+    const Xbyak::Reg result = (is_cmp ? ctx.reg_alloc.UseGpr(args[0]) : ctx.reg_alloc.UseScratchGpr(args[0])).changeBit(bitsize);
     const Xbyak::Reg8 carry = DoCarry(ctx.reg_alloc, carry_in, carry_inst);
     const Xbyak::Reg8 overflow = overflow_inst ? ctx.reg_alloc.ScratchGpr().cvt8() : Xbyak::Reg8{-1};
 
     // TODO: Consider using LEA.
-    // TODO: Optimize CMP case.
     // Note that x64 CF is inverse of what the ARM carry flag is here.
 
-    if (args[1].IsImmediate() && args[1].GetType() == IR::Type::U32) {
+    bool invert_output_carry = true;
+
+    if (is_cmp) {
+        if (args[1].IsImmediate() && args[1].GetType() == IR::Type::U32) {
+            const u32 op_arg = args[1].GetImmediateU32();
+            code.cmp(result, op_arg);
+        } else {
+            OpArg op_arg = ctx.reg_alloc.UseOpArg(args[1]);
+            op_arg.setBit(bitsize);
+            code.cmp(result, *op_arg);
+        }
+    } else if (args[1].IsImmediate() && args[1].GetType() == IR::Type::U32) {
         const u32 op_arg = args[1].GetImmediateU32();
         if (carry_in.IsImmediate()) {
             if (carry_in.GetImmediateU1()) {
                 code.sub(result, op_arg);
             } else {
-                code.stc();
-                code.sbb(result, op_arg);
+                code.add(result, ~op_arg);
+                invert_output_carry = false;
             }
         } else {
             code.bt(carry.cvt32(), 0);
-            code.cmc();
-            code.sbb(result, op_arg);
+            code.adc(result, ~op_arg);
+            invert_output_carry = false;
         }
     } else {
         OpArg op_arg = ctx.reg_alloc.UseOpArg(args[1]);
@@ -1122,14 +1133,20 @@ static void EmitSub(BlockOfCode& code, EmitContext& ctx, IR::Inst* inst, int bit
     }
 
     if (nzcv_inst) {
-        code.cmc();
+        if (invert_output_carry) {
+            code.cmc();
+        }
         code.lahf();
         code.seto(code.al);
         ctx.reg_alloc.DefineValue(nzcv_inst, nzcv);
         ctx.EraseInstruction(nzcv_inst);
     }
     if (carry_inst) {
-        code.setnc(carry);
+        if (invert_output_carry) {
+            code.setnc(carry);
+        } else {
+            code.setc(carry);
+        }
         ctx.reg_alloc.DefineValue(carry_inst, carry);
         ctx.EraseInstruction(carry_inst);
     }
@@ -1138,8 +1155,9 @@ static void EmitSub(BlockOfCode& code, EmitContext& ctx, IR::Inst* inst, int bit
         ctx.reg_alloc.DefineValue(overflow_inst, overflow);
         ctx.EraseInstruction(overflow_inst);
     }
-
-    ctx.reg_alloc.DefineValue(inst, result);
+    if (!is_cmp) {
+        ctx.reg_alloc.DefineValue(inst, result);
+    }
 }
 
 void EmitX64::EmitSub32(EmitContext& ctx, IR::Inst* inst) {
