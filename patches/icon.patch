@@ -1,0 +1,95 @@
+From a1a3e1e46676c382332f5acb79888cb092e4e177 Mon Sep 17 00:00:00 2001
+From: pineappleEA <67879877+pineappleEA@users.noreply.github.com>
+Date: Fri, 1 Jan 2021 22:36:54 +0200
+Subject: [PATCH 1/4] Add Qt Resource Collection File
+
+This points the main.ui file to the location of yuzu.ico
+---
+ src/yuzu/yuzu.qrc | 5 +++++
+ 1 file changed, 5 insertions(+)
+ create mode 100644 src/yuzu/yuzu.qrc
+
+diff --git a/src/yuzu/yuzu.qrc b/src/yuzu/yuzu.qrc
+new file mode 100644
+index 00000000000..5733cac988e
+--- /dev/null
++++ b/src/yuzu/yuzu.qrc
+@@ -0,0 +1,5 @@
++<RCC>
++    <qresource prefix="/img">
++        <file alias="yuzu.ico">../../dist/yuzu.ico</file>
++    </qresource>
++</RCC>
+
+From 162b497251accfc1ee7c51ebc30a1022202e7c33 Mon Sep 17 00:00:00 2001
+From: pineappleEA <67879877+pineappleEA@users.noreply.github.com>
+Date: Fri, 1 Jan 2021 22:38:41 +0200
+Subject: [PATCH 2/4] Add yuzu.qrc to CMakeLists.txt
+
+Include the Qt Resource Collection File to CMakeLists so that its built.
+---
+ src/yuzu/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/yuzu/CMakeLists.txt b/src/yuzu/CMakeLists.txt
+index e1bab2112e6..b75f711af1f 100644
+--- a/src/yuzu/CMakeLists.txt
++++ b/src/yuzu/CMakeLists.txt
+@@ -147,6 +147,7 @@ add_executable(yuzu
+     util/util.h
+     compatdb.cpp
+     compatdb.h
++    yuzu.qrc
+     yuzu.rc
+ )
+ 
+
+From 3c069c279f0c5c1bdd869853143b1841c5e537c6 Mon Sep 17 00:00:00 2001
+From: pineappleEA <67879877+pineappleEA@users.noreply.github.com>
+Date: Fri, 1 Jan 2021 22:42:15 +0200
+Subject: [PATCH 3/4] Point main.ui to the right location
+
+Main.ui will look for yuzu.ico inside the binary, on the location we set at yuzu.qrc.
+---
+ src/yuzu/main.ui | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/yuzu/main.ui b/src/yuzu/main.ui
+index e2ad5baf69f..8862fe293b1 100644
+--- a/src/yuzu/main.ui
++++ b/src/yuzu/main.ui
+@@ -14,8 +14,8 @@
+    <string>yuzu</string>
+   </property>
+   <property name="windowIcon">
+-   <iconset>
+-    <normaloff>../dist/yuzu.ico</normaloff>../dist/yuzu.ico</iconset>
++   <iconset resource="yuzu.qrc">
++    <normaloff>:/img/yuzu.ico</normaloff>:/img/yuzu.ico</iconset>
+   </property>
+   <property name="tabShape">
+    <enum>QTabWidget::Rounded</enum>
+
+From 5d3a6cda9d0cc85070927238f85f2ca5d6a7a618 Mon Sep 17 00:00:00 2001
+From: pineappleEA <67879877+pineappleEA@users.noreply.github.com>
+Date: Fri, 1 Jan 2021 22:43:32 +0200
+Subject: [PATCH 4/4] Point main.ui to yuzu.qrc
+
+---
+ src/yuzu/main.ui | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/yuzu/main.ui b/src/yuzu/main.ui
+index 8862fe293b1..0488706875e 100644
+--- a/src/yuzu/main.ui
++++ b/src/yuzu/main.ui
+@@ -303,6 +303,8 @@
+    </property>
+   </action>
+  </widget>
+- <resources/>
++ <resources>
++  <include location="yuzu.qrc"/>
++ </resources>
+  <connections/>
+ </ui>
