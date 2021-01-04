@@ -195,8 +195,9 @@ struct Memory::Impl {
             switch (type) {
             case Common::PageType::Unmapped: {
                 LOG_ERROR(HW_Memory,
-                          "Unmapped ReadBlock @ 0x{:016X} (start address = 0x{:016X}, size = {})",
-                          current_vaddr, src_addr, size);
+                          "Unmapped ReadBlock @ 0x{:016X} (start address = 0x{:016X}, size = {}) "
+                          "at PC 0x{:08X}",
+                          current_vaddr, src_addr, size, system.CurrentArmInterface().GetPC());
                 std::memset(dest_buffer, 0, copy_amount);
                 break;
             }
@@ -240,8 +241,9 @@ struct Memory::Impl {
             switch (type) {
             case Common::PageType::Unmapped: {
                 LOG_ERROR(HW_Memory,
-                          "Unmapped ReadBlock @ 0x{:016X} (start address = 0x{:016X}, size = {})",
-                          current_vaddr, src_addr, size);
+                          "Unmapped ReadBlock @ 0x{:016X} (start address = 0x{:016X}, size = {}) "
+                          "at PC 0x{:08X}",
+                          current_vaddr, src_addr, size, system.CurrentArmInterface().GetPC());
                 std::memset(dest_buffer, 0, copy_amount);
                 break;
             }
@@ -291,8 +293,9 @@ struct Memory::Impl {
             switch (type) {
             case Common::PageType::Unmapped: {
                 LOG_ERROR(HW_Memory,
-                          "Unmapped WriteBlock @ 0x{:016X} (start address = 0x{:016X}, size = {})",
-                          current_vaddr, dest_addr, size);
+                          "Unmapped WriteBlock @ 0x{:016X} (start address = 0x{:016X}, size = {}) "
+                          "at PC 0x{:08X}",
+                          current_vaddr, dest_addr, size, system.CurrentArmInterface().GetPC());
                 break;
             }
             case Common::PageType::Memory: {
@@ -334,8 +337,9 @@ struct Memory::Impl {
             switch (type) {
             case Common::PageType::Unmapped: {
                 LOG_ERROR(HW_Memory,
-                          "Unmapped WriteBlock @ 0x{:016X} (start address = 0x{:016X}, size = {})",
-                          current_vaddr, dest_addr, size);
+                          "Unmapped WriteBlock @ 0x{:016X} (start address = 0x{:016X}, size = {}) "
+                          "at PC 0x{:08X}",
+                          current_vaddr, dest_addr, size, system.CurrentArmInterface().GetPC());
                 break;
             }
             case Common::PageType::Memory: {
@@ -383,8 +387,9 @@ struct Memory::Impl {
             switch (type) {
             case Common::PageType::Unmapped: {
                 LOG_ERROR(HW_Memory,
-                          "Unmapped ZeroBlock @ 0x{:016X} (start address = 0x{:016X}, size = {})",
-                          current_vaddr, dest_addr, size);
+                          "Unmapped ZeroBlock @ 0x{:016X} (start address = 0x{:016X}, size = {}) "
+                          "at PC 0x{:08X}",
+                          current_vaddr, dest_addr, size, system.CurrentArmInterface().GetPC());
                 break;
             }
             case Common::PageType::Memory: {
@@ -429,8 +434,9 @@ struct Memory::Impl {
             switch (type) {
             case Common::PageType::Unmapped: {
                 LOG_ERROR(HW_Memory,
-                          "Unmapped CopyBlock @ 0x{:016X} (start address = 0x{:016X}, size = {})",
-                          current_vaddr, src_addr, size);
+                          "Unmapped CopyBlock @ 0x{:016X} (start address = 0x{:016X}, size = {}) "
+                          "at PC 0x{:08X}",
+                          current_vaddr, src_addr, size, system.CurrentArmInterface().GetPC());
                 ZeroBlock(process, dest_addr, copy_amount);
                 break;
             }
@@ -601,7 +607,8 @@ struct Memory::Impl {
         }
         switch (Common::PageTable::PageInfo::ExtractType(raw_pointer)) {
         case Common::PageType::Unmapped:
-            LOG_ERROR(HW_Memory, "Unmapped Read{} @ 0x{:08X}", sizeof(T) * 8, vaddr);
+            LOG_ERROR(HW_Memory, "Unmapped Read{} @ 0x{:08X} at PC 0x{:08X}", sizeof(T) * 8, vaddr,
+                      system.CurrentArmInterface().GetPC());
             return 0;
         case Common::PageType::Memory:
             ASSERT_MSG(false, "Mapped memory page without a pointer @ {:016X}", vaddr);
@@ -638,8 +645,9 @@ struct Memory::Impl {
         }
         switch (Common::PageTable::PageInfo::ExtractType(raw_pointer)) {
         case Common::PageType::Unmapped:
-            LOG_ERROR(HW_Memory, "Unmapped Write{} 0x{:08X} @ 0x{:016X}", sizeof(data) * 8,
-                      static_cast<u32>(data), vaddr);
+            LOG_ERROR(HW_Memory, "Unmapped Write{} 0x{:08X} @ 0x{:016X} at PC 0x{:08X}",
+                      sizeof(data) * 8, static_cast<u32>(data), vaddr,
+                      system.CurrentArmInterface().GetPC());
             return;
         case Common::PageType::Memory:
             ASSERT_MSG(false, "Mapped memory page without a pointer @ {:016X}", vaddr);
