@@ -40,7 +40,7 @@ private:
         u64 tick = 0;
 
         StagingBufferRef Ref() const noexcept {
-            return StagingBufferRef{
+            return {
                 .buffer = *buffer,
                 .mapped_span = mapped_span,
             };
