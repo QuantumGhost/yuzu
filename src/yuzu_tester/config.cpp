@@ -79,8 +79,6 @@ void Config::ReadValues() {
     Settings::values.enable_accurate_vibrations.SetValue(false);
     Settings::values.motion_enabled.SetValue(true);
     Settings::values.touchscreen.enabled = "";
-    Settings::values.touchscreen.device = "";
-    Settings::values.touchscreen.finger = 0;
     Settings::values.touchscreen.rotation_angle = 0;
     Settings::values.touchscreen.diameter_x = 15;
     Settings::values.touchscreen.diameter_y = 15;
