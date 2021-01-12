@@ -301,7 +301,7 @@ public:
 
     void LoadModule(CodeSet code_set, VAddr base_addr);
 
-    virtual bool IsSignaled() const override;
+    bool IsSignaled() const override;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Thread-local storage management

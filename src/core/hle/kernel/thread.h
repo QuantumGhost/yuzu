@@ -6,6 +6,7 @@
 
 #include <array>
 #include <functional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -111,6 +112,16 @@ enum class ThreadSchedFlags : u32 {
     ThreadPauseFlag = 1 << 5,
     ProcessDebugPauseFlag = 1 << 6,
     KernelInitPauseFlag = 1 << 8,
+};
+
+enum class ThreadWaitReasonForDebugging : u32 {
+    None,            ///< Thread is not waiting
+    Sleep,           ///< Thread is waiting due to a SleepThread SVC
+    IPC,             ///< Thread is waiting for the reply from an IPC request
+    Synchronization, ///< Thread is waiting due to a WaitSynchronization SVC
+    ConditionVar,    ///< Thread is waiting due to a WaitProcessWideKey SVC
+    Arbitration,     ///< Thread is waiting due to a SignalToAddress/WaitForAddress SVC
+    Suspended,       ///< Thread is waiting due to process suspension
 };
 
 class Thread final : public KSynchronizationObject, public boost::intrusive::list_base_hook<> {
@@ -514,11 +525,19 @@ public:
         disable_count--;
     }
 
-    void SetWaitObjectsForDebugging(KSynchronizationObject** objects, s32 num_objects) {
+    void SetWaitReasonForDebugging(ThreadWaitReasonForDebugging reason) {
+        wait_reason_for_debugging = reason;
+    }
+
+    [[nodiscard]] ThreadWaitReasonForDebugging GetWaitReasonForDebugging() const {
+        return wait_reason_for_debugging;
+    }
+
+    void SetWaitObjectsForDebugging(const std::span<KSynchronizationObject*>& objects) {
         wait_objects_for_debugging.clear();
-        wait_objects_for_debugging.reserve(num_objects);
-        for (auto i = 0; i < num_objects; ++i) {
-            wait_objects_for_debugging.emplace_back(objects[i]);
+        wait_objects_for_debugging.reserve(objects.size());
+        for (const auto& object : objects) {
+            wait_objects_for_debugging.emplace_back(object);
         }
     }
 
@@ -548,11 +567,11 @@ public:
         return address_key_value;
     }
 
-    [[nodiscard]] void SetAddressKey(VAddr key) {
+    void SetAddressKey(VAddr key) {
         address_key = key;
     }
 
-    [[nodiscard]] void SetAddressKey(VAddr key, u32 val) {
+    void SetAddressKey(VAddr key, u32 val) {
         address_key = key;
         address_key_value = val;
     }
@@ -560,11 +579,11 @@ public:
 private:
     static constexpr size_t PriorityInheritanceCountMax = 10;
     union SyncObjectBuffer {
-        std::array<KSynchronizationObject*, Svc::ArgumentHandleCountMax> sync_objects;
+        std::array<KSynchronizationObject*, Svc::ArgumentHandleCountMax> sync_objects{};
         std::array<Handle,
                    Svc::ArgumentHandleCountMax*(sizeof(KSynchronizationObject*) / sizeof(Handle))>
             handles;
-        constexpr SyncObjectBuffer() : sync_objects() {}
+        constexpr SyncObjectBuffer() {}
     };
     static_assert(sizeof(SyncObjectBuffer::sync_objects) == sizeof(SyncObjectBuffer::handles));
 
@@ -706,6 +725,9 @@ private:
 
     /// The current mutex wait address. This is used for debugging only.
     VAddr mutex_wait_address_for_debugging{};
+
+    /// The reason the thread is waiting. This is used for debugging only.
+    ThreadWaitReasonForDebugging wait_reason_for_debugging{};
 
     KSynchronizationObject* signaling_object;
     ResultCode signaling_result{RESULT_SUCCESS};

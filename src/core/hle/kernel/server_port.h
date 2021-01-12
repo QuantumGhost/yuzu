@@ -79,7 +79,7 @@ public:
     /// waiting to be accepted by this port.
     void AppendPendingSession(std::shared_ptr<ServerSession> pending_session);
 
-    virtual bool IsSignaled() const override;
+    bool IsSignaled() const override;
 
 private:
     /// ServerSessions waiting to be accepted by the port

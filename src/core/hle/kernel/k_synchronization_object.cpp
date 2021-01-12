@@ -1,9 +1,6 @@
-// Copyright 2020 yuzu Emulator Project
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
-
-// This file references various implementation details from Atmosphere, an open-source firmware for
-// the Nintendo Switch. Copyright 2018-2020 Atmosphere-NX.
 
 #include "common/assert.h"
 #include "common/common_types.h"
@@ -75,12 +72,13 @@ ResultCode KSynchronizationObject::Wait(KernelCore& kernel, s32* out_index,
         }
 
         // For debugging only
-        thread->SetWaitObjectsForDebugging(objects, num_objects);
+        thread->SetWaitObjectsForDebugging({objects, static_cast<std::size_t>(num_objects)});
 
         // Mark the thread as waiting.
         thread->SetCancellable();
         thread->SetSyncedObject(nullptr, Svc::ResultTimedOut);
         thread->SetState(ThreadState::Waiting);
+        thread->SetWaitReasonForDebugging(ThreadWaitReasonForDebugging::Synchronization);
     }
 
     // The lock/sleep is done, so we should be able to get our result.
@@ -89,7 +87,7 @@ ResultCode KSynchronizationObject::Wait(KernelCore& kernel, s32* out_index,
     thread->ClearCancellable();
 
     // For debugging only
-    thread->SetWaitObjectsForDebugging(nullptr, 0);
+    thread->SetWaitObjectsForDebugging({});
 
     // Cancel the timer as needed.
     if (timer != InvalidHandle) {

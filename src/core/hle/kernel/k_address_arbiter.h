@@ -1,9 +1,6 @@
-// Copyright 2020 yuzu Emulator Project
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
-
-// This file references various implementation details from Atmosphere, an open-source firmware for
-// the Nintendo Switch. Copyright 2018-2020 Atmosphere-NX.
 
 #pragma once
 
@@ -26,7 +23,7 @@ class KAddressArbiter {
 public:
     using ThreadTree = KConditionVariable::ThreadTree;
 
-    explicit KAddressArbiter(Core::System& system);
+    explicit KAddressArbiter(Core::System& system_);
     ~KAddressArbiter();
 
     [[nodiscard]] ResultCode SignalToAddress(VAddr addr, Svc::SignalType type, s32 value,

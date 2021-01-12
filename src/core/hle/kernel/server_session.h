@@ -124,7 +124,7 @@ public:
         convert_to_domain = true;
     }
 
-    virtual bool IsSignaled() const override;
+    bool IsSignaled() const override;
 
 private:
     /// Queues a sync request from the emulated application.

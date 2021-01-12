@@ -1,9 +1,6 @@
-// Copyright 2020 yuzu Emulator Project
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
-
-// This file references various implementation details from Atmosphere, an open-source firmware for
-// the Nintendo Switch. Copyright 2018-2020 Atmosphere-NX.
 
 #include "core/arm/exclusive_monitor.h"
 #include "core/core.h"
@@ -18,7 +15,8 @@
 
 namespace Kernel {
 
-KAddressArbiter::KAddressArbiter(Core::System& system) : system{system}, kernel{system.Kernel()} {}
+KAddressArbiter::KAddressArbiter(Core::System& system_)
+    : system{system_}, kernel{system.Kernel()} {}
 KAddressArbiter::~KAddressArbiter() = default;
 
 namespace {
@@ -278,6 +276,7 @@ ResultCode KAddressArbiter::WaitIfLessThan(VAddr addr, s32 value, bool decrement
         cur_thread->SetAddressArbiter(std::addressof(thread_tree), addr);
         thread_tree.insert(*cur_thread);
         cur_thread->SetState(ThreadState::Waiting);
+        cur_thread->SetWaitReasonForDebugging(ThreadWaitReasonForDebugging::Arbitration);
     }
 
     // Cancel the timer wait.
@@ -341,6 +340,7 @@ ResultCode KAddressArbiter::WaitIfEqual(VAddr addr, s32 value, s64 timeout) {
         cur_thread->SetAddressArbiter(std::addressof(thread_tree), addr);
         thread_tree.insert(*cur_thread);
         cur_thread->SetState(ThreadState::Waiting);
+        cur_thread->SetWaitReasonForDebugging(ThreadWaitReasonForDebugging::Arbitration);
     }
 
     // Cancel the timer wait.

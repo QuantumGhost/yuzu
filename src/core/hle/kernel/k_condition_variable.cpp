@@ -1,9 +1,6 @@
-// Copyright 2020 yuzu Emulator Project
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
-
-// This file references various implementation details from Atmosphere, an open-source firmware for
-// the Nintendo Switch. Copyright 2018-2020 Atmosphere-NX.
 
 #include <vector>
 
@@ -63,8 +60,8 @@ bool UpdateLockAtomic(Core::System& system, u32* out, VAddr address, u32 if_zero
 
 } // namespace
 
-KConditionVariable::KConditionVariable(Core::System& system)
-    : system{system}, kernel{system.Kernel()} {}
+KConditionVariable::KConditionVariable(Core::System& system_)
+    : system{system_}, kernel{system.Kernel()} {}
 
 KConditionVariable::~KConditionVariable() = default;
 
@@ -136,6 +133,7 @@ ResultCode KConditionVariable::WaitForAddress(Handle handle, VAddr addr, u32 val
                 cur_thread->SetAddressKey(addr, value);
                 owner_thread->AddWaiter(cur_thread);
                 cur_thread->SetState(ThreadState::Waiting);
+                cur_thread->SetWaitReasonForDebugging(ThreadWaitReasonForDebugging::ConditionVar);
                 cur_thread->SetMutexWaitAddressForDebugging(addr);
             }
         }
@@ -318,6 +316,7 @@ ResultCode KConditionVariable::Wait(VAddr addr, u64 key, u32 value, s64 timeout)
         // If the timeout is non-zero, set the thread as waiting.
         if (timeout != 0) {
             cur_thread->SetState(ThreadState::Waiting);
+            cur_thread->SetWaitReasonForDebugging(ThreadWaitReasonForDebugging::ConditionVar);
             cur_thread->SetMutexWaitAddressForDebugging(addr);
         }
     }

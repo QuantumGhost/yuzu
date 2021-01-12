@@ -45,7 +45,7 @@ public:
 
     void Signal();
 
-    virtual bool IsSignaled() const override;
+    bool IsSignaled() const override;
 
 private:
     explicit ReadableEvent(KernelCore& kernel);

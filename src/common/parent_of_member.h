@@ -1,18 +1,6 @@
-/*
- * Copyright (c) 2018-2020 Atmosphère-NX
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
- *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// Copyright 2021 yuzu Emulator Project
+// Licensed under GPLv2 or any later version
+// Refer to the license.txt file included.
 
 #pragma once
 
@@ -22,22 +10,24 @@
 #include "common/common_types.h"
 
 namespace Common {
-
+namespace detail {
 template <typename T, size_t Size, size_t Align>
-struct TypedStorage {
-    typename std::aligned_storage<Size, Align>::type _storage;
+struct TypedStorageImpl {
+    std::aligned_storage_t<Size, Align> storage_;
 };
-
-#define TYPED_STORAGE(...) TypedStorage<__VA_ARGS__, sizeof(__VA_ARGS__), alignof(__VA_ARGS__)>
+} // namespace detail
 
 template <typename T>
-static constexpr T* GetPointer(TYPED_STORAGE(T) & ts) {
-    return static_cast<T*>(static_cast<void*>(std::addressof(ts._storage)));
+using TypedStorage = detail::TypedStorageImpl<T, sizeof(T), alignof(T)>;
+
+template <typename T>
+static constexpr T* GetPointer(TypedStorage<T>& ts) {
+    return static_cast<T*>(static_cast<void*>(std::addressof(ts.storage_)));
 }
 
 template <typename T>
-static constexpr const T* GetPointer(const TYPED_STORAGE(T) & ts) {
-    return static_cast<const T*>(static_cast<const void*>(std::addressof(ts._storage)));
+static constexpr const T* GetPointer(const TypedStorage<T>& ts) {
+    return static_cast<const T*>(static_cast<const void*>(std::addressof(ts.storage_)));
 }
 
 namespace impl {
@@ -73,8 +63,7 @@ struct OffsetOfUnionHolder {
     };
 
     template <typename ParentType, typename MemberType>
-    union UnionImpl<ParentType, MemberType, MaxDepth> { /* Empty ... */
-    };
+    union UnionImpl<ParentType, MemberType, MaxDepth> {};
 };
 
 template <typename ParentType, typename MemberType>
@@ -83,13 +72,11 @@ struct OffsetOfCalculator {
         typename OffsetOfUnionHolder<sizeof(MemberType)>::template UnionImpl<ParentType, MemberType,
                                                                              0>;
     union Union {
-        char c;
+        char c{};
         UnionHolder first_union;
-        TYPED_STORAGE(ParentType) parent;
+        TypedStorage<ParentType> parent;
 
-        /* This coerces the active member to be c. */
-        constexpr Union() : c() { /* ... */
-        }
+        constexpr Union() : c() {}
     };
     static constexpr Union U = {};
 
