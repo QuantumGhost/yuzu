@@ -15,7 +15,7 @@ class QLabel;
 using AnalogParam = std::array<Common::ParamPackage, Settings::NativeAnalog::NumAnalogs>;
 using ButtonParam = std::array<Common::ParamPackage, Settings::NativeButton::NumButtons>;
 
-// Widget for representing touchscreen coordinates
+// Widget for representing controller animations
 class PlayerControlPreview : public QFrame {
     Q_OBJECT
 
@@ -117,14 +117,14 @@ private:
     // Draw button functions
     void DrawCircleButton(QPainter& p, QPointF center, bool pressed, int button_size);
     void DrawRoundButton(QPainter& p, QPointF center, bool pressed, float width, float height,
-                         const Direction direction = Direction::None, float radius = 2);
+                         Direction direction = Direction::None, float radius = 2);
     void DrawMinusButton(QPainter& p, QPointF center, bool pressed, int button_size);
     void DrawPlusButton(QPainter& p, QPointF center, bool pressed, int button_size);
-    void DrawArrowButton(QPainter& p, QPointF center, const Direction direction, bool pressed);
+    void DrawArrowButton(QPainter& p, QPointF center, Direction direction, bool pressed);
 
     // Draw icon functions
     void DrawHouseIcon(QPainter& p, QPointF center, float icon_size);
-    void DrawArrow(QPainter& p, QPointF center, const Direction direction, float size);
+    void DrawArrow(QPainter& p, QPointF center, Direction direction, float size);
 
     // Draw primitive types
     template <size_t N>
@@ -134,7 +134,7 @@ private:
     void DrawRoundRectangle(QPainter& p, QPointF center, float width, float height, float round);
     void DrawText(QPainter& p, QPointF center, float text_size, const QString& text);
     void SetTextFont(QPainter& p, float text_size,
-                     const QString font_family = QStringLiteral("sans-serif"));
+                     const QString& font_family = QStringLiteral("sans-serif"));
 
     using ButtonArray =
         std::array<std::unique_ptr<Input::ButtonDevice>, Settings::NativeButton::BUTTON_NS_END>;

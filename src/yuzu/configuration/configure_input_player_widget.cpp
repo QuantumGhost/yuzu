@@ -357,10 +357,10 @@ void PlayerControlPreview::DrawRightController(QPainter& p, const QPointF center
 
     // Face buttons text
     p.setPen(colors.font);
-    DrawText(p, face_center + QPoint(face_distance, 0), 10, QString::fromStdString("A"));
-    DrawText(p, face_center + QPoint(0, face_distance), 10, QString::fromStdString("B"));
-    DrawText(p, face_center + QPoint(0, -face_distance), 10, QString::fromStdString("X"));
-    DrawText(p, face_center + QPoint(-face_distance + 1, 1), 10, QString::fromStdString("Y"));
+    DrawText(p, face_center + QPoint(face_distance, 0), 10, QStringLiteral("A"));
+    DrawText(p, face_center + QPoint(0, face_distance), 10, QStringLiteral("B"));
+    DrawText(p, face_center + QPoint(0, -face_distance), 10, QStringLiteral("X"));
+    DrawText(p, face_center + QPoint(-face_distance + 1, 1), 10, QStringLiteral("Y"));
 
     // SR and SL buttons
     p.setPen(colors.outline);
@@ -471,11 +471,10 @@ void PlayerControlPreview::DrawDualController(QPainter& p, const QPointF center)
 
     // Face buttons text
     p.setPen(colors.font);
-    DrawText(p, face_center + QPoint(face_distance, 0), text_size, QString::fromStdString("A"));
-    DrawText(p, face_center + QPoint(0, face_distance), text_size, QString::fromStdString("B"));
-    DrawText(p, face_center + QPoint(0, -face_distance), text_size, QString::fromStdString("X"));
-    DrawText(p, face_center + QPointF(-face_distance + 0.5f, 1), text_size,
-             QString::fromStdString("Y"));
+    DrawText(p, face_center + QPoint(face_distance, 0), text_size, QStringLiteral("A"));
+    DrawText(p, face_center + QPoint(0, face_distance), text_size, QStringLiteral("B"));
+    DrawText(p, face_center + QPoint(0, -face_distance), text_size, QStringLiteral("X"));
+    DrawText(p, face_center + QPointF(-face_distance + 0.5f, 1), text_size, QStringLiteral("Y"));
 
     // D-pad constants
     const QPointF dpad_center = center + QPoint(-65, 12);
@@ -554,12 +553,10 @@ void PlayerControlPreview::DrawHandheldController(QPainter& p, const QPointF cen
 
     // Face buttons text
     p.setPen(colors.font);
-    DrawText(p, face_center + QPointF(face_distance + 0.2f, 0), text_size,
-             QString::fromStdString("A"));
-    DrawText(p, face_center + QPoint(0, face_distance), text_size, QString::fromStdString("B"));
-    DrawText(p, face_center + QPoint(0, -face_distance), text_size, QString::fromStdString("X"));
-    DrawText(p, face_center + QPointF(-face_distance + 0.2f, 0), text_size,
-             QString::fromStdString("Y"));
+    DrawText(p, face_center + QPointF(face_distance + 0.2f, 0), text_size, QStringLiteral("A"));
+    DrawText(p, face_center + QPoint(0, face_distance), text_size, QStringLiteral("B"));
+    DrawText(p, face_center + QPoint(0, -face_distance), text_size, QStringLiteral("X"));
+    DrawText(p, face_center + QPointF(-face_distance + 0.2f, 0), text_size, QStringLiteral("Y"));
 
     // D-pad constants
     const QPointF dpad_center = center + QPoint(-171, 8);
@@ -588,8 +585,8 @@ void PlayerControlPreview::DrawHandheldController(QPainter& p, const QPointF cen
     DrawCircleButton(p, center + QPoint(-175, -120), button_values[ZL], 15);
     DrawCircleButton(p, center + QPoint(175, -120), button_values[ZR], 15);
     p.setPen(colors.font);
-    DrawText(p, center + QPoint(-175, -120), 9, QString::fromStdString("ZL"));
-    DrawText(p, center + QPoint(175, -120), 9, QString::fromStdString("ZR"));
+    DrawText(p, center + QPoint(-175, -120), 9, QStringLiteral("ZL"));
+    DrawText(p, center + QPoint(175, -120), 9, QStringLiteral("ZR"));
 
     // Minus and Plus button
     p.setPen(colors.outline);
@@ -647,10 +644,10 @@ void PlayerControlPreview::DrawProController(QPainter& p, const QPointF center) 
 
     // Face buttons text
     p.setPen(colors.font);
-    DrawText(p, face_center + QPoint(face_distance, 0), text_size, QString::fromStdString("A"));
-    DrawText(p, face_center + QPoint(0, face_distance), text_size, QString::fromStdString("B"));
-    DrawText(p, face_center + QPoint(0, -face_distance), text_size, QString::fromStdString("X"));
-    DrawText(p, face_center + QPoint(-face_distance, 1), text_size, QString::fromStdString("Y"));
+    DrawText(p, face_center + QPoint(face_distance, 0), text_size, QStringLiteral("A"));
+    DrawText(p, face_center + QPoint(0, face_distance), text_size, QStringLiteral("B"));
+    DrawText(p, face_center + QPoint(0, -face_distance), text_size, QStringLiteral("X"));
+    DrawText(p, face_center + QPoint(-face_distance, 1), text_size, QStringLiteral("Y"));
 
     // D-pad buttons
     const QPointF dpad_postion = center + QPoint(-61, 0);
@@ -664,8 +661,8 @@ void PlayerControlPreview::DrawProController(QPainter& p, const QPointF center) 
     DrawCircleButton(p, center + QPoint(-175, -120), button_values[ZL], 15);
     DrawCircleButton(p, center + QPoint(175, -120), button_values[ZR], 15);
     p.setPen(colors.font);
-    DrawText(p, center + QPoint(-175, -120), 9, QString::fromStdString("ZL"));
-    DrawText(p, center + QPoint(175, -120), 9, QString::fromStdString("ZR"));
+    DrawText(p, center + QPoint(-175, -120), 9, QStringLiteral("ZL"));
+    DrawText(p, center + QPoint(175, -120), 9, QStringLiteral("ZR"));
 
     // Minus and Plus buttons
     p.setPen(colors.outline);
@@ -674,7 +671,7 @@ void PlayerControlPreview::DrawProController(QPainter& p, const QPointF center) 
     p.setPen(colors.font2);
     p.setBrush(colors.font2);
     DrawRectangle(p, center + QPoint(-50, -86), 8, 2);
-    DrawText(p, center + QPointF(49.5f, -86), 12, QString::fromStdString("+"));
+    DrawText(p, center + QPointF(49.5f, -86), 12, QStringLiteral("+"));
 
     // Screenshot button
     p.setPen(colors.outline);
@@ -694,19 +691,24 @@ void PlayerControlPreview::DrawProController(QPainter& p, const QPointF center) 
 
 constexpr std::array<float, 12 * 2> house = {
     -1.3f, 0.0f,  -0.93f, 0.0f, -0.93f, 1.15f, 0.93f,  1.15f, 0.93f, 0.0f, 1.3f,  0.0f,
-    0.0f,  -1.2f, -1.3f,  0.0f, -0.43f, 0.0f,  -0.43f, .73f,  0.43f, .73f, 0.43f, 0.0f};
+    0.0f,  -1.2f, -1.3f,  0.0f, -0.43f, 0.0f,  -0.43f, .73f,  0.43f, .73f, 0.43f, 0.0f,
+};
 
 constexpr std::array<float, 15 * 2> up_arrow_button = {
     -8.6f, -30.0f, -9.0f, -29.8f, -9.3f, -29.5f, -9.5f, -29.1f, -9.5f, -28.7f,
     -9.1f, -9.1f,  -8.8f, -8.8f,  0.3f,  -0.3f,  0.6f,  -0.6f,  9.4f,  -9.8f,
-    9.4f,  -10.2f, 8.9f,  -29.8f, 8.5f,  -30.0f, 8.1f,  -30.1f, 7.7f,  -30.1f};
+    9.4f,  -10.2f, 8.9f,  -29.8f, 8.5f,  -30.0f, 8.1f,  -30.1f, 7.7f,  -30.1f,
+};
 
-constexpr std::array<float, 3 * 2> up_arrow_symbol = {0.0f, -3.0f, -3.0f, 2.0f, 3.0f, 2.0f};
+constexpr std::array<float, 3 * 2> up_arrow_symbol = {
+    0.0f, -3.0f, -3.0f, 2.0f, 3.0f, 2.0f,
+};
 
 constexpr std::array<float, 13 * 2> up_arrow = {
     9.4f,   -9.8f,  9.4f,   -10.2f, 8.9f,   -29.8f, 8.5f,   -30.0f, 8.1f,
     -30.1f, 7.7f,   -30.1f, -8.6f,  -30.0f, -9.0f,  -29.8f, -9.3f,  -29.5f,
-    -9.5f,  -29.1f, -9.5f,  -28.7f, -9.1f,  -9.1f,  -8.8f,  -8.8f};
+    -9.5f,  -29.1f, -9.5f,  -28.7f, -9.1f,  -9.1f,  -8.8f,  -8.8f,
+};
 
 constexpr std::array<float, 36 * 2> pro_left_trigger = {
     -65.2f,  -132.6f, -68.2f,  -134.1f, -71.3f,  -135.5f, -74.4f,  -136.7f, -77.6f,
@@ -716,12 +718,14 @@ constexpr std::array<float, 36 * 2> pro_left_trigger = {
     -132.9f, -127.1f, -135.9f, -125.6f, -138.8f, -123.9f, -141.6f, -122.0f, -144.1f,
     -119.8f, -146.3f, -117.3f, -148.4f, -114.7f, -150.4f, -112.0f, -152.3f, -109.2f,
     -155.3f, -104.0f, -152.0f, -104.3f, -148.7f, -104.5f, -145.3f, -104.8f, -35.5f,
-    -117.2f, -38.5f,  -118.7f, -41.4f,  -120.3f, -44.4f,  -121.8f, -50.4f,  -124.9f};
+    -117.2f, -38.5f,  -118.7f, -41.4f,  -120.3f, -44.4f,  -121.8f, -50.4f,  -124.9f,
+};
 
 constexpr std::array<float, 14 * 2> pro_body_top = {
     0.0f,   -115.4f, -4.4f,  -116.1f, -69.7f, -131.3f, -66.4f, -131.9f, -63.1f, -132.3f,
     -56.4f, -133.0f, -53.1f, -133.3f, -49.8f, -133.5f, -43.1f, -133.8f, -39.8f, -134.0f,
-    -36.5f, -134.1f, -16.4f, -134.4f, -13.1f, -134.4f, 0.0f,   -134.1f};
+    -36.5f, -134.1f, -16.4f, -134.4f, -13.1f, -134.4f, 0.0f,   -134.1f,
+};
 
 constexpr std::array<float, 145 * 2> pro_left_handle = {
     -178.7f, -47.5f, -179.0f, -46.1f, -179.3f, -44.6f, -182.0f, -29.8f, -182.3f, -28.4f,
@@ -752,7 +756,8 @@ constexpr std::array<float, 145 * 2> pro_left_handle = {
     -113.7f, 83.7f,  -112.3f, 81.0f,  -111.6f, 79.7f,  -110.1f, 77.1f,  -109.4f, 75.8f,
     -108.0f, 73.1f,  -107.2f, 71.8f,  -106.4f, 70.6f,  -105.7f, 69.3f,  -104.8f, 68.0f,
     -104.0f, 66.8f,  -103.1f, 65.6f,  -101.1f, 63.3f,  -100.0f, 62.3f,  -98.8f,  61.4f,
-    -97.6f,  60.6f,  -97.9f,  59.5f,  -98.8f,  58.3f,  -101.5f, 54.6f,  -102.4f, 53.4f};
+    -97.6f,  60.6f,  -97.9f,  59.5f,  -98.8f,  58.3f,  -101.5f, 54.6f,  -102.4f, 53.4f,
+};
 
 constexpr std::array<float, 245 * 2> pro_body = {
     -0.7f,   -129.1f, -54.3f,  -129.1f, -55.0f,  -129.1f, -57.8f,  -129.0f, -58.5f,  -129.0f,
@@ -803,7 +808,8 @@ constexpr std::array<float, 245 * 2> pro_body = {
     -91.2f,  58.2f,   -90.5f,  58.1f,   -89.7f,  58.0f,   -89.0f,  57.9f,   -86.2f,  57.6f,
     -85.5f,  57.5f,   -84.1f,  57.4f,   -83.4f,  57.3f,   -82.6f,  57.3f,   -81.9f,  57.2f,
     -81.2f,  57.2f,   -80.5f,  57.1f,   -79.8f,  57.1f,   -78.4f,  57.0f,   -77.7f,  57.0f,
-    -75.5f,  56.9f,   -74.8f,  56.9f,   -71.9f,  56.8f,   -71.2f,  56.8f,   0.0f,    56.8f};
+    -75.5f,  56.9f,   -74.8f,  56.9f,   -71.9f,  56.8f,   -71.2f,  56.8f,   0.0f,    56.8f,
+};
 
 constexpr std::array<float, 84 * 2> left_joycon_body = {
     -145.0f, -78.9f, -145.0f, -77.9f, -145.0f, 85.6f,  -145.0f, 85.6f,  -168.3f, 85.5f,
@@ -822,7 +828,8 @@ constexpr std::array<float, 84 * 2> left_joycon_body = {
     -185.8f, -73.8f, -185.0f, -74.4f, -184.1f, -74.9f, -183.2f, -75.5f, -182.4f, -76.0f,
     -181.5f, -76.5f, -179.6f, -77.5f, -178.7f, -77.9f, -177.8f, -78.4f, -176.8f, -78.8f,
     -175.9f, -79.1f, -174.9f, -79.5f, -173.9f, -79.8f, -170.9f, -80.6f, -169.9f, -80.8f,
-    -167.9f, -81.1f, -166.9f, -81.2f, -165.8f, -81.2f, -145.0f, -80.9f};
+    -167.9f, -81.1f, -166.9f, -81.2f, -165.8f, -81.2f, -145.0f, -80.9f,
+};
 
 constexpr std::array<float, 84 * 2> left_joycon_trigger = {
     -166.8f, -83.3f, -167.9f, -83.2f, -168.9f, -83.1f, -170.0f, -83.0f, -171.0f, -82.8f,
@@ -841,7 +848,8 @@ constexpr std::array<float, 84 * 2> left_joycon_trigger = {
     -168.1f, -74.3f, -167.2f, -74.7f, -166.2f, -75.2f, -165.3f, -75.7f, -164.3f, -76.2f,
     -163.4f, -76.6f, -162.4f, -77.1f, -161.5f, -77.6f, -160.5f, -78.1f, -159.6f, -78.5f,
     -158.7f, -79.0f, -157.7f, -79.5f, -156.8f, -80.0f, -155.8f, -80.4f, -154.9f, -80.9f,
-    -154.2f, -81.6f, -154.3f, -82.6f, -155.2f, -83.3f, -156.2f, -83.3f};
+    -154.2f, -81.6f, -154.3f, -82.6f, -155.2f, -83.3f, -156.2f, -83.3f,
+};
 
 constexpr std::array<float, 70 * 2> handheld_body = {
     -137.3f, -81.9f, -137.6f, -81.8f, -137.8f, -81.6f, -138.0f, -81.3f, -138.1f, -81.1f,
@@ -857,7 +865,8 @@ constexpr std::array<float, 70 * 2> handheld_body = {
     138.9f,  -77.0f, 138.6f,  -77.5f, 138.4f,  -77.8f, 138.3f,  -78.1f, 138.3f,  -78.3f,
     138.2f,  -78.6f, 138.2f,  -78.9f, 138.1f,  -79.2f, 138.1f,  -79.5f, 138.0f,  -81.3f,
     137.8f,  -81.6f, 137.6f,  -81.8f, 137.3f,  -81.9f, 137.1f,  -81.9f, 120.0f,  -70.0f,
-    -120.0f, -70.0f, -120.0f, 70.0f,  120.0f,  70.0f,  120.0f,  -70.0f, 137.1f,  -81.9f};
+    -120.0f, -70.0f, -120.0f, 70.0f,  120.0f,  70.0f,  120.0f,  -70.0f, 137.1f,  -81.9f,
+};
 
 constexpr std::array<float, 40 * 2> handheld_bezel = {
     -131.4f, -75.9f, -132.2f, -75.7f, -132.9f, -75.3f, -134.2f, -74.3f, -134.7f, -73.6f,
@@ -867,18 +876,20 @@ constexpr std::array<float, 40 * 2> handheld_bezel = {
     133.7f,  78.8f,  134.3f,  78.3f,  134.8f,  77.6f,  135.1f,  76.8f,  135.5f,  75.2f,
     135.5f,  74.3f,  135.2f,  -72.7f, 134.8f,  -73.5f, 134.4f,  -74.2f, 133.8f,  -74.8f,
     133.1f,  -75.3f, 132.3f,  -75.6f, 130.7f,  -76.0f, 129.8f,  -76.0f, -112.9f, -62.2f,
-    112.9f,  -62.2f, 112.9f,  62.2f,  -112.9f, 62.2f,  -112.9f, -62.2f, 129.8f,  -76.0f};
+    112.9f,  -62.2f, 112.9f,  62.2f,  -112.9f, 62.2f,  -112.9f, -62.2f, 129.8f,  -76.0f,
+};
 
 constexpr std::array<float, 47 * 2> left_joycon_slider = {
-    -23.7f, -118.2f, -23.7f, -117.3f, -23.7f, 96.6f,  -22.8f, 96.6f,  -21.5f, 97.2f,  -21.5f,
-    98.1f,  -21.2f,  106.7f, -20.8f,  107.5f, -20.1f, 108.2f, -19.2f, 108.2f, -16.4f, 108.1f,
-    -15.8f, 107.5f,  -15.8f, 106.5f,  -15.8f, 62.8f,  -16.3f, 61.9f,  -15.8f, 61.0f,  -17.3f,
-    60.3f,  -19.1f,  58.9f,  -19.1f,  58.1f,  -19.1f, 57.2f,  -19.1f, 34.5f,  -17.9f, 33.9f,
-    -17.2f, 33.2f,   -16.6f, 32.4f,   -16.2f, 31.6f,  -15.8f, 30.7f,  -15.8f, 29.7f,  -15.8f,
-    28.8f,  -15.8f,  -46.4f, -16.3f,  -47.3f, -15.8f, -48.1f, -17.4f, -48.8f, -19.1f, -49.4f,
-    -19.1f, -50.1f,  -19.1f, -51.0f,  -19.1f, -51.9f, -19.1f, -73.7f, -19.1f, -74.5f, -17.5f,
-    -75.2f, -16.4f,  -76.7f, -16.0f,  -77.6f, -15.8f, -78.5f, -15.8f, -79.4f, -15.8f, -80.4f,
-    -15.8f, -118.2f, -15.8f, -118.2f, -18.3f, -118.2f};
+    -23.7f, -118.2f, -23.7f, -117.3f, -23.7f, 96.6f,   -22.8f, 96.6f,  -21.5f, 97.2f,  -21.5f,
+    98.1f,  -21.2f,  106.7f, -20.8f,  107.5f, -20.1f,  108.2f, -19.2f, 108.2f, -16.4f, 108.1f,
+    -15.8f, 107.5f,  -15.8f, 106.5f,  -15.8f, 62.8f,   -16.3f, 61.9f,  -15.8f, 61.0f,  -17.3f,
+    60.3f,  -19.1f,  58.9f,  -19.1f,  58.1f,  -19.1f,  57.2f,  -19.1f, 34.5f,  -17.9f, 33.9f,
+    -17.2f, 33.2f,   -16.6f, 32.4f,   -16.2f, 31.6f,   -15.8f, 30.7f,  -15.8f, 29.7f,  -15.8f,
+    28.8f,  -15.8f,  -46.4f, -16.3f,  -47.3f, -15.8f,  -48.1f, -17.4f, -48.8f, -19.1f, -49.4f,
+    -19.1f, -50.1f,  -19.1f, -51.0f,  -19.1f, -51.9f,  -19.1f, -73.7f, -19.1f, -74.5f, -17.5f,
+    -75.2f, -16.4f,  -76.7f, -16.0f,  -77.6f, -15.8f,  -78.5f, -15.8f, -79.4f, -15.8f, -80.4f,
+    -15.8f, -118.2f, -15.8f, -118.2f, -18.3f, -118.2f,
+};
 
 constexpr std::array<float, 66 * 2> left_joycon_sideview = {
     -158.8f, -133.5f, -159.8f, -133.5f, -173.5f, -133.3f, -174.5f, -133.0f, -175.4f, -132.6f,
@@ -894,7 +905,8 @@ constexpr std::array<float, 66 * 2> left_joycon_sideview = {
     -144.8f, -124.3f, -145.3f, -125.1f, -145.8f, -126.0f, -146.3f, -126.8f, -147.0f, -127.5f,
     -147.6f, -128.3f, -148.3f, -129.0f, -149.0f, -129.6f, -149.8f, -130.3f, -150.6f, -130.8f,
     -151.4f, -131.4f, -152.2f, -131.9f, -153.1f, -132.3f, -155.9f, -133.3f, -156.8f, -133.5f,
-    -157.8f, -133.5f};
+    -157.8f, -133.5f,
+};
 
 constexpr std::array<float, 40 * 2> left_joycon_body_trigger = {
     -146.1f, -124.3f, -146.0f, -122.0f, -145.8f, -119.7f, -145.7f, -117.4f, -145.4f, -112.8f,
@@ -904,7 +916,8 @@ constexpr std::array<float, 40 * 2> left_joycon_body_trigger = {
     -134.5f, -93.6f,  -133.0f, -95.3f,  -130.0f, -98.8f,  -128.5f, -100.6f, -127.1f, -102.4f,
     -125.8f, -104.3f, -124.7f, -106.3f, -123.9f, -108.4f, -125.1f, -110.2f, -127.4f, -110.3f,
     -129.7f, -110.3f, -134.2f, -110.5f, -136.4f, -111.4f, -138.1f, -112.8f, -139.4f, -114.7f,
-    -140.5f, -116.8f, -141.4f, -118.9f, -143.3f, -123.1f, -144.6f, -124.9f, -146.2f, -126.0f};
+    -140.5f, -116.8f, -141.4f, -118.9f, -143.3f, -123.1f, -144.6f, -124.9f, -146.2f, -126.0f,
+};
 
 constexpr std::array<float, 42 * 2> left_joycon_sideview_zl = {
     -148.9f, -128.2f, -148.7f, -126.6f, -148.4f, -124.9f, -148.2f, -123.3f, -147.9f, -121.7f,
@@ -915,7 +928,8 @@ constexpr std::array<float, 42 * 2> left_joycon_sideview_zl = {
     -123.9f, -120.6f, -124.5f, -122.1f, -125.8f, -123.1f, -127.4f, -123.4f, -129.0f, -123.6f,
     -130.6f, -124.0f, -132.1f, -124.4f, -133.7f, -124.8f, -135.3f, -125.3f, -136.8f, -125.9f,
     -138.3f, -126.4f, -139.9f, -126.9f, -141.4f, -127.5f, -142.9f, -128.0f, -144.5f, -128.5f,
-    -146.0f, -129.0f, -147.6f, -129.4f};
+    -146.0f, -129.0f, -147.6f, -129.4f,
+};
 
 constexpr std::array<float, 72 * 2> left_joystick_sideview = {
     -14.7f, -3.8f,  -15.2f, -5.6f,  -15.2f, -7.6f,  -15.5f, -17.6f, -17.4f, -18.3f, -19.4f, -18.2f,
@@ -929,7 +943,8 @@ constexpr std::array<float, 72 * 2> left_joystick_sideview = {
     12.0f,  7.9f,   12.7f,  6.0f,   13.2f,  4.1f,   13.3f,  2.1f,   13.2f,  0.1f,   12.9f,  -1.9f,
     12.2f,  -3.8f,  11.3f,  -5.6f,  10.2f,  -7.2f,  8.8f,   -8.6f,  7.1f,   -9.8f,  5.4f,   -10.8f,
     3.5f,   -11.5f, 1.5f,   -11.9f, -0.5f,  -12.0f, -2.5f,  -11.8f, -4.4f,  -11.3f, -6.2f,  -10.4f,
-    -8.0f,  -9.4f,  -9.6f,  -8.2f,  -10.9f, -6.7f,  -11.9f, -4.9f,  -12.8f, -3.2f,  -13.5f, -3.8f};
+    -8.0f,  -9.4f,  -9.6f,  -8.2f,  -10.9f, -6.7f,  -11.9f, -4.9f,  -12.8f, -3.2f,  -13.5f, -3.8f,
+};
 
 void PlayerControlPreview::DrawProBody(QPainter& p, const QPointF center) {
     std::array<QPointF, pro_left_handle.size() / 2> qleft_handle;
@@ -970,7 +985,7 @@ void PlayerControlPreview::DrawProBody(QPainter& p, const QPointF center) {
 
 void PlayerControlPreview::DrawHandheldBody(QPainter& p, const QPointF center) {
     const std::size_t body_outline_end = handheld_body.size() / 2 - 6;
-    const std::size_t bezel_outline_end = handheld_body.size() / 2 - 6;
+    const std::size_t bezel_outline_end = handheld_bezel.size() / 2 - 6;
     const std::size_t bezel_inline_size = 4;
     const std::size_t bezel_inline_start = 35;
     std::array<QPointF, left_joycon_body.size() / 2> left_joycon;
@@ -1761,7 +1776,7 @@ void PlayerControlPreview::DrawText(QPainter& p, const QPointF center, float tex
     p.drawText(center - offset, text);
 }
 
-void PlayerControlPreview::SetTextFont(QPainter& p, float text_size, const QString font_family) {
+void PlayerControlPreview::SetTextFont(QPainter& p, float text_size, const QString& font_family) {
     QFont font = p.font();
     font.setPointSizeF(text_size);
     font.setFamily(font_family);
