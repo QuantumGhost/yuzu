@@ -4,12 +4,15 @@
 
 #include <array>
 #include <sstream>
+
 #include <QCloseEvent>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QStringListModel>
 #include <QVBoxLayout>
+
 #include "common/logging/log.h"
 #include "core/settings.h"
 #include "input_common/main.h"
@@ -101,7 +104,6 @@ ConfigureMotionTouch::~ConfigureMotionTouch() = default;
 void ConfigureMotionTouch::SetConfiguration() {
     const Common::ParamPackage motion_param(Settings::values.motion_device);
     const Common::ParamPackage touch_param(Settings::values.touch_device);
-    const std::string motion_engine = motion_param.Get("engine", "motion_emu");
 
     ui->touch_from_button_checkbox->setChecked(Settings::values.use_touch_from_button);
     touch_from_button_maps = Settings::values.touch_from_button_maps;
@@ -166,14 +168,14 @@ void ConfigureMotionTouch::ConnectEvents() {
 
 void ConfigureMotionTouch::OnUDPAddServer() {
     // Validator for IP address
-    QRegExp re(QStringLiteral(
+    const QRegularExpression re(QStringLiteral(
         R"re(^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$)re"));
     bool ok;
-    QString port_text = ui->udp_port->text();
-    QString server_text = ui->udp_server->text();
+    const QString port_text = ui->udp_port->text();
+    const QString server_text = ui->udp_server->text();
     const QString server_string = tr("%1:%2").arg(server_text, port_text);
-    int port_number = port_text.toInt(&ok, 10);
-    int row = udp_server_list_model->rowCount();
+    const int port_number = port_text.toInt(&ok, 10);
+    const int row = udp_server_list_model->rowCount();
 
     if (!ok) {
         QMessageBox::warning(this, tr("yuzu"), tr("Port number has invalid characters"));
@@ -183,7 +185,7 @@ void ConfigureMotionTouch::OnUDPAddServer() {
         QMessageBox::warning(this, tr("yuzu"), tr("Port has to be in range 0 and 65353"));
         return;
     }
-    if (!re.exactMatch(server_text)) {
+    if (!re.match(server_text).hasMatch()) {
         QMessageBox::warning(this, tr("yuzu"), tr("IP address is not valid"));
         return;
     }
@@ -306,7 +308,6 @@ void ConfigureMotionTouch::ApplyConfiguration() {
     }
 
     Common::ParamPackage touch_param{};
-
     touch_param.Set("min_x", min_x);
     touch_param.Set("min_y", min_y);
     touch_param.Set("max_x", max_x);

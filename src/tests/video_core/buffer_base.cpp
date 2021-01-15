@@ -42,8 +42,8 @@ public:
         return it == page_table.end() ? 0 : it->second;
     }
 
-    [[nodiscard]] int Count() const noexcept {
-        int count = 0;
+    [[nodiscard]] unsigned Count() const noexcept {
+        unsigned count = 0;
         for (const auto [index, value] : page_table) {
             count += value;
         }
@@ -120,11 +120,11 @@ TEST_CASE("BufferBase: Basic range", "[video_core]") {
     buffer.MarkRegionAsCpuModified(c, PAGE);
     int num = 0;
     buffer.ForEachUploadRange(c, WORD, [&](u64 offset, u64 size) {
-        REQUIRE(offset == 0);
+        REQUIRE(offset == 0U);
         REQUIRE(size == PAGE);
         ++num;
     });
-    REQUIRE(num == 1);
+    REQUIRE(num == 1U);
 }
 
 TEST_CASE("BufferBase: Border upload", "[video_core]") {
@@ -183,7 +183,7 @@ TEST_CASE("BufferBase: Partial word uploads", "[video_core]") {
     BufferBase buffer(rasterizer, c, 0x9d000);
     int num = 0;
     buffer.ForEachUploadRange(c, WORD, [&](u64 offset, u64 size) {
-        REQUIRE(offset == 0);
+        REQUIRE(offset == 0U);
         REQUIRE(size == WORD);
         ++num;
     });
