@@ -112,7 +112,7 @@ private:
             if (commit->Contains(*candidate, size)) {
                 candidate = std::nullopt;
             }
-            iterator = Common::AlignBits(commit->end, alignment_log2);
+            iterator = Common::AlignUpLog2(commit->end, alignment_log2);
             ++commit;
         }
         return candidate;

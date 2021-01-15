@@ -30,7 +30,8 @@ MICROPROFILE_DEFINE(GPU_wait, "GPU", "Wait for the GPU", MP_RGB(128, 128, 192));
 
 GPU::GPU(Core::System& system_, bool is_async_, bool use_nvdec_)
     : system{system_}, memory_manager{std::make_unique<Tegra::MemoryManager>(system)},
-      dma_pusher{std::make_unique<Tegra::DmaPusher>(system, *this)}, use_nvdec{use_nvdec_},
+      dma_pusher{std::make_unique<Tegra::DmaPusher>(system, *this)},
+      cdma_pusher{std::make_unique<Tegra::CDmaPusher>(*this)}, use_nvdec{use_nvdec_},
       maxwell_3d{std::make_unique<Engines::Maxwell3D>(system, *memory_manager)},
       fermi_2d{std::make_unique<Engines::Fermi2D>()},
       kepler_compute{std::make_unique<Engines::KeplerCompute>(system, *memory_manager)},
@@ -493,7 +494,8 @@ void GPU::PushCommandBuffer(Tegra::ChCommandHeaderList& entries) {
     // TODO(ameerj): RE proper async nvdec operation
     // gpu_thread.SubmitCommandBuffer(std::move(entries));
 
-    cdma_pusher->ProcessEntries(std::move(entries));
+    cdma_pusher->Push(std::move(entries));
+    cdma_pusher->DispatchCalls();
 }
 
 void GPU::SwapBuffers(const Tegra::FramebufferConfig* framebuffer) {

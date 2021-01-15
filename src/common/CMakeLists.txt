@@ -107,7 +107,6 @@ add_library(common STATIC
     bit_util.h
     cityhash.cpp
     cityhash.h
-    color.h
     common_funcs.h
     common_paths.h
     common_types.h
@@ -166,8 +165,6 @@ add_library(common STATIC
     threadsafe_queue.h
     time_zone.cpp
     time_zone.h
-    timer.cpp
-    timer.h
     tree.h
     uint128.cpp
     uint128.h
