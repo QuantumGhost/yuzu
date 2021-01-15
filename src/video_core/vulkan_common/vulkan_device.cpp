@@ -99,8 +99,7 @@ VkFormatFeatureFlags GetFormatFeatures(VkFormatProperties properties, FormatType
     });
 }
 
-std::unordered_map<VkFormat, VkFormatProperties> GetFormatProperties(
-    vk::PhysicalDevice physical, const vk::InstanceDispatch& dld) {
+std::unordered_map<VkFormat, VkFormatProperties> GetFormatProperties(vk::PhysicalDevice physical) {
     static constexpr std::array formats{
         VK_FORMAT_A8B8G8R8_UNORM_PACK32,
         VK_FORMAT_A8B8G8R8_UINT_PACK32,
@@ -210,7 +209,7 @@ std::unordered_map<VkFormat, VkFormatProperties> GetFormatProperties(
 Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR surface,
                const vk::InstanceDispatch& dld_)
     : instance{instance_}, dld{dld_}, physical{physical_}, properties{physical.GetProperties()},
-      format_properties{GetFormatProperties(physical, dld)} {
+      format_properties{GetFormatProperties(physical)} {
     CheckSuitability();
     SetupFamilies(surface);
     SetupFeatures();
@@ -221,6 +220,7 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
     VkPhysicalDeviceFeatures2 features2{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
         .pNext = nullptr,
+        .features{},
     };
     const void* first_next = &features2;
     void** next = &features2.pNext;
@@ -256,7 +256,7 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
         .shaderTessellationAndGeometryPointSize = false,
         .shaderImageGatherExtended = true,
         .shaderStorageImageExtendedFormats = false,
-        .shaderStorageImageMultisample = true,
+        .shaderStorageImageMultisample = is_shader_storage_image_multisample,
         .shaderStorageImageReadWithoutFormat = is_formatless_image_load_supported,
         .shaderStorageImageWriteWithoutFormat = true,
         .shaderUniformBufferArrayDynamicIndexing = false,
@@ -310,6 +310,7 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
 
     VkPhysicalDeviceHostQueryResetFeaturesEXT host_query_reset{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
+        .pNext = nullptr,
         .hostQueryReset = true,
     };
     SetNext(next, host_query_reset);
@@ -803,6 +804,7 @@ void Device::SetupFamilies(VkSurfaceKHR surface) {
 void Device::SetupFeatures() {
     const auto supported_features{physical.GetFeatures()};
     is_formatless_image_load_supported = supported_features.shaderStorageImageReadWithoutFormat;
+    is_shader_storage_image_multisample = supported_features.shaderStorageImageMultisample;
     is_blit_depth_stencil_supported = TestDepthStencilBlits();
     is_optimal_astc_supported = IsOptimalAstcSupported(supported_features);
 }
