@@ -22,17 +22,6 @@
 
 namespace Vulkan {
 namespace {
-VkDescriptorUpdateTemplateEntryKHR BuildQuadArrayPassDescriptorUpdateTemplateEntry() {
-    return {
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        .offset = 0,
-        .stride = sizeof(DescriptorUpdateEntry),
-    };
-}
-
 VkPushConstantRange BuildComputePushConstantRange(std::size_t size) {
     return {
         .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,

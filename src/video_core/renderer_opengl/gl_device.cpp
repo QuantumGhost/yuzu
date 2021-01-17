@@ -195,12 +195,6 @@ bool IsASTCSupported() {
     const bool nsight = std::getenv("NVTX_INJECTION64_PATH") || std::getenv("NSIGHT_LAUNCHED");
     return nsight || HasExtension(extensions, "GL_EXT_debug_tool");
 }
-
-[[nodiscard]] std::string UuidString(std::span<const GLubyte, GL_UUID_SIZE_EXT> uuid) {
-    return fmt::format("{:x}{:x}{:x}{:x}-{:x}{:x}-{:x}{:x}-{:x}{:x}-{:x}{:x}{:x}{:x}{:x}", uuid[0],
-                       uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7], uuid[8],
-                       uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]);
-}
 } // Anonymous namespace
 
 Device::Device(bool has_vulkan_instance) {
