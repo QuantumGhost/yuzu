@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include "common/uint128.h"
 #include "common/wall_clock.h"
 
 #ifdef ARCHITECTURE_x86_64
@@ -40,11 +41,16 @@ public:
     }
 
     u64 GetClockCycles() override {
-        return GetTimeNS().count() * (emulated_clock_frequency / 1000) / 1000000;
+        std::chrono::nanoseconds time_now = GetTimeNS();
+        const u128 temporary =
+            Common::Multiply64Into128(time_now.count(), emulated_clock_frequency);
+        return Common::Divide128On32(temporary, 1000000000).first;
     }
 
     u64 GetCPUCycles() override {
-        return GetTimeNS().count() * (emulated_cpu_frequency / 1000) / 1000000;
+        std::chrono::nanoseconds time_now = GetTimeNS();
+        const u128 temporary = Common::Multiply64Into128(time_now.count(), emulated_cpu_frequency);
+        return Common::Divide128On32(temporary, 1000000000).first;
     }
 
     void Pause([[maybe_unused]] bool is_paused) override {

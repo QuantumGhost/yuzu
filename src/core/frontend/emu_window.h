@@ -117,23 +117,18 @@ public:
      * Signal that a touch pressed event has occurred (e.g. mouse click pressed)
      * @param framebuffer_x Framebuffer x-coordinate that was pressed
      * @param framebuffer_y Framebuffer y-coordinate that was pressed
-     * @param id Touch event ID
      */
-    void TouchPressed(unsigned framebuffer_x, unsigned framebuffer_y, std::size_t id);
+    void TouchPressed(unsigned framebuffer_x, unsigned framebuffer_y);
 
-    /**
-     * Signal that a touch released event has occurred (e.g. mouse click released)
-     * @param id Touch event ID
-     */
-    void TouchReleased(std::size_t id);
+    /// Signal that a touch released event has occurred (e.g. mouse click released)
+    void TouchReleased();
 
     /**
      * Signal that a touch movement event has occurred (e.g. mouse was moved over the emu window)
      * @param framebuffer_x Framebuffer x-coordinate
      * @param framebuffer_y Framebuffer y-coordinate
-     * @param id Touch event ID
      */
-    void TouchMoved(unsigned framebuffer_x, unsigned framebuffer_y, std::size_t id);
+    void TouchMoved(unsigned framebuffer_x, unsigned framebuffer_y);
 
     /**
      * Returns currently active configuration.

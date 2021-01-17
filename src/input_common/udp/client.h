@@ -28,7 +28,6 @@ class Socket;
 namespace Response {
 struct PadData;
 struct PortInfo;
-struct TouchPad;
 struct Version;
 } // namespace Response
 
@@ -51,6 +50,7 @@ struct UDPPadStatus {
     std::string host{"127.0.0.1"};
     u16 port{26760};
     std::size_t pad_index{};
+    PadTouch touch{PadTouch::Undefined};
     PadMotion motion{PadMotion::Undefined};
     f32 motion_value{0.0f};
 };
@@ -93,9 +93,6 @@ public:
     DeviceStatus& GetPadState(const std::string& host, u16 port, std::size_t pad);
     const DeviceStatus& GetPadState(const std::string& host, u16 port, std::size_t pad) const;
 
-    Input::TouchStatus& GetTouchState();
-    const Input::TouchStatus& GetTouchState() const;
-
 private:
     struct ClientData {
         std::string host{"127.0.0.1"};
@@ -125,25 +122,14 @@ private:
     void StartCommunication(std::size_t client, const std::string& host, u16 port,
                             std::size_t pad_index, u32 client_id);
     void UpdateYuzuSettings(std::size_t client, const Common::Vec3<float>& acc,
-                            const Common::Vec3<float>& gyro);
-
-    // Returns an unused finger id, if there is no fingers available std::nullopt will be
-    // returned
-    std::optional<std::size_t> GetUnusedFingerID() const;
-
-    // Merges and updates all touch inputs into the touch_status array
-    void UpdateTouchInput(Response::TouchPad& touch_pad, std::size_t client, std::size_t id);
+                            const Common::Vec3<float>& gyro, bool touch);
 
     bool configuring = false;
 
     // Allocate clients for 8 udp servers
-    static constexpr std::size_t MAX_UDP_CLIENTS = 4 * 8;
-    // Each client can have up 2 touch inputs
-    static constexpr std::size_t MAX_TOUCH_FINGERS = MAX_UDP_CLIENTS * 2;
-    std::array<ClientData, MAX_UDP_CLIENTS> clients{};
-    Common::SPSCQueue<UDPPadStatus> pad_queue{};
-    Input::TouchStatus touch_status{};
-    std::array<std::size_t, MAX_TOUCH_FINGERS> finger_id{};
+    const std::size_t max_udp_clients = 32;
+    std::array<ClientData, 4 * 8> clients;
+    Common::SPSCQueue<UDPPadStatus> pad_queue;
 };
 
 /// An async job allowing configuration of the touchpad calibration.

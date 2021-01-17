@@ -23,7 +23,6 @@
 #include "ui_configure_input_player.h"
 #include "yuzu/configuration/config.h"
 #include "yuzu/configuration/configure_input_player.h"
-#include "yuzu/configuration/configure_input_player_widget.h"
 #include "yuzu/configuration/configure_vibration.h"
 #include "yuzu/configuration/input_profiles.h"
 #include "yuzu/util/limitable_input_dialog.h"
@@ -255,12 +254,11 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
     analog_map_range_groupbox = {ui->buttonLStickRangeGroup, ui->buttonRStickRangeGroup};
     analog_map_range_spinbox = {ui->spinboxLStickRange, ui->spinboxRStickRange};
 
-    const auto ConfigureButtonClick = [&](QPushButton* button, std::size_t button_id,
-                                          Common::ParamPackage* param, int default_val,
-                                          InputCommon::Polling::DeviceType type) {
+    const auto ConfigureButtonClick = [&](QPushButton* button, Common::ParamPackage* param,
+                                          int default_val, InputCommon::Polling::DeviceType type) {
         connect(button, &QPushButton::clicked, [=, this] {
             HandleClick(
-                button, button_id,
+                button,
                 [=, this](Common::ParamPackage params) {
                     // Workaround for ZL & ZR for analog triggers like on XBOX
                     // controllers. Analog triggers (from controllers like the XBOX
@@ -288,11 +286,12 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
             continue;
         }
 
-        ConfigureButtonClick(button_map[button_id], button_id, &buttons_param[button_id],
+        ConfigureButtonClick(button_map[button_id], &buttons_param[button_id],
                              Config::default_buttons[button_id],
                              InputCommon::Polling::DeviceType::Button);
 
         button->setContextMenuPolicy(Qt::CustomContextMenu);
+
         connect(button, &QPushButton::customContextMenuRequested,
                 [=, this](const QPoint& menu_location) {
                     QMenu context_menu;
@@ -301,7 +300,6 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
                         button_map[button_id]->setText(tr("[not set]"));
                     });
                     context_menu.exec(button_map[button_id]->mapToGlobal(menu_location));
-                    ui->controllerFrame->SetPlayerInput(player_index, buttons_param, analogs_param);
                 });
     }
 
@@ -311,7 +309,7 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
             continue;
         }
 
-        ConfigureButtonClick(motion_map[motion_id], motion_id, &motions_param[motion_id],
+        ConfigureButtonClick(motion_map[motion_id], &motions_param[motion_id],
                              Config::default_motions[motion_id],
                              InputCommon::Polling::DeviceType::Motion);
 
@@ -350,7 +348,7 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
                     }
                 }
                 HandleClick(
-                    analog_map_buttons[analog_id][sub_button_id], analog_id,
+                    analog_map_buttons[analog_id][sub_button_id],
                     [=, this](const Common::ParamPackage& params) {
                         SetAnalogParam(params, analogs_param[analog_id],
                                        analog_sub_buttons[sub_button_id]);
@@ -360,43 +358,41 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
 
             analog_button->setContextMenuPolicy(Qt::CustomContextMenu);
 
-            connect(
-                analog_button, &QPushButton::customContextMenuRequested,
-                [=, this](const QPoint& menu_location) {
-                    QMenu context_menu;
-                    context_menu.addAction(tr("Clear"), [&] {
-                        analogs_param[analog_id].Clear();
-                        analog_map_buttons[analog_id][sub_button_id]->setText(tr("[not set]"));
+            connect(analog_button, &QPushButton::customContextMenuRequested,
+                    [=, this](const QPoint& menu_location) {
+                        QMenu context_menu;
+                        context_menu.addAction(tr("Clear"), [&] {
+                            analogs_param[analog_id].Clear();
+                            analog_map_buttons[analog_id][sub_button_id]->setText(tr("[not set]"));
+                        });
+                        context_menu.addAction(tr("Invert axis"), [&] {
+                            if (sub_button_id == 2 || sub_button_id == 3) {
+                                const bool invert_value =
+                                    analogs_param[analog_id].Get("invert_x", "+") == "-";
+                                const std::string invert_str = invert_value ? "+" : "-";
+                                analogs_param[analog_id].Set("invert_x", invert_str);
+                            }
+                            if (sub_button_id == 0 || sub_button_id == 1) {
+                                const bool invert_value =
+                                    analogs_param[analog_id].Get("invert_y", "+") == "-";
+                                const std::string invert_str = invert_value ? "+" : "-";
+                                analogs_param[analog_id].Set("invert_y", invert_str);
+                            }
+                            for (int sub_button_id = 0; sub_button_id < ANALOG_SUB_BUTTONS_NUM;
+                                 ++sub_button_id) {
+                                analog_map_buttons[analog_id][sub_button_id]->setText(AnalogToText(
+                                    analogs_param[analog_id], analog_sub_buttons[sub_button_id]));
+                            }
+                        });
+                        context_menu.exec(analog_map_buttons[analog_id][sub_button_id]->mapToGlobal(
+                            menu_location));
                     });
-                    context_menu.addAction(tr("Invert axis"), [&] {
-                        if (sub_button_id == 2 || sub_button_id == 3) {
-                            const bool invert_value =
-                                analogs_param[analog_id].Get("invert_x", "+") == "-";
-                            const std::string invert_str = invert_value ? "+" : "-";
-                            analogs_param[analog_id].Set("invert_x", invert_str);
-                        }
-                        if (sub_button_id == 0 || sub_button_id == 1) {
-                            const bool invert_value =
-                                analogs_param[analog_id].Get("invert_y", "+") == "-";
-                            const std::string invert_str = invert_value ? "+" : "-";
-                            analogs_param[analog_id].Set("invert_y", invert_str);
-                        }
-                        for (int sub_button_id = 0; sub_button_id < ANALOG_SUB_BUTTONS_NUM;
-                             ++sub_button_id) {
-                            analog_map_buttons[analog_id][sub_button_id]->setText(AnalogToText(
-                                analogs_param[analog_id], analog_sub_buttons[sub_button_id]));
-                        }
-                    });
-                    context_menu.exec(
-                        analog_map_buttons[analog_id][sub_button_id]->mapToGlobal(menu_location));
-                    ui->controllerFrame->SetPlayerInput(player_index, buttons_param, analogs_param);
-                });
         }
 
         // Handle clicks for the modifier buttons as well.
         connect(analog_map_modifier_button[analog_id], &QPushButton::clicked, [=, this] {
             HandleClick(
-                analog_map_modifier_button[analog_id], analog_id,
+                analog_map_modifier_button[analog_id],
                 [=, this](const Common::ParamPackage& params) {
                     analogs_param[analog_id].Set("modifier", params.Serialize());
                 },
@@ -420,14 +416,12 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
                 [=, this] {
                     const auto spinbox_value = analog_map_range_spinbox[analog_id]->value();
                     analogs_param[analog_id].Set("range", spinbox_value / 100.0f);
-                    ui->controllerFrame->SetPlayerInput(player_index, buttons_param, analogs_param);
                 });
 
         connect(analog_map_deadzone_slider[analog_id], &QSlider::valueChanged, [=, this] {
             const auto slider_value = analog_map_deadzone_slider[analog_id]->value();
             analog_map_deadzone_label[analog_id]->setText(tr("Deadzone: %1%").arg(slider_value));
             analogs_param[analog_id].Set("deadzone", slider_value / 100.0f);
-            ui->controllerFrame->SetPlayerInput(player_index, buttons_param, analogs_param);
         });
 
         connect(analog_map_modifier_slider[analog_id], &QSlider::valueChanged, [=, this] {
@@ -439,10 +433,8 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
     }
 
     // Player Connected checkbox
-    connect(ui->groupConnectedController, &QGroupBox::toggled, [this](bool checked) {
-        emit Connected(checked);
-        ui->controllerFrame->SetConnectedStatus(checked);
-    });
+    connect(ui->groupConnectedController, &QGroupBox::toggled,
+            [this](bool checked) { emit Connected(checked); });
 
     if (player_index == 0) {
         connect(ui->comboControllerType, qOverload<int>(&QComboBox::currentIndexChanged),
@@ -561,8 +553,6 @@ ConfigureInputPlayer::ConfigureInputPlayer(QWidget* parent, std::size_t player_i
 
     // TODO(wwylele): enable this when we actually emulate it
     ui->buttonHome->setEnabled(false);
-    ui->controllerFrame->SetPlayerInput(player_index, buttons_param, analogs_param);
-    ui->controllerFrame->SetConnectedStatus(ui->groupConnectedController->isChecked());
 }
 
 ConfigureInputPlayer::~ConfigureInputPlayer() = default;
@@ -859,7 +849,6 @@ void ConfigureInputPlayer::UpdateUI() {
         modifier_label->setVisible(!is_controller);
         modifier_slider->setVisible(!is_controller);
         range_groupbox->setVisible(is_controller);
-        ui->controllerFrame->SetPlayerInput(player_index, buttons_param, analogs_param);
     }
 }
 
@@ -976,8 +965,8 @@ void ConfigureInputPlayer::UpdateControllerIcon() {
             return QString{};
         }
     }();
-    ui->controllerFrame->SetControllerType(
-        GetControllerTypeFromIndex(ui->comboControllerType->currentIndex()));
+
+    ui->controllerFrame->setStyleSheet(stylesheet.arg(theme));
 }
 
 void ConfigureInputPlayer::UpdateControllerAvailableButtons() {
@@ -1114,8 +1103,7 @@ void ConfigureInputPlayer::UpdateMappingWithDefaults() {
 }
 
 void ConfigureInputPlayer::HandleClick(
-    QPushButton* button, std::size_t button_id,
-    std::function<void(const Common::ParamPackage&)> new_input_setter,
+    QPushButton* button, std::function<void(const Common::ParamPackage&)> new_input_setter,
     InputCommon::Polling::DeviceType type) {
     if (button == ui->buttonMotionLeft || button == ui->buttonMotionRight) {
         button->setText(tr("Shake!"));
@@ -1159,12 +1147,6 @@ void ConfigureInputPlayer::HandleClick(
         input_subsystem->GetMouseTouch()->BeginConfiguration();
     }
 
-    if (type == InputCommon::Polling::DeviceType::Button) {
-        ui->controllerFrame->BeginMappingButton(button_id);
-    } else if (type == InputCommon::Polling::DeviceType::AnalogPreferred) {
-        ui->controllerFrame->BeginMappingAnalog(button_id);
-    }
-
     timeout_timer->start(2500); // Cancel after 2.5 seconds
     poll_timer->start(50);      // Check for new inputs every 50ms
 }
@@ -1195,7 +1177,6 @@ void ConfigureInputPlayer::SetPollingResult(const Common::ParamPackage& params, 
 
     UpdateUI();
     UpdateInputDeviceCombobox();
-    ui->controllerFrame->EndMapping();
 
     input_setter = std::nullopt;
 }

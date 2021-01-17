@@ -140,14 +140,6 @@ static_assert(sizeof(PortInfo) == 12, "UDP Response PortInfo struct has wrong si
 static_assert(std::is_trivially_copyable_v<PortInfo>,
               "UDP Response PortInfo is not trivially copyable");
 
-struct TouchPad {
-    u8 is_active{};
-    u8 id{};
-    u16_le x{};
-    u16_le y{};
-};
-static_assert(sizeof(TouchPad) == 6, "UDP Response TouchPad struct has wrong size ");
-
 #pragma pack(push, 1)
 struct PadData {
     PortInfo info{};
@@ -198,7 +190,12 @@ struct PadData {
         u8 button_13{};
     } analog_button;
 
-    std::array<TouchPad, 2> touch;
+    struct TouchPad {
+        u8 is_active{};
+        u8 id{};
+        u16_le x{};
+        u16_le y{};
+    } touch_1, touch_2;
 
     u64_le motion_timestamp;
 
@@ -225,6 +222,7 @@ static_assert(sizeof(Message<PadData>) == MAX_PACKET_SIZE,
 
 static_assert(sizeof(PadData::AnalogButton) == 12,
               "UDP Response AnalogButton struct has wrong size ");
+static_assert(sizeof(PadData::TouchPad) == 6, "UDP Response TouchPad struct has wrong size ");
 static_assert(sizeof(PadData::Accelerometer) == 12,
               "UDP Response Accelerometer struct has wrong size ");
 static_assert(sizeof(PadData::Gyroscope) == 12, "UDP Response Gyroscope struct has wrong size ");
