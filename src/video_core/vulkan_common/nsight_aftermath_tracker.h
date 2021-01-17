@@ -8,9 +8,6 @@
 #include <string>
 #include <vector>
 
-#define VK_NO_PROTOTYPES
-#include <vulkan/vulkan.h>
-
 #ifdef HAS_NSIGHT_AFTERMATH
 #include <GFSDK_Aftermath_Defines.h>
 #include <GFSDK_Aftermath_GpuCrashDump.h>
@@ -19,6 +16,7 @@
 
 #include "common/common_types.h"
 #include "common/dynamic_library.h"
+#include "video_core/vulkan_common/vulkan_wrapper.h"
 
 namespace Vulkan {
 

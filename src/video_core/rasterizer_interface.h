@@ -7,6 +7,7 @@
 #include <atomic>
 #include <functional>
 #include <optional>
+#include <span>
 #include "common/common_types.h"
 #include "video_core/engines/fermi_2d.h"
 #include "video_core/gpu.h"
@@ -49,6 +50,10 @@ public:
     /// Records a GPU query and caches it
     virtual void Query(GPUVAddr gpu_addr, QueryType type, std::optional<u64> timestamp) = 0;
 
+    /// Signal an uniform buffer binding
+    virtual void BindGraphicsUniformBuffer(size_t stage, u32 index, GPUVAddr gpu_addr,
+                                           u32 size) = 0;
+
     /// Signal a GPU based semaphore as a fence
     virtual void SignalSemaphore(GPUVAddr addr, u32 value) = 0;
 
@@ -63,6 +68,12 @@ public:
 
     /// Notify rasterizer that any caches of the specified region should be flushed to Switch memory
     virtual void FlushRegion(VAddr addr, u64 size) = 0;
+
+    /// Notify rasterizer to flush the texture cache to Switch memory
+    virtual void InvalidateExceptTextureCache(VAddr addr, u64 size) = 0;
+
+    /// Notify rasterizer to invalidate the texture cache
+    virtual void InvalidateTextureCache(VAddr addr, u64 size) = 0;
 
     /// Check if the the specified memory area requires flushing to CPU Memory.
     virtual bool MustFlushRegion(VAddr addr, u64 size) = 0;
