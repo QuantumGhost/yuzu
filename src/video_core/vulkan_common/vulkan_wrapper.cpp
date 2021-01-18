@@ -787,7 +787,7 @@ DeviceMemory Device::AllocateMemory(const VkMemoryAllocateInfo& ai) const {
 }
 
 VkMemoryRequirements Device::GetBufferMemoryRequirements(VkBuffer buffer,
-                                                          void* pnext) const noexcept {
+                                                         void* pnext) const noexcept {
     const VkBufferMemoryRequirementsInfo2 info{
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
         .pNext = nullptr,

@@ -15,13 +15,6 @@
 #include "video_core/renderer_opengl/gl_device.h"
 #include "video_core/renderer_opengl/gl_resource_manager.h"
 #include "video_core/renderer_opengl/gl_stream_buffer.h"
-#include "video_core/vulkan_common/vulkan_device.h"
-#include "video_core/vulkan_common/vulkan_memory_allocator.h"
-
-namespace Vulkan {
-class Device;
-class MemoryAllocator;
-} // namespace Vulkan
 
 namespace OpenGL {
 
@@ -39,8 +32,6 @@ public:
 
     void MakeResident(GLenum access) noexcept;
 
-    [[nodiscard]] GLuint SubBuffer(u32 offset);
-
     [[nodiscard]] GLuint64EXT HostGpuAddr() const noexcept {
         return address;
     }
@@ -50,13 +41,9 @@ public:
     }
 
 private:
-    void CreateMemoryObjects(BufferCacheRuntime& runtime);
-
     GLuint64EXT address = 0;
-    Vulkan::MemoryCommit memory_commit;
     OGLBuffer buffer;
     GLenum current_residency_access = GL_NONE;
-    std::vector<std::pair<OGLBuffer, u32>> subs;
 };
 
 class BufferCacheRuntime {
@@ -65,8 +52,7 @@ class BufferCacheRuntime {
 public:
     static constexpr u8 INVALID_BINDING = std::numeric_limits<u8>::max();
 
-    explicit BufferCacheRuntime(const Device& device_, const Vulkan::Device* vulkan_device_,
-                                Vulkan::MemoryAllocator* vulkan_memory_allocator_);
+    explicit BufferCacheRuntime(const Device& device_);
 
     void CopyBuffer(Buffer& dst_buffer, Buffer& src_buffer,
                     std::span<const VideoCommon::BufferCopy> copies);
@@ -127,7 +113,7 @@ public:
     }
 
     [[nodiscard]] bool HasFastBufferSubData() const noexcept {
-        return device.HasFastBufferSubData();
+        return has_fast_buffer_sub_data;
     }
 
 private:
@@ -138,18 +124,22 @@ private:
     };
 
     const Device& device;
-    const Vulkan::Device* vulkan_device;
-    Vulkan::MemoryAllocator* vulkan_memory_allocator;
-    std::optional<StreamBuffer> stream_buffer;
+
+    bool has_fast_buffer_sub_data = false;
+    bool use_assembly_shaders = false;
+    bool has_unified_vertex_buffers = false;
 
     u32 max_attributes = 0;
 
-    bool use_assembly_shaders = false;
-    bool has_unified_vertex_buffers = false;
+    std::optional<StreamBuffer> stream_buffer;
 
     std::array<std::array<OGLBuffer, VideoCommon::NUM_GRAPHICS_UNIFORM_BUFFERS>,
                VideoCommon::NUM_STAGES>
         fast_uniforms;
+    std::array<std::array<OGLBuffer, VideoCommon::NUM_GRAPHICS_UNIFORM_BUFFERS>,
+               VideoCommon::NUM_STAGES>
+        copy_uniforms;
+    std::array<OGLBuffer, VideoCommon::NUM_COMPUTE_UNIFORM_BUFFERS> copy_compute_uniforms;
 
     u32 index_buffer_offset = 0;
 };

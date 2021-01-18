@@ -785,7 +785,7 @@ void Config::ReadRendererValues() {
                       true);
     ReadSettingGlobal(Settings::values.use_vsync, QStringLiteral("use_vsync"), true);
     ReadSettingGlobal(Settings::values.use_assembly_shaders, QStringLiteral("use_assembly_shaders"),
-                      true);
+                      false);
     ReadSettingGlobal(Settings::values.use_asynchronous_shaders,
                       QStringLiteral("use_asynchronous_shaders"), false);
     ReadSettingGlobal(Settings::values.use_fast_gpu_time, QStringLiteral("use_fast_gpu_time"),
