@@ -252,10 +252,10 @@ void BufferCacheRuntime::ReserveQuadArrayLUT(u32 num_indices, bool wait_for_idle
         }
     }
     scheduler.RequestOutsideRenderPassOperationContext();
-    scheduler.Record([src_buffer = staging.buffer, dst_buffer = *quad_array_lut,
-                      size_bytes](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([src_buffer = staging.buffer, src_offset = staging.offset,
+                      dst_buffer = *quad_array_lut, size_bytes](vk::CommandBuffer cmdbuf) {
         const VkBufferCopy copy{
-            .srcOffset = 0,
+            .srcOffset = src_offset,
             .dstOffset = 0,
             .size = size_bytes,
         };
