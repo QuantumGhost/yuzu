@@ -1351,7 +1351,7 @@ void Config::SaveRendererValues() {
                        true);
     WriteSettingGlobal(QStringLiteral("use_vsync"), Settings::values.use_vsync, true);
     WriteSettingGlobal(QStringLiteral("use_assembly_shaders"),
-                       Settings::values.use_assembly_shaders, true);
+                       Settings::values.use_assembly_shaders, false);
     WriteSettingGlobal(QStringLiteral("use_asynchronous_shaders"),
                        Settings::values.use_asynchronous_shaders, false);
     WriteSettingGlobal(QStringLiteral("use_fast_gpu_time"), Settings::values.use_fast_gpu_time,
