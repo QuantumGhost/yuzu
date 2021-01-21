@@ -8,8 +8,8 @@
 #include "core/core_timing_util.h"
 #include "core/hle/kernel/handle_table.h"
 #include "core/hle/kernel/k_scheduler.h"
-#include "core/hle/kernel/k_thread.h"
 #include "core/hle/kernel/kernel.h"
+#include "core/hle/kernel/thread.h"
 #include "core/hle/kernel/time_manager.h"
 
 namespace Kernel {
@@ -18,30 +18,50 @@ TimeManager::TimeManager(Core::System& system_) : system{system_} {
     time_manager_event_type = Core::Timing::CreateEvent(
         "Kernel::TimeManagerCallback",
         [this](std::uintptr_t thread_handle, std::chrono::nanoseconds) {
-            std::shared_ptr<KThread> thread;
+            std::shared_ptr<Thread> thread;
             {
                 std::lock_guard lock{mutex};
-                thread = SharedFrom<KThread>(reinterpret_cast<KThread*>(thread_handle));
+                const auto proper_handle = static_cast<Handle>(thread_handle);
+                if (cancelled_events[proper_handle]) {
+                    return;
+                }
+                thread = system.Kernel().RetrieveThreadFromGlobalHandleTable(proper_handle);
             }
-            thread->Wakeup();
+
+            if (thread) {
+                // Thread can be null if process has exited
+                thread->Wakeup();
+            }
         });
 }
 
-void TimeManager::ScheduleTimeEvent(KThread* thread, s64 nanoseconds) {
+void TimeManager::ScheduleTimeEvent(Handle& event_handle, Thread* timetask, s64 nanoseconds) {
     std::lock_guard lock{mutex};
+    event_handle = timetask->GetGlobalHandle();
     if (nanoseconds > 0) {
-        ASSERT(thread);
-        ASSERT(thread->GetState() != ThreadState::Runnable);
+        ASSERT(timetask);
+        ASSERT(timetask->GetState() != ThreadState::Runnable);
         system.CoreTiming().ScheduleEvent(std::chrono::nanoseconds{nanoseconds},
-                                          time_manager_event_type,
-                                          reinterpret_cast<uintptr_t>(thread));
+                                          time_manager_event_type, event_handle);
+    } else {
+        event_handle = InvalidHandle;
     }
+    cancelled_events[event_handle] = false;
 }
 
-void TimeManager::UnscheduleTimeEvent(KThread* thread) {
+void TimeManager::UnscheduleTimeEvent(Handle event_handle) {
     std::lock_guard lock{mutex};
-    system.CoreTiming().UnscheduleEvent(time_manager_event_type,
-                                        reinterpret_cast<uintptr_t>(thread));
+    if (event_handle == InvalidHandle) {
+        return;
+    }
+    system.CoreTiming().UnscheduleEvent(time_manager_event_type, event_handle);
+    cancelled_events[event_handle] = true;
+}
+
+void TimeManager::CancelTimeEvent(Thread* time_task) {
+    std::lock_guard lock{mutex};
+    const Handle event_handle = time_task->GetGlobalHandle();
+    UnscheduleTimeEvent(event_handle);
 }
 
 } // namespace Kernel

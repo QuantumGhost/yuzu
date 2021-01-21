@@ -57,7 +57,7 @@ constexpr std::size_t GetSizeInRange(const MemoryInfo& info, VAddr start, VAddr 
 
 } // namespace
 
-PageTable::PageTable(Core::System& system) : general_lock{system.Kernel()}, system{system} {}
+PageTable::PageTable(Core::System& system) : system{system} {}
 
 ResultCode PageTable::InitializeForProcess(FileSys::ProgramAddressSpaceType as_type,
                                            bool enable_aslr, VAddr code_addr, std::size_t code_size,
@@ -272,7 +272,7 @@ ResultCode PageTable::InitializeForProcess(FileSys::ProgramAddressSpaceType as_t
 
 ResultCode PageTable::MapProcessCode(VAddr addr, std::size_t num_pages, MemoryState state,
                                      MemoryPermission perm) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     const u64 size{num_pages * PageSize};
 
@@ -295,7 +295,7 @@ ResultCode PageTable::MapProcessCode(VAddr addr, std::size_t num_pages, MemorySt
 }
 
 ResultCode PageTable::MapProcessCodeMemory(VAddr dst_addr, VAddr src_addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     const std::size_t num_pages{size / PageSize};
 
@@ -332,7 +332,7 @@ ResultCode PageTable::MapProcessCodeMemory(VAddr dst_addr, VAddr src_addr, std::
 }
 
 ResultCode PageTable::UnmapProcessCodeMemory(VAddr dst_addr, VAddr src_addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     if (!size) {
         return RESULT_SUCCESS;
@@ -394,7 +394,7 @@ void PageTable::MapPhysicalMemory(PageLinkedList& page_linked_list, VAddr start,
 }
 
 ResultCode PageTable::MapPhysicalMemory(VAddr addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     std::size_t mapped_size{};
     const VAddr end_addr{addr + size};
@@ -444,7 +444,7 @@ ResultCode PageTable::MapPhysicalMemory(VAddr addr, std::size_t size) {
 }
 
 ResultCode PageTable::UnmapPhysicalMemory(VAddr addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     const VAddr end_addr{addr + size};
     ResultCode result{RESULT_SUCCESS};
@@ -481,7 +481,7 @@ ResultCode PageTable::UnmapPhysicalMemory(VAddr addr, std::size_t size) {
 }
 
 ResultCode PageTable::UnmapMemory(VAddr addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     const VAddr end_addr{addr + size};
     ResultCode result{RESULT_SUCCESS};
@@ -517,7 +517,7 @@ ResultCode PageTable::UnmapMemory(VAddr addr, std::size_t size) {
 }
 
 ResultCode PageTable::Map(VAddr dst_addr, VAddr src_addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryState src_state{};
     CASCADE_CODE(CheckMemoryState(
@@ -555,7 +555,7 @@ ResultCode PageTable::Map(VAddr dst_addr, VAddr src_addr, std::size_t size) {
 }
 
 ResultCode PageTable::Unmap(VAddr dst_addr, VAddr src_addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryState src_state{};
     CASCADE_CODE(CheckMemoryState(
@@ -620,7 +620,7 @@ ResultCode PageTable::MapPages(VAddr addr, const PageLinkedList& page_linked_lis
 
 ResultCode PageTable::MapPages(VAddr addr, PageLinkedList& page_linked_list, MemoryState state,
                                MemoryPermission perm) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     const std::size_t num_pages{page_linked_list.GetNumPages()};
     const std::size_t size{num_pages * PageSize};
@@ -642,7 +642,7 @@ ResultCode PageTable::MapPages(VAddr addr, PageLinkedList& page_linked_list, Mem
 
 ResultCode PageTable::SetCodeMemoryPermission(VAddr addr, std::size_t size, MemoryPermission perm) {
 
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryState prev_state{};
     MemoryPermission prev_perm{};
@@ -688,7 +688,7 @@ ResultCode PageTable::SetCodeMemoryPermission(VAddr addr, std::size_t size, Memo
 }
 
 MemoryInfo PageTable::QueryInfoImpl(VAddr addr) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     return block_manager->FindBlock(addr).GetMemoryInfo();
 }
@@ -703,7 +703,7 @@ MemoryInfo PageTable::QueryInfo(VAddr addr) {
 }
 
 ResultCode PageTable::ReserveTransferMemory(VAddr addr, std::size_t size, MemoryPermission perm) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryState state{};
     MemoryAttribute attribute{};
@@ -721,7 +721,7 @@ ResultCode PageTable::ReserveTransferMemory(VAddr addr, std::size_t size, Memory
 }
 
 ResultCode PageTable::ResetTransferMemory(VAddr addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryState state{};
 
@@ -739,7 +739,7 @@ ResultCode PageTable::ResetTransferMemory(VAddr addr, std::size_t size) {
 
 ResultCode PageTable::SetMemoryAttribute(VAddr addr, std::size_t size, MemoryAttribute mask,
                                          MemoryAttribute value) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryState state{};
     MemoryPermission perm{};
@@ -760,7 +760,7 @@ ResultCode PageTable::SetMemoryAttribute(VAddr addr, std::size_t size, MemoryAtt
 }
 
 ResultCode PageTable::SetHeapCapacity(std::size_t new_heap_capacity) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
     heap_capacity = new_heap_capacity;
     return RESULT_SUCCESS;
 }
@@ -777,7 +777,7 @@ ResultVal<VAddr> PageTable::SetHeapSize(std::size_t size) {
 
     // Increase the heap size
     {
-        KScopedLightLock lk{general_lock};
+        std::lock_guard lock{page_table_lock};
 
         const u64 delta{size - previous_heap_size};
 
@@ -813,7 +813,7 @@ ResultVal<VAddr> PageTable::AllocateAndMapMemory(std::size_t needed_num_pages, s
                                                  bool is_map_only, VAddr region_start,
                                                  std::size_t region_num_pages, MemoryState state,
                                                  MemoryPermission perm, PAddr map_addr) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     if (!CanContain(region_start, region_num_pages * PageSize, state)) {
         return ERR_INVALID_ADDRESS_STATE;
@@ -844,7 +844,7 @@ ResultVal<VAddr> PageTable::AllocateAndMapMemory(std::size_t needed_num_pages, s
 }
 
 ResultCode PageTable::LockForDeviceAddressSpace(VAddr addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryPermission perm{};
     if (const ResultCode result{CheckMemoryState(
@@ -867,7 +867,7 @@ ResultCode PageTable::LockForDeviceAddressSpace(VAddr addr, std::size_t size) {
 }
 
 ResultCode PageTable::UnlockForDeviceAddressSpace(VAddr addr, std::size_t size) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     MemoryPermission perm{};
     if (const ResultCode result{CheckMemoryState(
@@ -937,7 +937,7 @@ VAddr PageTable::AllocateVirtualMemory(VAddr start, std::size_t region_num_pages
 
 ResultCode PageTable::Operate(VAddr addr, std::size_t num_pages, const PageLinkedList& page_group,
                               OperationType operation) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     ASSERT(Common::IsAligned(addr, PageSize));
     ASSERT(num_pages > 0);
@@ -962,7 +962,7 @@ ResultCode PageTable::Operate(VAddr addr, std::size_t num_pages, const PageLinke
 
 ResultCode PageTable::Operate(VAddr addr, std::size_t num_pages, MemoryPermission perm,
                               OperationType operation, PAddr map_addr) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     ASSERT(num_pages > 0);
     ASSERT(Common::IsAligned(addr, PageSize));
@@ -1123,7 +1123,7 @@ ResultCode PageTable::CheckMemoryState(MemoryState* out_state, MemoryPermission*
                                        MemoryPermission perm_mask, MemoryPermission perm,
                                        MemoryAttribute attr_mask, MemoryAttribute attr,
                                        MemoryAttribute ignore_attr) {
-    KScopedLightLock lk{general_lock};
+    std::lock_guard lock{page_table_lock};
 
     // Get information about the first block
     const VAddr last_addr{addr + size - 1};

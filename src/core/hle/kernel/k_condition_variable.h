@@ -8,8 +8,8 @@
 #include "common/common_types.h"
 
 #include "core/hle/kernel/k_scheduler.h"
-#include "core/hle/kernel/k_thread.h"
 #include "core/hle/kernel/kernel.h"
+#include "core/hle/kernel/thread.h"
 #include "core/hle/result.h"
 
 namespace Core {
@@ -20,7 +20,7 @@ namespace Kernel {
 
 class KConditionVariable {
 public:
-    using ThreadTree = typename KThread::ConditionVariableThreadTreeType;
+    using ThreadTree = typename Thread::ConditionVariableThreadTreeType;
 
     explicit KConditionVariable(Core::System& system_);
     ~KConditionVariable();
@@ -34,7 +34,7 @@ public:
     [[nodiscard]] ResultCode Wait(VAddr addr, u64 key, u32 value, s64 timeout);
 
 private:
-    [[nodiscard]] KThread* SignalImpl(KThread* thread);
+    [[nodiscard]] Thread* SignalImpl(Thread* thread);
 
     ThreadTree thread_tree;
 
@@ -43,14 +43,14 @@ private:
 };
 
 inline void BeforeUpdatePriority(const KernelCore& kernel, KConditionVariable::ThreadTree* tree,
-                                 KThread* thread) {
+                                 Thread* thread) {
     ASSERT(kernel.GlobalSchedulerContext().IsLocked());
 
     tree->erase(tree->iterator_to(*thread));
 }
 
 inline void AfterUpdatePriority(const KernelCore& kernel, KConditionVariable::ThreadTree* tree,
-                                KThread* thread) {
+                                Thread* thread) {
     ASSERT(kernel.GlobalSchedulerContext().IsLocked());
 
     tree->insert(*thread);

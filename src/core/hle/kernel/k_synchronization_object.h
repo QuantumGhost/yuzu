@@ -13,14 +13,14 @@ namespace Kernel {
 
 class KernelCore;
 class Synchronization;
-class KThread;
+class Thread;
 
 /// Class that represents a Kernel object that a thread can be waiting on
 class KSynchronizationObject : public Object {
 public:
     struct ThreadListNode {
         ThreadListNode* next{};
-        KThread* thread{};
+        Thread* thread{};
     };
 
     [[nodiscard]] static ResultCode Wait(KernelCore& kernel, s32* out_index,
@@ -29,7 +29,7 @@ public:
 
     [[nodiscard]] virtual bool IsSignaled() const = 0;
 
-    [[nodiscard]] std::vector<KThread*> GetWaitingThreadsForDebugging() const;
+    [[nodiscard]] std::vector<Thread*> GetWaitingThreadsForDebugging() const;
 
 protected:
     explicit KSynchronizationObject(KernelCore& kernel);

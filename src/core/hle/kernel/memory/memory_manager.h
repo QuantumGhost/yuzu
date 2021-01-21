@@ -7,15 +7,9 @@
 #include <array>
 #include <mutex>
 
-#include "common/assert.h"
 #include "common/common_types.h"
-#include "core/hle/kernel/k_light_lock.h"
 #include "core/hle/kernel/memory/page_heap.h"
 #include "core/hle/result.h"
-
-namespace Kernel {
-class KernelCore;
-}
 
 namespace Kernel::Memory {
 
@@ -43,7 +37,7 @@ public:
         Mask = (0xF << Shift),
     };
 
-    MemoryManager(KernelCore& kernel);
+    MemoryManager() = default;
 
     constexpr std::size_t GetSize(Pool pool) const {
         return managers[static_cast<std::size_t>(pool)].GetSize();
@@ -95,24 +89,7 @@ private:
     };
 
 private:
-    KLightLock pool_lock_0;
-    KLightLock pool_lock_1;
-    KLightLock pool_lock_2;
-    KLightLock pool_lock_3;
-
-    KLightLock& PoolLock(std::size_t index) {
-        switch (index) {
-        case 0:
-            return pool_lock_0;
-        case 1:
-            return pool_lock_1;
-        case 2:
-            return pool_lock_2;
-        }
-        ASSERT(index == 3);
-        return pool_lock_3;
-    }
-
+    std::array<std::mutex, static_cast<std::size_t>(Pool::Count)> pool_locks;
     std::array<Impl, MaxManagerCount> managers;
 };
 

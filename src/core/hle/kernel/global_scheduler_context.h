@@ -12,8 +12,7 @@
 #include "core/hardware_properties.h"
 #include "core/hle/kernel/k_priority_queue.h"
 #include "core/hle/kernel/k_scheduler_lock.h"
-#include "core/hle/kernel/k_thread.h"
-#include "core/hle/kernel/svc_types.h"
+#include "core/hle/kernel/thread.h"
 
 namespace Kernel {
 
@@ -21,12 +20,8 @@ class KernelCore;
 class SchedulerLock;
 
 using KSchedulerPriorityQueue =
-    KPriorityQueue<KThread, Core::Hardware::NUM_CPU_CORES, Svc::LowestThreadPriority,
-                   Svc::HighestThreadPriority>;
-
-static constexpr s32 HighestCoreMigrationAllowedPriority = 2;
-static_assert(Svc::LowestThreadPriority >= HighestCoreMigrationAllowedPriority);
-static_assert(Svc::HighestThreadPriority <= HighestCoreMigrationAllowedPriority);
+    KPriorityQueue<Thread, Core::Hardware::NUM_CPU_CORES, THREADPRIO_LOWEST, THREADPRIO_HIGHEST>;
+constexpr s32 HighestCoreMigrationAllowedPriority = 2;
 
 class GlobalSchedulerContext final {
     friend class KScheduler;
@@ -38,13 +33,13 @@ public:
     ~GlobalSchedulerContext();
 
     /// Adds a new thread to the scheduler
-    void AddThread(std::shared_ptr<KThread> thread);
+    void AddThread(std::shared_ptr<Thread> thread);
 
     /// Removes a thread from the scheduler
-    void RemoveThread(std::shared_ptr<KThread> thread);
+    void RemoveThread(std::shared_ptr<Thread> thread);
 
     /// Returns a list of all threads managed by the scheduler
-    [[nodiscard]] const std::vector<std::shared_ptr<KThread>>& GetThreadList() const {
+    [[nodiscard]] const std::vector<std::shared_ptr<Thread>>& GetThreadList() const {
         return thread_list;
     }
 
@@ -79,7 +74,7 @@ private:
     LockType scheduler_lock;
 
     /// Lists all thread ids that aren't deleted/etc.
-    std::vector<std::shared_ptr<KThread>> thread_list;
+    std::vector<std::shared_ptr<Thread>> thread_list;
     Common::SpinLock global_list_guard{};
 };
 

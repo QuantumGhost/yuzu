@@ -47,8 +47,6 @@ public:
 
     bool IsSignaled() const override;
 
-    void Finalize() override{};
-
 private:
     explicit ReadableEvent(KernelCore& kernel);
 

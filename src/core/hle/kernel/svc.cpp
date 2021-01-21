@@ -29,7 +29,6 @@
 #include "core/hle/kernel/k_scheduler.h"
 #include "core/hle/kernel/k_scoped_scheduler_lock_and_sleep.h"
 #include "core/hle/kernel/k_synchronization_object.h"
-#include "core/hle/kernel/k_thread.h"
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/memory/memory_block.h"
 #include "core/hle/kernel/memory/memory_layout.h"
@@ -43,6 +42,7 @@
 #include "core/hle/kernel/svc_results.h"
 #include "core/hle/kernel/svc_types.h"
 #include "core/hle/kernel/svc_wrap.h"
+#include "core/hle/kernel/thread.h"
 #include "core/hle/kernel/time_manager.h"
 #include "core/hle/kernel/transfer_memory.h"
 #include "core/hle/kernel/writable_event.h"
@@ -351,8 +351,7 @@ static ResultCode SendSyncRequest(Core::System& system, Handle handle) {
         session->SendSyncRequest(SharedFrom(thread), system.Memory(), system.CoreTiming());
     }
 
-    KSynchronizationObject* dummy{};
-    return thread->GetWaitResult(std::addressof(dummy));
+    return thread->GetSignalingResult();
 }
 
 static ResultCode SendSyncRequest32(Core::System& system, Handle handle) {
@@ -360,26 +359,27 @@ static ResultCode SendSyncRequest32(Core::System& system, Handle handle) {
 }
 
 /// Get the ID for the specified thread.
-static ResultCode GetThreadId(Core::System& system, u64* out_thread_id, Handle thread_handle) {
+static ResultCode GetThreadId(Core::System& system, u64* thread_id, Handle thread_handle) {
     LOG_TRACE(Kernel_SVC, "called thread=0x{:08X}", thread_handle);
 
-    // Get the thread from its handle.
     const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const std::shared_ptr<Thread> thread = handle_table.Get<Thread>(thread_handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, handle=0x{:08X}", thread_handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Get the thread's id.
-    *out_thread_id = thread->GetThreadID();
+    *thread_id = thread->GetThreadID();
     return RESULT_SUCCESS;
 }
 
-static ResultCode GetThreadId32(Core::System& system, u32* out_thread_id_low,
-                                u32* out_thread_id_high, Handle thread_handle) {
-    u64 out_thread_id{};
-    const ResultCode result{GetThreadId(system, &out_thread_id, thread_handle)};
+static ResultCode GetThreadId32(Core::System& system, u32* thread_id_low, u32* thread_id_high,
+                                Handle thread_handle) {
+    u64 thread_id{};
+    const ResultCode result{GetThreadId(system, &thread_id, thread_handle)};
 
-    *out_thread_id_low = static_cast<u32>(out_thread_id >> 32);
-    *out_thread_id_high = static_cast<u32>(out_thread_id & std::numeric_limits<u32>::max());
+    *thread_id_low = static_cast<u32>(thread_id >> 32);
+    *thread_id_high = static_cast<u32>(thread_id & std::numeric_limits<u32>::max());
 
     return result;
 }
@@ -395,7 +395,7 @@ static ResultCode GetProcessId(Core::System& system, u64* process_id, Handle han
         return RESULT_SUCCESS;
     }
 
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(handle);
+    const std::shared_ptr<Thread> thread = handle_table.Get<Thread>(handle);
     if (thread) {
         const Process* const owner_process = thread->GetOwnerProcess();
         if (!owner_process) {
@@ -473,13 +473,15 @@ static ResultCode WaitSynchronization32(Core::System& system, u32 timeout_low, u
 static ResultCode CancelSynchronization(Core::System& system, Handle thread_handle) {
     LOG_TRACE(Kernel_SVC, "called thread=0x{:X}", thread_handle);
 
-    // Get the thread from its handle.
     const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    std::shared_ptr<KThread> thread = handle_table.Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    std::shared_ptr<Thread> thread = handle_table.Get<Thread>(thread_handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, thread_handle=0x{:08X}",
+                  thread_handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Cancel the thread's wait.
-    thread->WaitCancel();
+    thread->CancelWait();
     return RESULT_SUCCESS;
 }
 
@@ -628,7 +630,7 @@ static void Break(Core::System& system, u32 reason, u64 info1, u64 info2) {
         handle_debug_buffer(info1, info2);
 
         auto* const current_thread = system.Kernel().CurrentScheduler()->GetCurrentThread();
-        const auto thread_processor_id = current_thread->GetActiveCore();
+        const auto thread_processor_id = current_thread->GetProcessorID();
         system.ArmInterface(static_cast<std::size_t>(thread_processor_id)).LogBacktrace();
     }
 }
@@ -870,7 +872,7 @@ static ResultCode GetInfo(Core::System& system, u64* result, u64 info_id, u64 ha
             return ERR_INVALID_COMBINATION;
         }
 
-        const auto thread = system.Kernel().CurrentProcess()->GetHandleTable().Get<KThread>(
+        const auto thread = system.Kernel().CurrentProcess()->GetHandleTable().Get<Thread>(
             static_cast<Handle>(handle));
         if (!thread) {
             LOG_ERROR(Kernel_SVC, "Thread handle does not exist, handle=0x{:08X}",
@@ -886,7 +888,7 @@ static ResultCode GetInfo(Core::System& system, u64* result, u64 info_id, u64 ha
         const u64 prev_ctx_ticks = scheduler.GetLastContextSwitchTicks();
         u64 out_ticks = 0;
         if (same_thread && info_sub_id == 0xFFFFFFFFFFFFFFFF) {
-            const u64 thread_ticks = current_thread->GetCpuTime();
+            const u64 thread_ticks = current_thread->GetTotalCPUTimeTicks();
 
             out_ticks = thread_ticks + (core_timing.GetCPUTicks() - prev_ctx_ticks);
         } else if (same_thread && info_sub_id == system.CurrentCoreIndex()) {
@@ -1023,109 +1025,129 @@ static ResultCode UnmapPhysicalMemory32(Core::System& system, u32 addr, u32 size
     return UnmapPhysicalMemory(system, addr, size);
 }
 
-constexpr bool IsValidThreadActivity(Svc::ThreadActivity thread_activity) {
-    switch (thread_activity) {
-    case Svc::ThreadActivity::Runnable:
-    case Svc::ThreadActivity::Paused:
-        return true;
-    default:
-        return false;
-    }
-}
-
 /// Sets the thread activity
-static ResultCode SetThreadActivity(Core::System& system, Handle thread_handle,
-                                    Svc::ThreadActivity thread_activity) {
-    LOG_DEBUG(Kernel_SVC, "called, handle=0x{:08X}, activity=0x{:08X}", thread_handle,
-              thread_activity);
+static ResultCode SetThreadActivity(Core::System& system, Handle handle, u32 activity) {
+    LOG_DEBUG(Kernel_SVC, "called, handle=0x{:08X}, activity=0x{:08X}", handle, activity);
+    if (activity > static_cast<u32>(ThreadActivity::Paused)) {
+        return ERR_INVALID_ENUM_VALUE;
+    }
 
-    // Validate the activity.
-    R_UNLESS(IsValidThreadActivity(thread_activity), Svc::ResultInvalidEnumValue);
+    const auto* current_process = system.Kernel().CurrentProcess();
+    const std::shared_ptr<Thread> thread = current_process->GetHandleTable().Get<Thread>(handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, handle=0x{:08X}", handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Get the thread from its handle.
-    auto& kernel = system.Kernel();
-    const auto& handle_table = kernel.CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    if (thread->GetOwnerProcess() != current_process) {
+        LOG_ERROR(Kernel_SVC,
+                  "The current process does not own the current thread, thread_handle={:08X} "
+                  "thread_pid={}, "
+                  "current_process_pid={}",
+                  handle, thread->GetOwnerProcess()->GetProcessID(),
+                  current_process->GetProcessID());
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Check that the activity is being set on a non-current thread for the current process.
-    R_UNLESS(thread->GetOwnerProcess() == kernel.CurrentProcess(), Svc::ResultInvalidHandle);
-    R_UNLESS(thread.get() != GetCurrentThreadPointer(kernel), Svc::ResultBusy);
+    if (thread.get() == system.Kernel().CurrentScheduler()->GetCurrentThread()) {
+        LOG_ERROR(Kernel_SVC, "The thread handle specified is the current running thread");
+        return ERR_BUSY;
+    }
 
-    // Set the activity.
-    R_TRY(thread->SetActivity(thread_activity));
-
-    return RESULT_SUCCESS;
+    return thread->SetActivity(static_cast<ThreadActivity>(activity));
 }
 
-static ResultCode SetThreadActivity32(Core::System& system, Handle thread_handle,
-                                      Svc::ThreadActivity thread_activity) {
-    return SetThreadActivity(system, thread_handle, thread_activity);
+static ResultCode SetThreadActivity32(Core::System& system, Handle handle, u32 activity) {
+    return SetThreadActivity(system, handle, activity);
 }
 
 /// Gets the thread context
-static ResultCode GetThreadContext(Core::System& system, VAddr out_context, Handle thread_handle) {
-    LOG_DEBUG(Kernel_SVC, "called, out_context=0x{:08X}, thread_handle=0x{:X}", out_context,
-              thread_handle);
+static ResultCode GetThreadContext(Core::System& system, VAddr thread_context, Handle handle) {
+    LOG_DEBUG(Kernel_SVC, "called, context=0x{:08X}, thread=0x{:X}", thread_context, handle);
 
-    // Get the thread from its handle.
     const auto* current_process = system.Kernel().CurrentProcess();
-    const std::shared_ptr<KThread> thread =
-        current_process->GetHandleTable().Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const std::shared_ptr<Thread> thread = current_process->GetHandleTable().Get<Thread>(handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, handle=0x{:08X}", handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Require the handle be to a non-current thread in the current process.
-    R_UNLESS(thread->GetOwnerProcess() == current_process, Svc::ResultInvalidHandle);
-    R_UNLESS(thread.get() != system.Kernel().CurrentScheduler()->GetCurrentThread(),
-             Svc::ResultBusy);
+    if (thread->GetOwnerProcess() != current_process) {
+        LOG_ERROR(Kernel_SVC,
+                  "The current process does not own the current thread, thread_handle={:08X} "
+                  "thread_pid={}, "
+                  "current_process_pid={}",
+                  handle, thread->GetOwnerProcess()->GetProcessID(),
+                  current_process->GetProcessID());
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Get the thread context.
-    std::vector<u8> context;
-    R_TRY(thread->GetThreadContext3(context));
+    if (thread.get() == system.Kernel().CurrentScheduler()->GetCurrentThread()) {
+        LOG_ERROR(Kernel_SVC, "The thread handle specified is the current running thread");
+        return ERR_BUSY;
+    }
 
-    // Copy the thread context to user space.
-    system.Memory().WriteBlock(out_context, context.data(), context.size());
+    Core::ARM_Interface::ThreadContext64 ctx = thread->GetContext64();
+    // Mask away mode bits, interrupt bits, IL bit, and other reserved bits.
+    ctx.pstate &= 0xFF0FFE20;
 
+    // If 64-bit, we can just write the context registers directly and we're good.
+    // However, if 32-bit, we have to ensure some registers are zeroed out.
+    if (!current_process->Is64BitProcess()) {
+        std::fill(ctx.cpu_registers.begin() + 15, ctx.cpu_registers.end(), 0);
+        std::fill(ctx.vector_registers.begin() + 16, ctx.vector_registers.end(), u128{});
+    }
+
+    system.Memory().WriteBlock(thread_context, &ctx, sizeof(ctx));
     return RESULT_SUCCESS;
 }
 
-static ResultCode GetThreadContext32(Core::System& system, u32 out_context, Handle thread_handle) {
-    return GetThreadContext(system, out_context, thread_handle);
+static ResultCode GetThreadContext32(Core::System& system, u32 thread_context, Handle handle) {
+    return GetThreadContext(system, thread_context, handle);
 }
 
 /// Gets the priority for the specified thread
-static ResultCode GetThreadPriority(Core::System& system, u32* out_priority, Handle handle) {
+static ResultCode GetThreadPriority(Core::System& system, u32* priority, Handle handle) {
     LOG_TRACE(Kernel_SVC, "called");
 
-    // Get the thread from its handle.
     const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const std::shared_ptr<Thread> thread = handle_table.Get<Thread>(handle);
+    if (!thread) {
+        *priority = 0;
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, handle=0x{:08X}", handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Get the thread's priority.
-    *out_priority = thread->GetPriority();
+    *priority = thread->GetPriority();
     return RESULT_SUCCESS;
 }
 
-static ResultCode GetThreadPriority32(Core::System& system, u32* out_priority, Handle handle) {
-    return GetThreadPriority(system, out_priority, handle);
+static ResultCode GetThreadPriority32(Core::System& system, u32* priority, Handle handle) {
+    return GetThreadPriority(system, priority, handle);
 }
 
 /// Sets the priority for the specified thread
 static ResultCode SetThreadPriority(Core::System& system, Handle handle, u32 priority) {
     LOG_TRACE(Kernel_SVC, "called");
 
-    // Validate the priority.
-    R_UNLESS(Svc::HighestThreadPriority <= priority && priority <= Svc::LowestThreadPriority,
-             Svc::ResultInvalidPriority);
+    if (priority > THREADPRIO_LOWEST) {
+        LOG_ERROR(
+            Kernel_SVC,
+            "An invalid priority was specified, expected {} but got {} for thread_handle={:08X}",
+            THREADPRIO_LOWEST, priority, handle);
+        return ERR_INVALID_THREAD_PRIORITY;
+    }
 
-    // Get the thread from its handle.
-    const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const auto* const current_process = system.Kernel().CurrentProcess();
 
-    // Set the thread priority.
+    std::shared_ptr<Thread> thread = current_process->GetHandleTable().Get<Thread>(handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, handle=0x{:08X}", handle);
+        return ERR_INVALID_HANDLE;
+    }
+
     thread->SetBasePriority(priority);
+
     return RESULT_SUCCESS;
 }
 
@@ -1416,47 +1438,62 @@ static void ExitProcess(Core::System& system) {
     current_process->PrepareForTermination();
 
     // Kill the current thread
-    system.Kernel().CurrentScheduler()->GetCurrentThread()->Exit();
+    system.Kernel().CurrentScheduler()->GetCurrentThread()->Stop();
 }
 
 static void ExitProcess32(Core::System& system) {
     ExitProcess(system);
 }
 
-static constexpr bool IsValidCoreId(int32_t core_id) {
-    return (0 <= core_id && core_id < static_cast<int32_t>(Core::Hardware::NUM_CPU_CORES));
-}
-
 /// Creates a new thread
 static ResultCode CreateThread(Core::System& system, Handle* out_handle, VAddr entry_point, u64 arg,
-                               VAddr stack_bottom, u32 priority, s32 core_id) {
+                               VAddr stack_top, u32 priority, s32 processor_id) {
     LOG_DEBUG(Kernel_SVC,
-              "called entry_point=0x{:08X}, arg=0x{:08X}, stack_bottom=0x{:08X}, "
-              "priority=0x{:08X}, core_id=0x{:08X}",
-              entry_point, arg, stack_bottom, priority, core_id);
+              "called entrypoint=0x{:08X}, arg=0x{:08X}, stacktop=0x{:08X}, "
+              "threadpriority=0x{:08X}, processorid=0x{:08X} : created handle=0x{:08X}",
+              entry_point, arg, stack_top, priority, processor_id, *out_handle);
 
-    // Adjust core id, if it's the default magic.
-    auto& kernel = system.Kernel();
-    auto& process = *kernel.CurrentProcess();
-    if (core_id == Svc::IdealCoreUseProcessValue) {
-        core_id = process.GetIdealCoreId();
+    auto* const current_process = system.Kernel().CurrentProcess();
+
+    if (processor_id == THREADPROCESSORID_IDEAL) {
+        // Set the target CPU to the one specified by the process.
+        processor_id = current_process->GetIdealCore();
+        ASSERT(processor_id != THREADPROCESSORID_IDEAL);
     }
 
-    // Validate arguments.
-    R_UNLESS(IsValidCoreId(core_id), Svc::ResultInvalidCoreId);
-    R_UNLESS(((1ULL << core_id) & process.GetCoreMask()) != 0, Svc::ResultInvalidCoreId);
+    if (processor_id < THREADPROCESSORID_0 || processor_id > THREADPROCESSORID_3) {
+        LOG_ERROR(Kernel_SVC, "Invalid thread processor ID: {}", processor_id);
+        return ERR_INVALID_PROCESSOR_ID;
+    }
 
-    R_UNLESS(Svc::HighestThreadPriority <= priority && priority <= Svc::LowestThreadPriority,
-             Svc::ResultInvalidPriority);
-    R_UNLESS(process.CheckThreadPriority(priority), Svc::ResultInvalidPriority);
+    const u64 core_mask = current_process->GetCoreMask();
+    if ((core_mask | (1ULL << processor_id)) != core_mask) {
+        LOG_ERROR(Kernel_SVC, "Invalid thread core specified ({})", processor_id);
+        return ERR_INVALID_PROCESSOR_ID;
+    }
+
+    if (priority > THREADPRIO_LOWEST) {
+        LOG_ERROR(Kernel_SVC,
+                  "Invalid thread priority specified ({}). Must be within the range 0-64",
+                  priority);
+        return ERR_INVALID_THREAD_PRIORITY;
+    }
+
+    if (((1ULL << priority) & current_process->GetPriorityMask()) == 0) {
+        LOG_ERROR(Kernel_SVC, "Invalid thread priority specified ({})", priority);
+        return ERR_INVALID_THREAD_PRIORITY;
+    }
+
+    auto& kernel = system.Kernel();
 
     ASSERT(kernel.CurrentProcess()->GetResourceLimit()->Reserve(ResourceType::Threads, 1));
 
-    CASCADE_RESULT(std::shared_ptr<KThread> thread,
-                   KThread::Create(system, ThreadType::User, "", entry_point, priority, arg,
-                                   core_id, stack_bottom, &process));
+    ThreadType type = THREADTYPE_USER;
+    CASCADE_RESULT(std::shared_ptr<Thread> thread,
+                   Thread::Create(system, type, "", entry_point, priority, arg, processor_id,
+                                  stack_top, current_process));
 
-    const auto new_thread_handle = process.GetHandleTable().Create(thread);
+    const auto new_thread_handle = current_process->GetHandleTable().Create(thread);
     if (new_thread_handle.Failed()) {
         LOG_ERROR(Kernel_SVC, "Failed to create handle with error=0x{:X}",
                   new_thread_handle.Code().raw);
@@ -1480,15 +1517,17 @@ static ResultCode CreateThread32(Core::System& system, Handle* out_handle, u32 p
 static ResultCode StartThread(Core::System& system, Handle thread_handle) {
     LOG_DEBUG(Kernel_SVC, "called thread=0x{:08X}", thread_handle);
 
-    // Get the thread from its handle.
     const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const std::shared_ptr<Thread> thread = handle_table.Get<Thread>(thread_handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, thread_handle=0x{:08X}",
+                  thread_handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Try to start the thread.
-    R_TRY(thread->Run());
+    ASSERT(thread->GetState() == ThreadState::Initialized);
 
-    return RESULT_SUCCESS;
+    return thread->Start();
 }
 
 static ResultCode StartThread32(Core::System& system, Handle thread_handle) {
@@ -1501,7 +1540,7 @@ static void ExitThread(Core::System& system) {
 
     auto* const current_thread = system.Kernel().CurrentScheduler()->GetCurrentThread();
     system.GlobalSchedulerContext().RemoveThread(SharedFrom(current_thread));
-    current_thread->Exit();
+    current_thread->Stop();
 }
 
 static void ExitThread32(Core::System& system) {
@@ -1510,30 +1549,34 @@ static void ExitThread32(Core::System& system) {
 
 /// Sleep the current thread
 static void SleepThread(Core::System& system, s64 nanoseconds) {
-    auto& kernel = system.Kernel();
-    const auto yield_type = static_cast<Svc::YieldType>(nanoseconds);
-
     LOG_TRACE(Kernel_SVC, "called nanoseconds={}", nanoseconds);
 
-    // When the input tick is positive, sleep.
-    if (nanoseconds > 0) {
-        // Convert the timeout from nanoseconds to ticks.
-        // NOTE: Nintendo does not use this conversion logic in WaitSynchronization...
-        s64 timeout{};
+    enum class SleepType : s64 {
+        YieldWithoutCoreMigration = 0,
+        YieldWithCoreMigration = -1,
+        YieldAndWaitForLoadBalancing = -2,
+    };
 
-        // Sleep.
-        // NOTE: Nintendo does not check the result of this sleep.
-        auto& scheduler = *system.Kernel().CurrentScheduler();
-        static_cast<void>(GetCurrentThread(kernel).Sleep(nanoseconds));
-    } else if (yield_type == Svc::YieldType::WithoutCoreMigration) {
-        KScheduler::YieldWithoutCoreMigration(kernel);
-    } else if (yield_type == Svc::YieldType::WithCoreMigration) {
-        KScheduler::YieldWithCoreMigration(kernel);
-    } else if (yield_type == Svc::YieldType::ToAnyThread) {
-        KScheduler::YieldToAnyThread(kernel);
+    auto& scheduler = *system.Kernel().CurrentScheduler();
+    if (nanoseconds <= 0) {
+        switch (static_cast<SleepType>(nanoseconds)) {
+        case SleepType::YieldWithoutCoreMigration: {
+            scheduler.YieldWithoutCoreMigration();
+            break;
+        }
+        case SleepType::YieldWithCoreMigration: {
+            scheduler.YieldWithCoreMigration();
+            break;
+        }
+        case SleepType::YieldAndWaitForLoadBalancing: {
+            scheduler.YieldToAnyThread();
+            break;
+        }
+        default:
+            UNREACHABLE_MSG("Unimplemented sleep yield type '{:016X}'!", nanoseconds);
+        }
     } else {
-        // Nintendo does nothing at all if an otherwise invalid value is passed.
-        UNREACHABLE_MSG("Unimplemented sleep yield type '{:016X}'!", nanoseconds);
+        scheduler.GetCurrentThread()->Sleep(nanoseconds);
     }
 }
 
@@ -1796,72 +1839,95 @@ static ResultCode CreateTransferMemory32(Core::System& system, Handle* handle, u
     return CreateTransferMemory(system, handle, addr, size, permissions);
 }
 
-static ResultCode GetThreadCoreMask(Core::System& system, Handle thread_handle, s32* out_core_id,
-                                    u64* out_affinity_mask) {
+static ResultCode GetThreadCoreMask(Core::System& system, Handle thread_handle, u32* core,
+                                    u64* mask) {
     LOG_TRACE(Kernel_SVC, "called, handle=0x{:08X}", thread_handle);
 
-    // Get the thread from its handle.
     const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const std::shared_ptr<Thread> thread = handle_table.Get<Thread>(thread_handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, thread_handle=0x{:08X}",
+                  thread_handle);
+        *core = 0;
+        *mask = 0;
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Get the core mask.
-    R_TRY(thread->GetCoreMask(out_core_id, out_affinity_mask));
+    *core = thread->GetIdealCore();
+    *mask = thread->GetAffinityMask().GetAffinityMask();
 
     return RESULT_SUCCESS;
 }
 
-static ResultCode GetThreadCoreMask32(Core::System& system, Handle thread_handle, s32* out_core_id,
-                                      u32* out_affinity_mask_low, u32* out_affinity_mask_high) {
-    u64 out_affinity_mask{};
-    const auto result = GetThreadCoreMask(system, thread_handle, out_core_id, &out_affinity_mask);
-    *out_affinity_mask_high = static_cast<u32>(out_affinity_mask >> 32);
-    *out_affinity_mask_low = static_cast<u32>(out_affinity_mask);
+static ResultCode GetThreadCoreMask32(Core::System& system, Handle thread_handle, u32* core,
+                                      u32* mask_low, u32* mask_high) {
+    u64 mask{};
+    const auto result = GetThreadCoreMask(system, thread_handle, core, &mask);
+    *mask_high = static_cast<u32>(mask >> 32);
+    *mask_low = static_cast<u32>(mask);
     return result;
 }
 
-static ResultCode SetThreadCoreMask(Core::System& system, Handle thread_handle, s32 core_id,
+static ResultCode SetThreadCoreMask(Core::System& system, Handle thread_handle, u32 core,
                                     u64 affinity_mask) {
-    LOG_DEBUG(Kernel_SVC, "called, handle=0x{:08X}, core_id=0x{:X}, affinity_mask=0x{:016X}",
-              thread_handle, core_id, affinity_mask);
+    LOG_DEBUG(Kernel_SVC, "called, handle=0x{:08X}, core=0x{:X}, affinity_mask=0x{:016X}",
+              thread_handle, core, affinity_mask);
 
-    const auto& current_process = *system.Kernel().CurrentProcess();
+    const auto* const current_process = system.Kernel().CurrentProcess();
 
-    // Determine the core id/affinity mask.
-    if (core_id == Svc::IdealCoreUseProcessValue) {
-        core_id = current_process.GetIdealCoreId();
-        affinity_mask = (1ULL << core_id);
+    if (core == static_cast<u32>(THREADPROCESSORID_IDEAL)) {
+        const u8 ideal_cpu_core = current_process->GetIdealCore();
+
+        ASSERT(ideal_cpu_core != static_cast<u8>(THREADPROCESSORID_IDEAL));
+
+        // Set the target CPU to the ideal core specified by the process.
+        core = ideal_cpu_core;
+        affinity_mask = 1ULL << core;
     } else {
-        // Validate the affinity mask.
-        const u64 process_core_mask = current_process.GetCoreMask();
-        R_UNLESS((affinity_mask | process_core_mask) == process_core_mask,
-                 Svc::ResultInvalidCoreId);
-        R_UNLESS(affinity_mask != 0, Svc::ResultInvalidCombination);
+        const u64 core_mask = current_process->GetCoreMask();
 
-        // Validate the core id.
-        if (IsValidCoreId(core_id)) {
-            R_UNLESS(((1ULL << core_id) & affinity_mask) != 0, Svc::ResultInvalidCombination);
-        } else {
-            R_UNLESS(core_id == Svc::IdealCoreNoUpdate || core_id == Svc::IdealCoreDontCare,
-                     Svc::ResultInvalidCoreId);
+        if ((core_mask | affinity_mask) != core_mask) {
+            LOG_ERROR(
+                Kernel_SVC,
+                "Invalid processor ID specified (core_mask=0x{:08X}, affinity_mask=0x{:016X})",
+                core_mask, affinity_mask);
+            return ERR_INVALID_PROCESSOR_ID;
+        }
+
+        if (affinity_mask == 0) {
+            LOG_ERROR(Kernel_SVC, "Specfified affinity mask is zero.");
+            return ERR_INVALID_COMBINATION;
+        }
+
+        if (core < Core::Hardware::NUM_CPU_CORES) {
+            if ((affinity_mask & (1ULL << core)) == 0) {
+                LOG_ERROR(Kernel_SVC,
+                          "Core is not enabled for the current mask, core={}, mask={:016X}", core,
+                          affinity_mask);
+                return ERR_INVALID_COMBINATION;
+            }
+        } else if (core != static_cast<u32>(THREADPROCESSORID_DONT_CARE) &&
+                   core != static_cast<u32>(THREADPROCESSORID_DONT_UPDATE)) {
+            LOG_ERROR(Kernel_SVC, "Invalid processor ID specified (core={}).", core);
+            return ERR_INVALID_PROCESSOR_ID;
         }
     }
 
-    // Get the thread from its handle.
-    const auto& handle_table = system.Kernel().CurrentProcess()->GetHandleTable();
-    const std::shared_ptr<KThread> thread = handle_table.Get<KThread>(thread_handle);
-    R_UNLESS(thread, Svc::ResultInvalidHandle);
+    const auto& handle_table = current_process->GetHandleTable();
+    const std::shared_ptr<Thread> thread = handle_table.Get<Thread>(thread_handle);
+    if (!thread) {
+        LOG_ERROR(Kernel_SVC, "Thread handle does not exist, thread_handle=0x{:08X}",
+                  thread_handle);
+        return ERR_INVALID_HANDLE;
+    }
 
-    // Set the core mask.
-    R_TRY(thread->SetCoreMask(core_id, affinity_mask));
-
-    return RESULT_SUCCESS;
+    return thread->SetCoreAndAffinityMask(core, affinity_mask);
 }
 
-static ResultCode SetThreadCoreMask32(Core::System& system, Handle thread_handle, s32 core_id,
+static ResultCode SetThreadCoreMask32(Core::System& system, Handle thread_handle, u32 core,
                                       u32 affinity_mask_low, u32 affinity_mask_high) {
     const auto affinity_mask = u64{affinity_mask_low} | (u64{affinity_mask_high} << 32);
-    return SetThreadCoreMask(system, thread_handle, core_id, affinity_mask);
+    return SetThreadCoreMask(system, thread_handle, core, affinity_mask);
 }
 
 static ResultCode CreateEvent(Core::System& system, Handle* write_handle, Handle* read_handle) {
@@ -2425,7 +2491,7 @@ void Call(Core::System& system, u32 immediate) {
     kernel.EnterSVCProfile();
 
     auto* thread = kernel.CurrentScheduler()->GetCurrentThread();
-    thread->SetIsCallingSvc();
+    thread->SetContinuousOnSVC(true);
 
     const FunctionDef* info = system.CurrentProcess()->Is64BitProcess() ? GetSVCInfo64(immediate)
                                                                         : GetSVCInfo32(immediate);
@@ -2441,7 +2507,7 @@ void Call(Core::System& system, u32 immediate) {
 
     kernel.ExitSVCProfile();
 
-    if (!thread->IsCallingSvc()) {
+    if (!thread->IsContinuousOnSVC()) {
         auto* host_context = thread->GetHostContext().get();
         host_context->Rewind();
     }

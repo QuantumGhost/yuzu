@@ -7,9 +7,9 @@
 #include "core/hle/kernel/k_scheduler.h"
 #include "core/hle/kernel/k_scoped_scheduler_lock_and_sleep.h"
 #include "core/hle/kernel/k_synchronization_object.h"
-#include "core/hle/kernel/k_thread.h"
 #include "core/hle/kernel/kernel.h"
 #include "core/hle/kernel/svc_results.h"
+#include "core/hle/kernel/thread.h"
 
 namespace Kernel {
 
@@ -20,11 +20,12 @@ ResultCode KSynchronizationObject::Wait(KernelCore& kernel, s32* out_index,
     std::vector<ThreadListNode> thread_nodes(num_objects);
 
     // Prepare for wait.
-    KThread* thread = kernel.CurrentScheduler()->GetCurrentThread();
+    Thread* thread = kernel.CurrentScheduler()->GetCurrentThread();
+    Handle timer = InvalidHandle;
 
     {
         // Setup the scheduling lock and sleep.
-        KScopedSchedulerLockAndSleep slp{kernel, thread, timeout};
+        KScopedSchedulerLockAndSleep slp(kernel, timer, thread, timeout);
 
         // Check if any of the objects are already signaled.
         for (auto i = 0; i < num_objects; ++i) {
@@ -89,7 +90,10 @@ ResultCode KSynchronizationObject::Wait(KernelCore& kernel, s32* out_index,
     thread->SetWaitObjectsForDebugging({});
 
     // Cancel the timer as needed.
-    kernel.TimeManager().UnscheduleTimeEvent(thread);
+    if (timer != InvalidHandle) {
+        auto& time_manager = kernel.TimeManager();
+        time_manager.UnscheduleTimeEvent(timer);
+    }
 
     // Get the wait result.
     ResultCode wait_result{RESULT_SUCCESS};
@@ -132,7 +136,7 @@ ResultCode KSynchronizationObject::Wait(KernelCore& kernel, s32* out_index,
 
 KSynchronizationObject::KSynchronizationObject(KernelCore& kernel) : Object{kernel} {}
 
-KSynchronizationObject::~KSynchronizationObject() = default;
+KSynchronizationObject ::~KSynchronizationObject() = default;
 
 void KSynchronizationObject::NotifyAvailable(ResultCode result) {
     KScopedSchedulerLock lock(kernel);
@@ -144,7 +148,7 @@ void KSynchronizationObject::NotifyAvailable(ResultCode result) {
 
     // Iterate over each thread.
     for (auto* cur_node = thread_list_head; cur_node != nullptr; cur_node = cur_node->next) {
-        KThread* thread = cur_node->thread;
+        Thread* thread = cur_node->thread;
         if (thread->GetState() == ThreadState::Waiting) {
             thread->SetSyncedObject(this, result);
             thread->SetState(ThreadState::Runnable);
@@ -152,8 +156,8 @@ void KSynchronizationObject::NotifyAvailable(ResultCode result) {
     }
 }
 
-std::vector<KThread*> KSynchronizationObject::GetWaitingThreadsForDebugging() const {
-    std::vector<KThread*> threads;
+std::vector<Thread*> KSynchronizationObject::GetWaitingThreadsForDebugging() const {
+    std::vector<Thread*> threads;
 
     // If debugging, dump the list of waiters.
     {

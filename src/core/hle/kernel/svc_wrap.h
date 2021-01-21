@@ -58,14 +58,6 @@ void SvcWrap64(Core::System& system) {
         func(system, static_cast<u32>(Param(system, 0)), static_cast<u32>(Param(system, 1))).raw);
 }
 
-// Used by SetThreadActivity
-template <ResultCode func(Core::System&, Handle, Svc::ThreadActivity)>
-void SvcWrap64(Core::System& system) {
-    FuncReturn(system, func(system, static_cast<u32>(Param(system, 0)),
-                            static_cast<Svc::ThreadActivity>(Param(system, 1)))
-                           .raw);
-}
-
 template <ResultCode func(Core::System&, u32, u64, u64, u64)>
 void SvcWrap64(Core::System& system) {
     FuncReturn(system, func(system, static_cast<u32>(Param(system, 0)), Param(system, 1),
@@ -166,18 +158,9 @@ void SvcWrap64(Core::System& system) {
                            .raw);
 }
 
-// Used by SetThreadCoreMask
-template <ResultCode func(Core::System&, Handle, s32, u64)>
+template <ResultCode func(Core::System&, u32, u32*, u64*)>
 void SvcWrap64(Core::System& system) {
-    FuncReturn(system, func(system, static_cast<u32>(Param(system, 0)),
-                            static_cast<s32>(Param(system, 1)), Param(system, 2))
-                           .raw);
-}
-
-// Used by GetThreadCoreMask
-template <ResultCode func(Core::System&, Handle, s32*, u64*)>
-void SvcWrap64(Core::System& system) {
-    s32 param_1 = 0;
+    u32 param_1 = 0;
     u64 param_2 = 0;
     const ResultCode retval = func(system, static_cast<u32>(Param(system, 2)), &param_1, &param_2);
 
@@ -490,33 +473,10 @@ void SvcWrap32(Core::System& system) {
     FuncReturn(system, retval);
 }
 
-// Used by GetThreadCoreMask32
-template <ResultCode func(Core::System&, Handle, s32*, u32*, u32*)>
-void SvcWrap32(Core::System& system) {
-    s32 param_1 = 0;
-    u32 param_2 = 0;
-    u32 param_3 = 0;
-
-    const u32 retval = func(system, Param32(system, 2), &param_1, &param_2, &param_3).raw;
-    system.CurrentArmInterface().SetReg(1, param_1);
-    system.CurrentArmInterface().SetReg(2, param_2);
-    system.CurrentArmInterface().SetReg(3, param_3);
-    FuncReturn(system, retval);
-}
-
 // Used by SignalProcessWideKey32
 template <void func(Core::System&, u32, s32)>
 void SvcWrap32(Core::System& system) {
     func(system, static_cast<u32>(Param(system, 0)), static_cast<s32>(Param(system, 1)));
-}
-
-// Used by SetThreadActivity32
-template <ResultCode func(Core::System&, Handle, Svc::ThreadActivity)>
-void SvcWrap32(Core::System& system) {
-    const u32 retval = func(system, static_cast<Handle>(Param(system, 0)),
-                            static_cast<Svc::ThreadActivity>(Param(system, 1)))
-                           .raw;
-    FuncReturn(system, retval);
 }
 
 // Used by SetThreadPriority32
@@ -527,21 +487,11 @@ void SvcWrap32(Core::System& system) {
     FuncReturn(system, retval);
 }
 
-// Used by SetMemoryAttribute32
+// Used by SetThreadCoreMask32
 template <ResultCode func(Core::System&, Handle, u32, u32, u32)>
 void SvcWrap32(Core::System& system) {
     const u32 retval =
         func(system, static_cast<Handle>(Param(system, 0)), static_cast<u32>(Param(system, 1)),
-             static_cast<u32>(Param(system, 2)), static_cast<u32>(Param(system, 3)))
-            .raw;
-    FuncReturn(system, retval);
-}
-
-// Used by SetThreadCoreMask32
-template <ResultCode func(Core::System&, Handle, s32, u32, u32)>
-void SvcWrap32(Core::System& system) {
-    const u32 retval =
-        func(system, static_cast<Handle>(Param(system, 0)), static_cast<s32>(Param(system, 1)),
              static_cast<u32>(Param(system, 2)), static_cast<u32>(Param(system, 3)))
             .raw;
     FuncReturn(system, retval);

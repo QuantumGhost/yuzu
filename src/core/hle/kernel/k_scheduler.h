@@ -29,33 +29,29 @@ namespace Kernel {
 class KernelCore;
 class Process;
 class SchedulerLock;
-class KThread;
+class Thread;
 
 class KScheduler final {
 public:
-    explicit KScheduler(Core::System& system, s32 core_id);
+    explicit KScheduler(Core::System& system, std::size_t core_id);
     ~KScheduler();
 
     /// Reschedules to the next available thread (call after current thread is suspended)
     void RescheduleCurrentCore();
 
     /// Reschedules cores pending reschedule, to be called on EnableScheduling.
-    static void RescheduleCores(KernelCore& kernel, u64 cores_pending_reschedule);
+    static void RescheduleCores(KernelCore& kernel, u64 cores_pending_reschedule,
+                                Core::EmuThreadHandle global_thread);
 
     /// The next two are for SingleCore Only.
     /// Unload current thread before preempting core.
-    void Unload(KThread* thread);
+    void Unload(Thread* thread);
 
     /// Reload current thread after core preemption.
-    void Reload(KThread* thread);
+    void Reload(Thread* thread);
 
     /// Gets the current running thread
-    [[nodiscard]] KThread* GetCurrentThread() const;
-
-    /// Returns true if the scheduler is idle
-    [[nodiscard]] bool IsIdle() const {
-        return GetCurrentThread() == idle_thread;
-    }
+    [[nodiscard]] Thread* GetCurrentThread() const;
 
     /// Gets the timestamp for the last context switch in ticks.
     [[nodiscard]] u64 GetLastContextSwitchTicks() const;
@@ -76,14 +72,14 @@ public:
         return switch_fiber;
     }
 
-    [[nodiscard]] u64 UpdateHighestPriorityThread(KThread* highest_thread);
+    [[nodiscard]] u64 UpdateHighestPriorityThread(Thread* highest_thread);
 
     /**
      * Takes a thread and moves it to the back of the it's priority list.
      *
      * @note This operation can be redundant and no scheduling is changed if marked as so.
      */
-    static void YieldWithoutCoreMigration(KernelCore& kernel);
+    void YieldWithoutCoreMigration();
 
     /**
      * Takes a thread and moves it to the back of the it's priority list.
@@ -92,7 +88,7 @@ public:
      *
      * @note This operation can be redundant and no scheduling is changed if marked as so.
      */
-    static void YieldWithCoreMigration(KernelCore& kernel);
+    void YieldWithCoreMigration();
 
     /**
      * Takes a thread and moves it out of the scheduling queue.
@@ -101,18 +97,16 @@ public:
      *
      * @note This operation can be redundant and no scheduling is changed if marked as so.
      */
-    static void YieldToAnyThread(KernelCore& kernel);
-
-    static void ClearPreviousThread(KernelCore& kernel, KThread* thread);
+    void YieldToAnyThread();
 
     /// Notify the scheduler a thread's status has changed.
-    static void OnThreadStateChanged(KernelCore& kernel, KThread* thread, ThreadState old_state);
+    static void OnThreadStateChanged(KernelCore& kernel, Thread* thread, ThreadState old_state);
 
     /// Notify the scheduler a thread's priority has changed.
-    static void OnThreadPriorityChanged(KernelCore& kernel, KThread* thread, s32 old_priority);
+    static void OnThreadPriorityChanged(KernelCore& kernel, Thread* thread, s32 old_priority);
 
     /// Notify the scheduler a thread's core and/or affinity mask has changed.
-    static void OnThreadAffinityMaskChanged(KernelCore& kernel, KThread* thread,
+    static void OnThreadAffinityMaskChanged(KernelCore& kernel, Thread* thread,
                                             const KAffinityMask& old_affinity, s32 old_core);
 
     static bool CanSchedule(KernelCore& kernel);
@@ -120,7 +114,8 @@ public:
     static void SetSchedulerUpdateNeeded(KernelCore& kernel);
     static void ClearSchedulerUpdateNeeded(KernelCore& kernel);
     static void DisableScheduling(KernelCore& kernel);
-    static void EnableScheduling(KernelCore& kernel, u64 cores_needing_scheduling);
+    static void EnableScheduling(KernelCore& kernel, u64 cores_needing_scheduling,
+                                 Core::EmuThreadHandle global_thread);
     [[nodiscard]] static u64 UpdateHighestPriorityThreads(KernelCore& kernel);
 
 private:
@@ -168,14 +163,13 @@ private:
      * most recent tick count retrieved. No special arithmetic is
      * applied to it.
      */
-    void UpdateLastContextSwitchTime(KThread* thread, Process* process);
+    void UpdateLastContextSwitchTime(Thread* thread, Process* process);
 
     static void OnSwitch(void* this_scheduler);
     void SwitchToCurrent();
 
-    KThread* prev_thread{};
-    KThread* current_thread{};
-    KThread* idle_thread{};
+    Thread* current_thread{};
+    Thread* idle_thread{};
 
     std::shared_ptr<Common::Fiber> switch_fiber{};
 
@@ -184,7 +178,7 @@ private:
         bool interrupt_task_thread_runnable{};
         bool should_count_idle{};
         u64 idle_count{};
-        KThread* highest_priority_thread{};
+        Thread* highest_priority_thread{};
         void* idle_thread_stack{};
     };
 
@@ -192,7 +186,7 @@ private:
 
     Core::System& system;
     u64 last_context_switch_time{};
-    const s32 core_id;
+    const std::size_t core_id;
 
     Common::SpinLock guard{};
 };

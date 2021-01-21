@@ -46,8 +46,7 @@ public:
 
     void Signal();
     void Clear();
-
-    void Finalize() override {}
+    bool IsSignaled() const;
 
 private:
     explicit WritableEvent(KernelCore& kernel);

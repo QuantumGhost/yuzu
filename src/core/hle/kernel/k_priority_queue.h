@@ -18,7 +18,7 @@
 
 namespace Kernel {
 
-class KThread;
+class Thread;
 
 template <typename T>
 concept KPriorityQueueAffinityMask = !std::is_reference_v<T> && requires(T & t) {
@@ -367,7 +367,7 @@ public:
         this->scheduled_queue.MoveToFront(member->GetPriority(), member->GetActiveCore(), member);
     }
 
-    constexpr KThread* MoveToScheduledBack(Member* member) {
+    constexpr Thread* MoveToScheduledBack(Member* member) {
         return this->scheduled_queue.MoveToBack(member->GetPriority(), member->GetActiveCore(),
                                                 member);
     }
