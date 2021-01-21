@@ -8,6 +8,7 @@
 #include <fmt/format.h>
 
 #include "common/file_util.h"
+#include "common/nvidia_flags.h"
 
 namespace Common {
 
