@@ -26,20 +26,20 @@ enum class LogSeverity : u8 {
 };
 
 // To keep flags out of hashing as well as the payload size
-struct LogPacketHeaderEntrty {
+struct LogPacketHeaderEntry {
     u64_le pid{};
     u64_le tid{};
     LogSeverity severity{};
     u8 verbosity{};
 
-    auto operator<=>(const LogPacketHeaderEntrty&) const = default;
+    auto operator<=>(const LogPacketHeaderEntry&) const = default;
 };
 } // namespace Service::LM
 
 namespace std {
 template <>
-struct hash<Service::LM::LogPacketHeaderEntrty> {
-    std::size_t operator()(const Service::LM::LogPacketHeaderEntrty& k) const {
+struct hash<Service::LM::LogPacketHeaderEntry> {
+    std::size_t operator()(const Service::LM::LogPacketHeaderEntry& k) const noexcept {
         std::size_t seed{};
         boost::hash_combine(seed, k.pid);
         boost::hash_combine(seed, k.tid);
@@ -95,7 +95,7 @@ private:
         std::memcpy(&header, data.data(), sizeof(LogPacketHeader));
         offset += sizeof(LogPacketHeader);
 
-        LogPacketHeaderEntrty entry{
+        LogPacketHeaderEntry entry{
             .pid = header.pid,
             .tid = header.tid,
             .severity = header.severity,
@@ -157,9 +157,12 @@ private:
         return result;
     }
 
-    std::string ReadString(const std::vector<u8>& data, std::size_t& offset, std::size_t length) {
+    std::optional<std::string> ReadString(const std::vector<u8>& data, std::size_t& offset,
+                                          std::size_t length) {
+        if (length == 0) {
+            return std::nullopt;
+        }
         std::string output(length, '\0');
-        output.resize(length);
         std::memcpy(output.data(), data.data() + offset, length);
         offset += length;
         return output;
@@ -181,7 +184,7 @@ private:
         return output;
     }
 
-    void ParseLog(const LogPacketHeaderEntrty entry, const std::vector<u8>& log_data) {
+    void ParseLog(const LogPacketHeaderEntry entry, const std::vector<u8>& log_data) {
         // Possible entries
         std::optional<std::string> text_log;
         std::optional<u32> line_number;
@@ -233,16 +236,16 @@ private:
         }
 
         std::string output_log{};
-        if (process_name && process_name->empty()) {
+        if (process_name) {
             output_log += fmt::format("Process: {}\n", *process_name);
         }
-        if (module_name && !module_name->empty()) {
+        if (module_name) {
             output_log += fmt::format("Module: {}\n", *module_name);
         }
-        if (file_name && !file_name->empty()) {
+        if (file_name) {
             output_log += fmt::format("File: {}\n", *file_name);
         }
-        if (function_name && !function_name->empty()) {
+        if (function_name) {
             output_log += fmt::format("Function: {}\n", *function_name);
         }
         if (line_number && *line_number != 0) {
@@ -251,7 +254,7 @@ private:
         output_log += fmt::format("ProcessID: {}\n", entry.pid);
         output_log += fmt::format("ThreadID: {}\n", entry.tid);
 
-        if (text_log && !text_log->empty()) {
+        if (text_log) {
             output_log += fmt::format("Log Text: {}\n", *text_log);
         }
 
@@ -283,7 +286,7 @@ private:
         }
     }
 
-    std::string DestinationToString(LogDestination destination) {
+    static std::string DestinationToString(LogDestination destination) {
         if (True(destination & LogDestination::All)) {
             return "TargetManager | Uart | UartSleep";
         }
@@ -328,7 +331,7 @@ private:
     };
     static_assert(sizeof(LogPacketHeader) == 0x18, "LogPacketHeader is an invalid size");
 
-    std::unordered_map<LogPacketHeaderEntrty, std::vector<u8>> entries{};
+    std::unordered_map<LogPacketHeaderEntry, std::vector<u8>> entries{};
     LogDestination destination{LogDestination::All};
 };
 
