@@ -15,10 +15,11 @@ namespace Common {
 void ConfigureNvidiaEnvironmentFlags() {
 #ifdef _WIN32
     const std::string shader_path = Common::FS::SanitizePath(
-        fmt::format("{}\\nvidia", Common::FS::GetUserPath(Common::FS::UserPath::ShaderDir)),
-        Common::FS::DirectorySeparator::PlatformDefault);
-    std::filesystem::create_directories(shader_path);
-    void(_putenv(fmt::format("__GL_SHADER_DISK_CACHE_PATH={}", shader_path).c_str()));
+        fmt::format("{}/nvidia/", Common::FS::GetUserPath(Common::FS::UserPath::ShaderDir)));
+    const std::string windows_path =
+        Common::FS::SanitizePath(shader_path, Common::FS::DirectorySeparator::BackwardSlash);
+    void(Common::FS::CreateFullPath(shader_path + '/'));
+    void(_putenv(fmt::format("__GL_SHADER_DISK_CACHE_PATH={}", windows_path).c_str()));
     void(_putenv("__GL_SHADER_DISK_CACHE_SKIP_CLEANUP=1"));
 #endif
 }
