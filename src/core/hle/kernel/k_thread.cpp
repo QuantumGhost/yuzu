@@ -1015,9 +1015,11 @@ ResultVal<std::shared_ptr<KThread>> KThread::Create(Core::System& system, Thread
 
     std::shared_ptr<KThread> thread = std::make_shared<KThread>(kernel);
 
-    if (const auto result = thread->InitializeThread(thread.get(), entry_point, arg, stack_top, priority, processor_id,
-       owner_process, type_flags); result.IsError()) {
-       return result;
+    if (const auto result =
+            thread->InitializeThread(thread.get(), entry_point, arg, stack_top, priority,
+                                     processor_id, owner_process, type_flags);
+        result.IsError()) {
+        return result;
     }
 
     thread->name = name;
@@ -1032,11 +1034,7 @@ ResultVal<std::shared_ptr<KThread>> KThread::Create(Core::System& system, Thread
 }
 
 KThread* GetCurrentThreadPointer(KernelCore& kernel) {
-    if (!kernel.CurrentScheduler()) {
-        // We are not called from a core thread
-        return {};
-    }
-    return kernel.CurrentScheduler()->GetCurrentThread();
+    return kernel.GetCurrentEmuThread();
 }
 
 KThread& GetCurrentThread(KernelCore& kernel) {

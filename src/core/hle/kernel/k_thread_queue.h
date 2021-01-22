@@ -10,7 +10,7 @@ namespace Kernel {
 
 class KThreadQueue {
 public:
-    KThreadQueue(KernelCore& kernel) : kernel{kernel}, wait_list{} {}
+    explicit KThreadQueue(KernelCore& kernel) : kernel{kernel} {}
 
     bool IsEmpty() const {
         return wait_list.empty();
@@ -75,7 +75,7 @@ public:
 
 private:
     KernelCore& kernel;
-    KThread::WaiterList wait_list;
+    KThread::WaiterList wait_list{};
 };
 
 } // namespace Kernel

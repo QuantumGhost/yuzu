@@ -101,6 +101,20 @@ __declspec(dllimport) void __stdcall DebugBreak(void);
         }                                                                                          \
     }
 
+#define R_SUCCEEDED(res) (res.IsSuccess())
+
+/// Evaluates an expression that returns a result, and returns the result if it would fail.
+#define R_TRY(res_expr)                                                                            \
+    {                                                                                              \
+        const auto _tmp_r_try_rc = (res_expr);                                                     \
+        if (_tmp_r_try_rc.IsError()) {                                                             \
+            return _tmp_r_try_rc;                                                                  \
+        }                                                                                          \
+    }
+
+/// Evaluates a boolean expression, and succeeds if that expression is true.
+#define R_SUCCEED_IF(expr) R_UNLESS(!(expr), RESULT_SUCCESS)
+
 namespace Common {
 
 [[nodiscard]] constexpr u32 MakeMagic(char a, char b, char c, char d) {

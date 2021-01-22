@@ -41,6 +41,9 @@ std::size_t MemoryManager::Impl::Initialize(Pool new_pool, u64 start_address, u6
     return total_metadata_size;
 }
 
+MemoryManager::MemoryManager(KernelCore& kernel)
+    : pool_lock_0{kernel}, pool_lock_1{kernel}, pool_lock_2{kernel}, pool_lock_3{kernel} {}
+
 void MemoryManager::InitializeManager(Pool pool, u64 start_address, u64 end_address) {
     ASSERT(pool < Pool::Count);
     managers[static_cast<std::size_t>(pool)].Initialize(pool, start_address, end_address);
@@ -55,7 +58,7 @@ VAddr MemoryManager::AllocateContinuous(std::size_t num_pages, std::size_t align
 
     // Lock the pool that we're allocating from
     const auto pool_index{static_cast<std::size_t>(pool)};
-    std::lock_guard lock{pool_locks[pool_index]};
+    KScopedLightLock lk{PoolLock(pool_index)};
 
     // Choose a heap based on our page size request
     const s32 heap_index{PageHeap::GetAlignedBlockIndex(num_pages, align_pages)};
@@ -90,7 +93,7 @@ ResultCode MemoryManager::Allocate(PageLinkedList& page_list, std::size_t num_pa
 
     // Lock the pool that we're allocating from
     const auto pool_index{static_cast<std::size_t>(pool)};
-    std::lock_guard lock{pool_locks[pool_index]};
+    KScopedLightLock lk{PoolLock(pool_index)};
 
     // Choose a heap based on our page size request
     const s32 heap_index{PageHeap::GetBlockIndex(num_pages)};
@@ -157,7 +160,7 @@ ResultCode MemoryManager::Free(PageLinkedList& page_list, std::size_t num_pages,
 
     // Lock the pool that we're freeing from
     const auto pool_index{static_cast<std::size_t>(pool)};
-    std::lock_guard lock{pool_locks[pool_index]};
+    KScopedLightLock lk{PoolLock(pool_index)};
 
     // TODO (bunnei): Support multiple managers
     Impl& chosen_manager{managers[pool_index]};
