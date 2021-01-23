@@ -36,6 +36,7 @@
 #include "core/hle/service/apm/controller.h"
 #include "core/hle/service/filesystem/filesystem.h"
 #include "core/hle/service/glue/manager.h"
+#include "core/hle/service/lm/manager.h"
 #include "core/hle/service/service.h"
 #include "core/hle/service/sm/sm.h"
 #include "core/hle/service/time/time_manager.h"
@@ -292,6 +293,8 @@ struct System::Impl {
                                         perf_stats->GetMeanFrametime());
         }
 
+        lm_manager.Flush();
+
         is_powered_on = false;
         exit_lock = false;
 
@@ -395,6 +398,7 @@ struct System::Impl {
 
     /// Service State
     Service::Glue::ARPManager arp_manager;
+    Service::LM::Manager lm_manager{reporter};
     Service::Time::TimeManager time_manager;
 
     /// Service manager
@@ -714,6 +718,14 @@ Service::APM::Controller& System::GetAPMController() {
 
 const Service::APM::Controller& System::GetAPMController() const {
     return impl->apm_controller;
+}
+
+Service::LM::Manager& System::GetLogManager() {
+    return impl->lm_manager;
+}
+
+const Service::LM::Manager& System::GetLogManager() const {
+    return impl->lm_manager;
 }
 
 Service::Time::TimeManager& System::GetTimeManager() {
