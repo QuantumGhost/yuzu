@@ -143,11 +143,11 @@ void BufferCacheRuntime::BindIndexBuffer(PrimitiveTopology topology, IndexFormat
     VkBuffer vk_buffer = buffer;
     if (topology == PrimitiveTopology::Quads) {
         vk_index_type = VK_INDEX_TYPE_UINT32;
-        std::tie(buffer, vk_offset) =
+        std::tie(vk_buffer, vk_offset) =
             quad_index_pass.Assemble(index_format, num_indices, base_vertex, buffer, offset);
     } else if (vk_index_type == VK_INDEX_TYPE_UINT8_EXT && !device.IsExtIndexTypeUint8Supported()) {
         vk_index_type = VK_INDEX_TYPE_UINT16;
-        std::tie(buffer, vk_offset) = uint8_pass.Assemble(num_indices, buffer, offset);
+        std::tie(vk_buffer, vk_offset) = uint8_pass.Assemble(num_indices, buffer, offset);
     }
     if (vk_buffer == VK_NULL_HANDLE) {
         // Vulkan doesn't support null index buffers. Replace it with our own null buffer.
