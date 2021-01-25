@@ -211,9 +211,8 @@ struct KernelCore::Impl {
     KThread* GetHostDummyThread() {
         const thread_local auto thread =
             KThread::Create(
-                Core::System::GetInstance(), ThreadType::Main,
-                std::string{"DummyThread:" + GetHostThreadId()}, 0, KThread::DefaultThreadPriority,
-                0, static_cast<u32>(3), 0, nullptr,
+                system, ThreadType::Main, fmt::format("DummyThread:{}", GetHostThreadId()), 0,
+                KThread::DefaultThreadPriority, 0, static_cast<u32>(3), 0, nullptr,
                 []([[maybe_unused]] void* arg) { UNREACHABLE(); }, nullptr)
                 .Unwrap();
         return thread.get();
@@ -272,7 +271,7 @@ struct KernelCore::Impl {
         constexpr PAddr time_addr{layout.System().StartAddress() + hid_size + font_size + irs_size};
 
         // Initialize memory manager
-        memory_manager = std::make_unique<Memory::MemoryManager>(system.Kernel());
+        memory_manager = std::make_unique<Memory::MemoryManager>();
         memory_manager->InitializeManager(Memory::MemoryManager::Pool::Application,
                                           layout.Application().StartAddress(),
                                           layout.Application().EndAddress());

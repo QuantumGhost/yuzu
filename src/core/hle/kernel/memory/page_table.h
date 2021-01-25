@@ -111,7 +111,7 @@ private:
                                 perm, attr_mask, attr, ignore_attr);
     }
 
-    KLightLock general_lock;
+    std::recursive_mutex page_table_lock;
     std::unique_ptr<MemoryBlockManager> block_manager;
 
 public:
