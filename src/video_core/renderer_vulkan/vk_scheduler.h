@@ -6,10 +6,12 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <memory>
 #include <stack>
 #include <thread>
 #include <utility>
+#include "common/alignment.h"
 #include "common/common_types.h"
 #include "common/threadsafe_queue.h"
 #include "video_core/renderer_vulkan/vk_master_semaphore.h"
@@ -136,12 +138,11 @@ private:
             using FuncType = TypedCommand<T>;
             static_assert(sizeof(FuncType) < sizeof(data), "Lambda is too large");
 
+            command_offset = Common::AlignUp(command_offset, alignof(FuncType));
             if (command_offset > sizeof(data) - sizeof(FuncType)) {
                 return false;
             }
-
-            Command* current_last = last;
-
+            Command* const current_last = last;
             last = new (data.data() + command_offset) FuncType(std::move(command));
 
             if (current_last) {
@@ -149,7 +150,6 @@ private:
             } else {
                 first = last;
             }
-
             command_offset += sizeof(FuncType);
             return true;
         }
@@ -162,8 +162,8 @@ private:
         Command* first = nullptr;
         Command* last = nullptr;
 
-        std::size_t command_offset = 0;
-        std::array<u8, 0x8000> data{};
+        size_t command_offset = 0;
+        alignas(std::max_align_t) std::array<u8, 0x8000> data{};
     };
 
     struct State {
