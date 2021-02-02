@@ -36,7 +36,8 @@ chmod a+x ./squashfs-root/runtime
 chmod a+x ./squashfs-root/update.sh
 #cp /tmp/libssl.so.47 /tmp/libcrypto.so.45 /usr/lib/x86_64-linux-gnu/
 
-echo $GITHUB_SHA > $HOME/squashfs-root/version.txt
+version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
+echo EA-$version > $HOME/squashfs-root/version.txt
 
 unset QT_PLUGIN_PATH
 unset LD_LIBRARY_PATH
@@ -55,7 +56,6 @@ export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH
 	mkdir $HOME/squashfs-root/dist/
 	cp /yuzu/dist/yuzu.ico $HOME/squashfs-root/dist/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root
-version=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17) 
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 
 # Continuous AppImage
