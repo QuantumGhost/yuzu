@@ -32,6 +32,7 @@ public:
     void BeginMappingButton(std::size_t button_id);
     void BeginMappingAnalog(std::size_t button_id);
     void EndMapping();
+    void UpdateInput();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -51,8 +52,10 @@ private:
         B,
         X,
         Y,
+        SL,
         ZL,
         ZR,
+        SR,
     };
 
     struct AxisValue {
@@ -113,7 +116,10 @@ private:
     void DrawProTriggers(QPainter& p, QPointF center, bool left_pressed, bool right_pressed);
     void DrawHandheldTriggers(QPainter& p, QPointF center, bool left_pressed, bool right_pressed);
     void DrawDualTriggers(QPainter& p, QPointF center, bool left_pressed, bool right_pressed);
-    void DrawDualZTriggers(QPainter& p, QPointF center, bool left_pressed, bool right_pressed);
+    void DrawDualTriggersTopView(QPainter& p, QPointF center, bool left_pressed,
+                                 bool right_pressed);
+    void DrawDualZTriggersTopView(QPainter& p, QPointF center, bool left_pressed,
+                                  bool right_pressed);
     void DrawLeftTriggers(QPainter& p, QPointF center, bool left_pressed);
     void DrawLeftZTriggers(QPainter& p, QPointF center, bool left_pressed);
     void DrawLeftTriggersTopView(QPainter& p, QPointF center, bool left_pressed);

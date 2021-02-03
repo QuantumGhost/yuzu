@@ -57,8 +57,10 @@ public:
      * Signals that mouse has moved.
      * @param x the x-coordinate of the cursor
      * @param y the y-coordinate of the cursor
+     * @param center_x the x-coordinate of the middle of the screen
+     * @param center_y the y-coordinate of the middle of the screen
      */
-    void MouseMove(int x, int y);
+    void MouseMove(int x, int y, int center_x, int center_y);
 
     /**
      * Signals that a motion sensor tilt has ended.

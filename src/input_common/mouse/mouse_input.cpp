@@ -2,6 +2,7 @@
 // Licensed under GPLv2+
 // Refer to the license.txt file included.
 
+#include "core/settings.h"
 #include "input_common/mouse/mouse_input.h"
 
 namespace MouseInput {
@@ -65,8 +66,21 @@ void Mouse::PressButton(int x, int y, int button_) {
     mouse_info[button_index].data.pressed = true;
 }
 
-void Mouse::MouseMove(int x, int y) {
+void Mouse::MouseMove(int x, int y, int center_x, int center_y) {
     for (MouseInfo& info : mouse_info) {
+        if (Settings::values.mouse_panning) {
+            const auto mouse_change = Common::MakeVec(x, y) - Common::MakeVec(center_x, center_y);
+            info.data.axis = {mouse_change.x, -mouse_change.y};
+
+            if (mouse_change.x == 0 && mouse_change.y == 0) {
+                info.tilt_speed = 0;
+            } else {
+                info.tilt_direction = mouse_change.Cast<float>();
+                info.tilt_speed = info.tilt_direction.Normalize() * info.sensitivity;
+            }
+            continue;
+        }
+
         if (info.data.pressed) {
             const auto mouse_move = Common::MakeVec(x, y) - info.mouse_origin;
             const auto mouse_change = Common::MakeVec(x, y) - info.last_mouse_position;
