@@ -31,6 +31,8 @@ ScopeExitHelper<Func> ScopeExit(Func&& func) {
 }
 } // namespace detail
 
+#define SCOPE_GUARD(body) detail::ScopeExit([&]() body)
+
 /**
  * This macro allows you to conveniently specify a block of code that will run on scope exit. Handy
  * for doing ad-hoc clean-up tasks in a function with multiple returns.
