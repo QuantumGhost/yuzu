@@ -690,9 +690,9 @@ void GMainWindow::InitializeDebugWidgets() {
     waitTreeWidget->hide();
     debug_menu->addAction(waitTreeWidget->toggleViewAction());
 
-    controllerDialog = new ControllerDialog(this);
-    controllerDialog->hide();
-    debug_menu->addAction(controllerDialog->toggleViewAction());
+    controller_dialog = new ControllerDialog(this);
+    controller_dialog->hide();
+    debug_menu->addAction(controller_dialog->toggleViewAction());
 
     connect(this, &GMainWindow::EmulationStarting, waitTreeWidget,
             &WaitTreeWidget::OnEmulationStarting);
@@ -2352,6 +2352,7 @@ void GMainWindow::OnConfigure() {
     }
 
     configure_dialog.ApplyConfiguration();
+    controller_dialog->RefreshConfiguration();
     InitializeHotkeys();
     if (UISettings::values.theme != old_theme) {
         UpdateUITheme();
