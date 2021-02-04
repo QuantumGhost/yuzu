@@ -4,7 +4,7 @@ export QT_QPA_PLATFORMTHEME=gtk3
 
 mkdir -p $HOME/.local/share/icons/hicolor/scalable/apps && cp $APPDIR/yuzu.svg $HOME/.local/share/icons/hicolor/scalable/apps
 
-GITVER=`wget -qO- https://www.github.com/pineappleEA/pineapple-src/releases/tag/continuous | grep pineappleEA/pineapple-src/commit/ | cut -d '"' -f 2 | cut -d '/' -f 5 | awk '!x[$0]++'` 
+GITVER=`wget -qO- https://api.github.com/repos/pineappleEA/pineapple-src/releases/latest | grep "releases/tag" | grep -o 'EA-[[:digit:]]*'`
 APPVER=`cat $APPDIR/version.txt`
 
 if [[ -z "$GITVER" ]]; then
