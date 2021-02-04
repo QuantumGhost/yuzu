@@ -510,7 +510,7 @@ void Config::ReadControlValues() {
         ReadSetting(QStringLiteral("emulate_analog_keyboard"), false).toBool();
     Settings::values.mouse_panning = ReadSetting(QStringLiteral("mouse_panning"), false).toBool();
     Settings::values.mouse_panning_sensitivity =
-        ReadSetting(QStringLiteral("mouse_panning_sensitivity"), 16).toFloat();
+        ReadSetting(QStringLiteral("mouse_panning_sensitivity"), 1).toFloat();
 
     ReadSettingGlobal(Settings::values.use_docked_mode, QStringLiteral("use_docked_mode"), true);
     ReadSettingGlobal(Settings::values.vibration_enabled, QStringLiteral("vibration_enabled"),
@@ -1190,7 +1190,7 @@ void Config::SaveControlValues() {
                  Settings::values.emulate_analog_keyboard, false);
     WriteSetting(QStringLiteral("mouse_panning"), Settings::values.mouse_panning, false);
     WriteSetting(QStringLiteral("mouse_panning_sensitivity"),
-                 Settings::values.mouse_panning_sensitivity, 16.0f);
+                 Settings::values.mouse_panning_sensitivity, 1.0f);
     qt_config->endGroup();
 }
 

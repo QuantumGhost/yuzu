@@ -852,8 +852,14 @@ void GMainWindow::InitializeHotkeys() {
             [] { Settings::values.audio_muted = !Settings::values.audio_muted; });
 
     connect(hotkey_registry.GetHotkey(main_window, QStringLiteral("Toggle Mouse Panning"), this),
-            &QShortcut::activated, this,
-            [] { Settings::values.mouse_panning = !Settings::values.mouse_panning; });
+            &QShortcut::activated, this, [&] {
+                Settings::values.mouse_panning = !Settings::values.mouse_panning;
+                if (UISettings::values.hide_mouse || Settings::values.mouse_panning) {
+                    mouse_hide_timer.start();
+                    render_window->installEventFilter(render_window);
+                    render_window->setAttribute(Qt::WA_Hover, true);
+                }
+            });
 }
 
 void GMainWindow::SetDefaultUIGeometry() {
@@ -2603,7 +2609,8 @@ void GMainWindow::UpdateUISettings() {
 }
 
 void GMainWindow::HideMouseCursor() {
-    if (emu_thread == nullptr || UISettings::values.hide_mouse == false) {
+    if (emu_thread == nullptr ||
+        (!UISettings::values.hide_mouse && !Settings::values.mouse_panning)) {
         mouse_hide_timer.stop();
         ShowMouseCursor();
         return;

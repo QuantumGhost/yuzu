@@ -70,10 +70,16 @@ void Mouse::MouseMove(int x, int y, int center_x, int center_y) {
     for (MouseInfo& info : mouse_info) {
         if (Settings::values.mouse_panning) {
             const auto mouse_change = Common::MakeVec(x, y) - Common::MakeVec(center_x, center_y);
-            info.data.axis = {mouse_change.x, -mouse_change.y};
+            const auto angle = std::atan2(-mouse_change.y, mouse_change.x);
+            const auto length =
+                (mouse_change.y * mouse_change.y) + (mouse_change.x * mouse_change.x);
 
-            if (mouse_change.x == 0 && mouse_change.y == 0) {
+            info.data.axis = {static_cast<int>(100 * std::cos(angle)),
+                              static_cast<int>(100 * std::sin(angle))};
+
+            if (length < 4) {
                 info.tilt_speed = 0;
+                info.data.axis = {};
             } else {
                 info.tilt_direction = mouse_change.Cast<float>();
                 info.tilt_speed = info.tilt_direction.Normalize() * info.sensitivity;
