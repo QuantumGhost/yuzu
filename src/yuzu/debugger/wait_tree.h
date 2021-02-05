@@ -18,8 +18,8 @@ class EmuThread;
 
 namespace Kernel {
 class HandleTable;
-class KSynchronizationObject;
 class KReadableEvent;
+class KSynchronizationObject;
 class KThread;
 } // namespace Kernel
 

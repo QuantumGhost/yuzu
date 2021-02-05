@@ -40,6 +40,14 @@ public:
         return writable_event;
     }
 
+    const std::shared_ptr<KReadableEvent>& GetReadableEvent() const {
+        return readable_event;
+    }
+
+    const std::shared_ptr<KWritableEvent>& GetWritableEvent() const {
+        return writable_event;
+    }
+
 private:
     std::shared_ptr<KReadableEvent> readable_event;
     std::shared_ptr<KWritableEvent> writable_event;
