@@ -1219,7 +1219,7 @@ IApplicationFunctions::IApplicationFunctions(Core::System& system_)
         {141, &IApplicationFunctions::TryPopFromFriendInvitationStorageChannel, "TryPopFromFriendInvitationStorageChannel"},
         {150, nullptr, "GetNotificationStorageChannelEvent"},
         {151, nullptr, "TryPopFromNotificationStorageChannel"},
-        {160, nullptr, "GetHealthWarningDisappearedSystemEvent"},
+        {160, &IApplicationFunctions::GetHealthWarningDisappearedSystemEvent, "GetHealthWarningDisappearedSystemEvent"},
         {170, nullptr, "SetHdcpAuthenticationActivated"},
         {180, nullptr, "GetLaunchRequiredVersion"},
         {181, nullptr, "UpgradeLaunchRequiredVersion"},
@@ -1238,6 +1238,9 @@ IApplicationFunctions::IApplicationFunctions(Core::System& system_)
     friend_invitation_storage_channel_event =
         Kernel::KEvent::Create(kernel, "IApplicationFunctions:FriendInvitationStorageChannelEvent");
     friend_invitation_storage_channel_event->Initialize();
+    health_warning_disappeared_system_event =
+        Kernel::KEvent::Create(kernel, "IApplicationFunctions:HealthWarningDisappearedSystemEvent");
+    health_warning_disappeared_system_event->Initialize();
 }
 
 IApplicationFunctions::~IApplicationFunctions() = default;
@@ -1651,6 +1654,14 @@ void IApplicationFunctions::TryPopFromFriendInvitationStorageChannel(
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(ERR_NO_DATA_IN_CHANNEL);
+}
+
+void IApplicationFunctions::GetHealthWarningDisappearedSystemEvent(Kernel::HLERequestContext& ctx) {
+    LOG_DEBUG(Service_AM, "called");
+
+    IPC::ResponseBuilder rb{ctx, 2, 1};
+    rb.Push(RESULT_SUCCESS);
+    rb.PushCopyObjects(health_warning_disappeared_system_event->GetReadableEvent());
 }
 
 void InstallInterfaces(SM::ServiceManager& service_manager, NVFlinger::NVFlinger& nvflinger,
