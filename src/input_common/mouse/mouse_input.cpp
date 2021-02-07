@@ -37,6 +37,9 @@ void Mouse::UpdateThread() {
         if (configuring) {
             UpdateYuzuSettings();
         }
+        if (mouse_panning_timout++ > 12) {
+            StopPanning();
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(update_time));
     }
 }
@@ -66,24 +69,35 @@ void Mouse::PressButton(int x, int y, int button_) {
     mouse_info[button_index].data.pressed = true;
 }
 
+void Mouse::StopPanning() {
+    for (MouseInfo& info : mouse_info) {
+        if (Settings::values.mouse_panning) {
+            if (info.data.pressed) {
+                continue;
+            }
+            info.data.axis = {0, 0};
+            info.tilt_speed = 0;
+        }
+    }
+}
+
 void Mouse::MouseMove(int x, int y, int center_x, int center_y) {
     for (MouseInfo& info : mouse_info) {
         if (Settings::values.mouse_panning) {
             const auto mouse_change = Common::MakeVec(x, y) - Common::MakeVec(center_x, center_y);
-            const auto angle = std::atan2(-mouse_change.y, mouse_change.x);
             const auto length =
                 (mouse_change.y * mouse_change.y) + (mouse_change.x * mouse_change.x);
+            mouse_panning_timout = 0;
 
-            info.data.axis = {static_cast<int>(100 * std::cos(angle)),
-                              static_cast<int>(100 * std::sin(angle))};
-
-            if (length < 4) {
-                info.tilt_speed = 0;
-                info.data.axis = {};
-            } else {
-                info.tilt_direction = mouse_change.Cast<float>();
-                info.tilt_speed = info.tilt_direction.Normalize() * info.sensitivity;
+            if (info.data.pressed || length < 4) {
+                continue;
             }
+
+            info.last_mouse_change = (info.last_mouse_change * 0.8f) + (mouse_change * 0.2f);
+            info.data.axis = {static_cast<int>(12 * info.last_mouse_change.x),
+                              static_cast<int>(12 * -info.last_mouse_change.y)};
+            info.tilt_direction = info.last_mouse_change;
+            info.tilt_speed = info.tilt_direction.Normalize() * info.sensitivity;
             continue;
         }
 

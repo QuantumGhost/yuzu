@@ -235,9 +235,9 @@ const std::array<UISettings::Shortcut, 17> Config::default_hotkeys{{
     {QStringLiteral("Restart Emulation"),        QStringLiteral("Main Window"), {QStringLiteral("F6"), Qt::WindowShortcut}},
     {QStringLiteral("Stop Emulation"),           QStringLiteral("Main Window"), {QStringLiteral("F5"), Qt::WindowShortcut}},
     {QStringLiteral("Toggle Filter Bar"),        QStringLiteral("Main Window"), {QStringLiteral("Ctrl+F"), Qt::WindowShortcut}},
+    {QStringLiteral("Toggle Mouse Panning"),     QStringLiteral("Main Window"), {QStringLiteral("F9"), Qt::ApplicationShortcut}},
     {QStringLiteral("Toggle Speed Limit"),       QStringLiteral("Main Window"), {QStringLiteral("Ctrl+Z"), Qt::ApplicationShortcut}},
     {QStringLiteral("Toggle Status Bar"),        QStringLiteral("Main Window"), {QStringLiteral("Ctrl+S"), Qt::WindowShortcut}},
-    {QStringLiteral("Toggle Mouse Panning"),     QStringLiteral("Main Window"), {QStringLiteral("F9"), Qt::ApplicationShortcut}},
 }};
 // clang-format on
 

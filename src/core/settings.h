@@ -182,8 +182,8 @@ struct Values {
     std::string udp_input_servers;
 
     bool mouse_panning;
-    bool mouse_enabled;
     float mouse_panning_sensitivity;
+    bool mouse_enabled;
     std::string mouse_device;
     MouseButtonsRaw mouse_buttons;
 

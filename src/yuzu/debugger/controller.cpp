@@ -1,4 +1,4 @@
-// Copyright 2021 yuzu Emulator Project
+// Copyright 2015 Citra Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -19,7 +19,7 @@ ControllerDialog::ControllerDialog(QWidget* parent) : QWidget(parent, Qt::Dialog
                    Qt::WindowMaximizeButtonHint);
 
     widget = new PlayerControlPreview(this);
-    RefreshConfiguration();
+    refreshConfiguration();
     QLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(widget);
@@ -32,7 +32,7 @@ ControllerDialog::ControllerDialog(QWidget* parent) : QWidget(parent, Qt::Dialog
     widget->setFocus();
 }
 
-void ControllerDialog::RefreshConfiguration() {
+void ControllerDialog::refreshConfiguration() {
     const auto& players = Settings::values.players.GetValue();
     constexpr std::size_t player = 0;
     widget->SetPlayerInputRaw(player, players[player].buttons, players[player].analogs);

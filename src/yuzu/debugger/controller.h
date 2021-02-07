@@ -1,4 +1,4 @@
-// Copyright 2021 yuzu Emulator Project
+// Copyright 2015 Citra Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -19,7 +19,7 @@ public:
 
     /// Returns a QAction that can be used to toggle visibility of this dialog.
     QAction* toggleViewAction();
-    void RefreshConfiguration();
+    void refreshConfiguration();
 
 protected:
     void showEvent(QShowEvent* ev) override;
