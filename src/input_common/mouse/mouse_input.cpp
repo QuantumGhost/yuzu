@@ -37,7 +37,7 @@ void Mouse::UpdateThread() {
         if (configuring) {
             UpdateYuzuSettings();
         }
-        if (mouse_panning_timout++ > 12) {
+        if (mouse_panning_timout++ > 8) {
             StopPanning();
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(update_time));
@@ -72,11 +72,9 @@ void Mouse::PressButton(int x, int y, int button_) {
 void Mouse::StopPanning() {
     for (MouseInfo& info : mouse_info) {
         if (Settings::values.mouse_panning) {
-            if (info.data.pressed) {
-                continue;
-            }
-            info.data.axis = {0, 0};
+            info.data.axis = {};
             info.tilt_speed = 0;
+            info.last_mouse_change = {};
         }
     }
 }
@@ -85,17 +83,15 @@ void Mouse::MouseMove(int x, int y, int center_x, int center_y) {
     for (MouseInfo& info : mouse_info) {
         if (Settings::values.mouse_panning) {
             const auto mouse_change = Common::MakeVec(x, y) - Common::MakeVec(center_x, center_y);
-            const auto length =
-                (mouse_change.y * mouse_change.y) + (mouse_change.x * mouse_change.x);
             mouse_panning_timout = 0;
 
-            if (info.data.pressed || length < 4) {
+            if (mouse_change.y == 0 && mouse_change.x == 0) {
                 continue;
             }
 
             info.last_mouse_change = (info.last_mouse_change * 0.8f) + (mouse_change * 0.2f);
-            info.data.axis = {static_cast<int>(12 * info.last_mouse_change.x),
-                              static_cast<int>(12 * -info.last_mouse_change.y)};
+            info.data.axis = {static_cast<int>(16 * info.last_mouse_change.x),
+                              static_cast<int>(16 * -info.last_mouse_change.y)};
             info.tilt_direction = info.last_mouse_change;
             info.tilt_speed = info.tilt_direction.Normalize() * info.sensitivity;
             continue;
