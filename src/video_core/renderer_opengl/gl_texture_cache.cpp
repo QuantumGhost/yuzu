@@ -396,10 +396,9 @@ void AttachTexture(GLuint fbo, GLenum attachment, const ImageView* image_view) {
     }
 }
 
-[[nodiscard]] bool IsPixelFormatBGRA(PixelFormat format) {
+[[nodiscard]] bool IsPixelFormatBGR(PixelFormat format) {
     switch (format) {
     case PixelFormat::B5G6R5_UNORM:
-    case PixelFormat::B10G11R11_FLOAT:
     case PixelFormat::B8G8R8A8_UNORM:
     case PixelFormat::B8G8R8A8_SRGB:
         return true;
@@ -957,7 +956,7 @@ void ImageView::SetupView(const Device& device, Image& image, ImageViewType view
                       view_range.extent.levels, view_range.base.layer, view_range.extent.layers);
         if (!info.IsRenderTarget()) {
             auto swizzle = info.Swizzle();
-            if (IsPixelFormatBGRA(image.info.format)) {
+            if (IsPixelFormatBGR(image.info.format)) {
                 // Swap the R and B channels of the swizzle.
                 std::swap(swizzle[0], swizzle[2]);
             }
