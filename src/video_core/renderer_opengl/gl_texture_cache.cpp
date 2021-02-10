@@ -956,9 +956,10 @@ void ImageView::SetupView(const Device& device, Image& image, ImageViewType view
                       view_range.extent.levels, view_range.base.layer, view_range.extent.layers);
         if (!info.IsRenderTarget()) {
             auto swizzle = info.Swizzle();
-            if (IsPixelFormatBGR(image.info.format)) {
-                // Swap the R and B channels of the swizzle.
-                std::swap(swizzle[0], swizzle[2]);
+            if (IsPixelFormatBGR(image.info.format) || IsPixelFormatBGR(info.format)) {
+                // Explicitly swap the R and B channels of the swizzle.
+                swizzle[0] = SwizzleSource::R;
+                swizzle[2] = SwizzleSource::B;
             }
             ApplySwizzle(handle, format, swizzle);
         }
