@@ -69,7 +69,7 @@ mv /tmp/update/* $HOME/squashfs-root/usr/lib/
 mv yuzu-x86_64.AppImage* /yuzu/artifacts
 
 cp -R $HOME/artifacts/ /yuzu/
-cp "$BUILDBIN"/yuzu /yuzu/artifacts/version/
+#cp "$BUILDBIN"/yuzu /yuzu/artifacts/version/
 chmod -R 777 /yuzu/artifacts
 cd /yuzu/artifacts
 ls -al /yuzu/artifacts/
