@@ -824,6 +824,7 @@ GLuint Image::StorageHandle() noexcept {
         return texture.handle;
     }
 }
+
 void Image::CopyBufferToImage(const VideoCommon::BufferImageCopy& copy, size_t buffer_offset) {
     // Compressed formats don't have a pixel format or type
     const bool is_compressed = gl_format == GL_NONE;
