@@ -39,13 +39,12 @@ constexpr std::array VIEW_CLASS_64_BITS{
 // TODO: How should we handle 48 bits?
 
 constexpr std::array VIEW_CLASS_32_BITS{
-    PixelFormat::R16G16_FLOAT,      PixelFormat::B10G11R11_FLOAT, PixelFormat::R32_FLOAT,
-    PixelFormat::A2B10G10R10_UNORM, PixelFormat::R16G16_UINT,     PixelFormat::R32_UINT,
-    PixelFormat::R16G16_SINT,       PixelFormat::R32_SINT,        PixelFormat::A8B8G8R8_UNORM,
-    PixelFormat::R16G16_UNORM,      PixelFormat::A8B8G8R8_SNORM,  PixelFormat::R16G16_SNORM,
-    PixelFormat::A8B8G8R8_SRGB,     PixelFormat::E5B9G9R9_FLOAT,  PixelFormat::B8G8R8A8_UNORM,
-    PixelFormat::B8G8R8A8_SRGB,     PixelFormat::A8B8G8R8_UINT,   PixelFormat::A8B8G8R8_SINT,
-    PixelFormat::A2B10G10R10_UINT,
+    PixelFormat::R16G16_FLOAT,      PixelFormat::B10G11R11_FLOAT,  PixelFormat::R32_FLOAT,
+    PixelFormat::A2B10G10R10_UNORM, PixelFormat::R16G16_UINT,      PixelFormat::R32_UINT,
+    PixelFormat::R16G16_SINT,       PixelFormat::R32_SINT,         PixelFormat::A8B8G8R8_UNORM,
+    PixelFormat::R16G16_UNORM,      PixelFormat::A8B8G8R8_SNORM,   PixelFormat::R16G16_SNORM,
+    PixelFormat::A8B8G8R8_SRGB,     PixelFormat::E5B9G9R9_FLOAT,   PixelFormat::A8B8G8R8_UINT,
+    PixelFormat::A8B8G8R8_SINT,     PixelFormat::A2B10G10R10_UINT,
 };
 
 // TODO: How should we handle 24 bits?

@@ -398,12 +398,24 @@ void AttachTexture(GLuint fbo, GLenum attachment, const ImageView* image_view) {
 
 [[nodiscard]] bool IsPixelFormatBGR(PixelFormat format) {
     switch (format) {
-    case PixelFormat::B5G6R5_UNORM:
+    // TODO: B5G6R5 is currently not rendering after the compute copy.
+    // uncomment when this is resolved.
+    // case PixelFormat::B5G6R5_UNORM:
     case PixelFormat::B8G8R8A8_UNORM:
     case PixelFormat::B8G8R8A8_SRGB:
         return true;
     default:
         return false;
+    }
+}
+
+[[nodiscard]] GLenum GetStorageInternalFormat(PixelFormat format) {
+    switch (format) {
+    case PixelFormat::R5G6B5_UNORM:
+    case PixelFormat::B5G6R5_UNORM:
+        return GL_RGB565;
+    default:
+        return GL_RGBA8;
     }
 }
 
@@ -523,6 +535,9 @@ bool TextureCacheRuntime::CanImageBeCopied(const Image& dst, const Image& src) {
     if (dst.info.type == ImageType::e3D && dst.info.format == PixelFormat::BC4_UNORM) {
         return false;
     }
+    if (IsPixelFormatBGR(dst.info.format) || IsPixelFormatBGR(src.info.format)) {
+        return false;
+    }
     return true;
 }
 
@@ -531,6 +546,8 @@ void TextureCacheRuntime::EmulateCopyImage(Image& dst, Image& src,
     if (dst.info.type == ImageType::e3D && dst.info.format == PixelFormat::BC4_UNORM) {
         ASSERT(src.info.type == ImageType::e3D);
         util_shaders.CopyBC4(dst, src, copies);
+    } else if (IsPixelFormatBGR(dst.info.format) || IsPixelFormatBGR(src.info.format)) {
+        util_shaders.CopyBGR(dst, src, copies);
     } else {
         UNREACHABLE();
     }
@@ -774,6 +791,39 @@ void Image::DownloadMemory(ImageBufferMap& map,
     }
 }
 
+GLuint Image::StorageHandle() noexcept {
+    switch (info.format) {
+    case PixelFormat::A8B8G8R8_SRGB:
+    case PixelFormat::B8G8R8A8_SRGB:
+    case PixelFormat::R5G6B5_UNORM:
+    case PixelFormat::B5G6R5_UNORM:
+    case PixelFormat::BC1_RGBA_SRGB:
+    case PixelFormat::BC2_SRGB:
+    case PixelFormat::BC3_SRGB:
+    case PixelFormat::BC7_SRGB:
+    case PixelFormat::ASTC_2D_4X4_SRGB:
+    case PixelFormat::ASTC_2D_8X8_SRGB:
+    case PixelFormat::ASTC_2D_8X5_SRGB:
+    case PixelFormat::ASTC_2D_5X4_SRGB:
+    case PixelFormat::ASTC_2D_5X5_SRGB:
+    case PixelFormat::ASTC_2D_10X8_SRGB:
+    case PixelFormat::ASTC_2D_6X6_SRGB:
+    case PixelFormat::ASTC_2D_10X10_SRGB:
+    case PixelFormat::ASTC_2D_12X12_SRGB:
+    case PixelFormat::ASTC_2D_8X6_SRGB:
+    case PixelFormat::ASTC_2D_6X5_SRGB:
+        if (store_view.handle != 0) {
+            return store_view.handle;
+        }
+        store_view.Create();
+        glTextureView(store_view.handle, ImageTarget(info), texture.handle,
+                      GetStorageInternalFormat(info.format), 0, info.resources.levels, 0,
+                      info.resources.layers);
+        return store_view.handle;
+    default:
+        return texture.handle;
+    }
+}
 void Image::CopyBufferToImage(const VideoCommon::BufferImageCopy& copy, size_t buffer_offset) {
     // Compressed formats don't have a pixel format or type
     const bool is_compressed = gl_format == GL_NONE;
@@ -955,13 +1005,7 @@ void ImageView::SetupView(const Device& device, Image& image, ImageViewType view
         glTextureView(handle, target, parent, internal_format, view_range.base.level,
                       view_range.extent.levels, view_range.base.layer, view_range.extent.layers);
         if (!info.IsRenderTarget()) {
-            auto swizzle = info.Swizzle();
-            if (IsPixelFormatBGR(image.info.format) || IsPixelFormatBGR(info.format)) {
-                // Explicitly swap the R and B channels of the swizzle.
-                swizzle[0] = SwizzleSource::R;
-                swizzle[2] = SwizzleSource::B;
-            }
-            ApplySwizzle(handle, format, swizzle);
+            ApplySwizzle(handle, format, info.Swizzle());
         }
     }
     if (device.HasDebuggingToolAttached()) {

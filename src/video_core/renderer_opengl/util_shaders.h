@@ -36,6 +36,9 @@ public:
     void CopyBC4(Image& dst_image, Image& src_image,
                  std::span<const VideoCommon::ImageCopy> copies);
 
+    void CopyBGR(Image& dst_image, Image& src_image,
+                 std::span<const VideoCommon::ImageCopy> copies);
+
 private:
     ProgramManager& program_manager;
 
@@ -45,6 +48,8 @@ private:
     OGLProgram block_linear_unswizzle_3d_program;
     OGLProgram pitch_unswizzle_program;
     OGLProgram copy_bc4_program;
+    OGLProgram copy_bgr16_program;
+    OGLProgram copy_bgra_program;
 };
 
 GLenum StoreFormat(u32 bytes_per_block);
