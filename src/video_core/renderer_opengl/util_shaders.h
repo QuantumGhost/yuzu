@@ -24,6 +24,9 @@ public:
     explicit UtilShaders(ProgramManager& program_manager);
     ~UtilShaders();
 
+    void ASTCDecode(Image& image, const ImageBufferMap& map,
+                    std::span<const VideoCommon::SwizzleParameters> swizzles);
+
     void BlockLinearUpload2D(Image& image, const ImageBufferMap& map,
                              std::span<const VideoCommon::SwizzleParameters> swizzles);
 
@@ -43,13 +46,15 @@ private:
     ProgramManager& program_manager;
 
     OGLBuffer swizzle_table_buffer;
+    OGLBuffer astc_buffer;
 
+    OGLProgram astc_decoder_program;
     OGLProgram block_linear_unswizzle_2d_program;
     OGLProgram block_linear_unswizzle_3d_program;
     OGLProgram pitch_unswizzle_program;
-    OGLProgram copy_bc4_program;
     OGLProgram copy_bgr16_program;
     OGLProgram copy_bgra_program;
+    OGLProgram copy_bc4_program;
 };
 
 GLenum StoreFormat(u32 bytes_per_block);

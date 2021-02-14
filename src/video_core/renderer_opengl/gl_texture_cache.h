@@ -90,6 +90,8 @@ public:
         return has_broken_texture_view_formats;
     }
 
+    bool HasNativeASTC() const noexcept;
+
 private:
     struct StagingBuffers {
         explicit StagingBuffers(GLenum storage_flags_, GLenum map_flags_);

@@ -174,6 +174,7 @@ private:
     VKDescriptorPool descriptor_pool;
     VKUpdateDescriptorQueue update_descriptor_queue;
     BlitImageHelper blit_image;
+    ASTCDecoderPass astc_decoder_pass;
 
     TextureCacheRuntime texture_cache_runtime;
     TextureCache texture_cache;
