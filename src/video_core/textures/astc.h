@@ -4,18 +4,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include <bit>
+#include "common/common_types.h"
 
 namespace Tegra::Texture::ASTC {
-
-/// Count the number of bits set in a number.
-constexpr u32 Popcnt(u32 n) {
-    u32 c = 0;
-    for (; n; c++) {
-        n &= n - 1;
-    }
-    return c;
-}
 
 enum class IntegerEncoding { JustBits, Qus32, Trit };
 
@@ -57,17 +49,17 @@ constexpr IntegerEncodedValue CreateEncoding(u32 maxVal) {
 
         // Is maxVal a power of two?
         if (!(check & (check - 1))) {
-            return IntegerEncodedValue(IntegerEncoding::JustBits, Popcnt(maxVal));
+            return IntegerEncodedValue(IntegerEncoding::JustBits, std::popcount(maxVal));
         }
 
         // Is maxVal of the type 3*2^n - 1?
         if ((check % 3 == 0) && !((check / 3) & ((check / 3) - 1))) {
-            return IntegerEncodedValue(IntegerEncoding::Trit, Popcnt(check / 3 - 1));
+            return IntegerEncodedValue(IntegerEncoding::Trit, std::popcount(check / 3 - 1));
         }
 
         // Is maxVal of the type 5*2^n - 1?
         if ((check % 5 == 0) && !((check / 5) & ((check / 5) - 1))) {
-            return IntegerEncodedValue(IntegerEncoding::Qus32, Popcnt(check / 5 - 1));
+            return IntegerEncodedValue(IntegerEncoding::Qus32, std::popcount(check / 5 - 1));
         }
 
         // Apparently it can't be represented with a bounded integer sequence...
