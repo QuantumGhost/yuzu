@@ -4,11 +4,27 @@
 
 #version 430 core
 
-layout (local_size_x = 4, local_size_y = 4) in;
+layout (local_size_x = 1, local_size_y = 1) in;
 
-layout(binding = 0, r16ui) readonly uniform uimage2D bgr_input;
-layout(binding = 1, r16ui) writeonly uniform uimage2D bgr_output;
+layout(binding = 0) buffer BgrImage {
+    uint bgr_copy[];
+};
 
 void main() {
-    imageStore(bgr_output, ivec2(gl_GlobalInvocationID.xy), imageLoad(bgr_input, ivec2(gl_GlobalInvocationID.xy)));
+    const uint index = gl_GlobalInvocationID.y * gl_NumWorkGroups.x + gl_GlobalInvocationID.x;
+    const uint packed_bits = bgr_copy[index];
+    uint swapped = 0;
+    // The buffer is packed 16-bit shorts, we need to swizzle two pixels per element
+    for (int i = 0; i < 2; i++) {
+        // R5 G6 B5
+        // RRRRRGGG GGGBBBBB
+        const int offset = i * 16;
+        const uint blue = bitfieldExtract(packed_bits, offset, 5);
+        const uint green = bitfieldExtract(packed_bits, 5 + offset, 6);
+        const uint red = bitfieldExtract(packed_bits, 11 + offset, 5);
+        const uint temp = ((blue << 11) | (green << 5 ) | red) << offset;
+        swapped |= temp;
+    }
+    bgr_copy[index] = swapped;
+    return;
 }

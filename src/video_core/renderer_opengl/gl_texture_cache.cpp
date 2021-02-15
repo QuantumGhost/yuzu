@@ -399,24 +399,12 @@ void AttachTexture(GLuint fbo, GLenum attachment, const ImageView* image_view) {
 
 [[nodiscard]] bool IsPixelFormatBGR(PixelFormat format) {
     switch (format) {
-    // TODO: B5G6R5 is currently not rendering after the compute copy.
-    // uncomment when this is resolved.
-    // case PixelFormat::B5G6R5_UNORM:
+    case PixelFormat::B5G6R5_UNORM:
     case PixelFormat::B8G8R8A8_UNORM:
     case PixelFormat::B8G8R8A8_SRGB:
         return true;
     default:
         return false;
-    }
-}
-
-[[nodiscard]] GLenum GetStorageInternalFormat(PixelFormat format) {
-    switch (format) {
-    case PixelFormat::R5G6B5_UNORM:
-    case PixelFormat::B5G6R5_UNORM:
-        return GL_RGB565;
-    default:
-        return GL_RGBA8;
     }
 }
 
@@ -803,8 +791,6 @@ GLuint Image::StorageHandle() noexcept {
     switch (info.format) {
     case PixelFormat::A8B8G8R8_SRGB:
     case PixelFormat::B8G8R8A8_SRGB:
-    case PixelFormat::R5G6B5_UNORM:
-    case PixelFormat::B5G6R5_UNORM:
     case PixelFormat::BC1_RGBA_SRGB:
     case PixelFormat::BC2_SRGB:
     case PixelFormat::BC3_SRGB:
@@ -824,9 +810,8 @@ GLuint Image::StorageHandle() noexcept {
             return store_view.handle;
         }
         store_view.Create();
-        glTextureView(store_view.handle, ImageTarget(info), texture.handle,
-                      GetStorageInternalFormat(info.format), 0, info.resources.levels, 0,
-                      info.resources.layers);
+        glTextureView(store_view.handle, ImageTarget(info), texture.handle, GL_RGBA8, 0,
+                      info.resources.levels, 0, info.resources.layers);
         return store_view.handle;
     default:
         return texture.handle;
