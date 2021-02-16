@@ -5,6 +5,7 @@ BRANCH=`echo ${GITHUB_REF##*/}`
 ver=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17)
 title="yuzu Early Access $ver"
 
+ln -s /home/yuzu/.conan /root
 
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
@@ -18,7 +19,7 @@ mkdir build && cd build
 
 cmake ..                                    \
   -DCMAKE_BUILD_TYPE=Release                \
-  -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc    \ 
+  -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc    \
   -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++  \
   -DTITLE_BAR_FORMAT_IDLE="$title"          \
   -DTITLE_BAR_FORMAT_RUNNING="$title | {3}" \
