@@ -1,5 +1,6 @@
 add_library(dynarmic
     ../include/dynarmic/A32/a32.h
+    ../include/dynarmic/A32/arch_version.h
     ../include/dynarmic/A32/config.h
     ../include/dynarmic/A32/coprocessor.h
     ../include/dynarmic/A32/coprocessor_util.h
@@ -124,6 +125,8 @@ if ("A32" IN_LIST DYNARMIC_FRONTENDS)
         frontend/A32/location_descriptor.cpp
         frontend/A32/location_descriptor.h
         frontend/A32/PSR.h
+        frontend/A32/translate/conditional_state.cpp
+        frontend/A32/translate/conditional_state.h
         frontend/A32/translate/impl/asimd_load_store_structures.cpp
         frontend/A32/translate/impl/asimd_misc.cpp
         frontend/A32/translate/impl/asimd_one_reg_modified_immediate.cpp
@@ -150,7 +153,14 @@ if ("A32" IN_LIST DYNARMIC_FRONTENDS)
         frontend/A32/translate/impl/status_register_access.cpp
         frontend/A32/translate/impl/synchronization.cpp
         frontend/A32/translate/impl/thumb16.cpp
-        frontend/A32/translate/impl/thumb32.cpp
+        frontend/A32/translate/impl/thumb32_branch.cpp
+        frontend/A32/translate/impl/thumb32_control.cpp
+        frontend/A32/translate/impl/thumb32_data_processing_register.cpp
+        frontend/A32/translate/impl/thumb32_data_processing_modified_immediate.cpp
+        frontend/A32/translate/impl/thumb32_long_multiply.cpp
+        frontend/A32/translate/impl/thumb32_misc.cpp
+        frontend/A32/translate/impl/thumb32_multiply.cpp
+        frontend/A32/translate/impl/thumb32_parallel.cpp
         frontend/A32/translate/impl/translate_arm.h
         frontend/A32/translate/impl/translate_thumb.h
         frontend/A32/translate/impl/vfp.cpp
@@ -226,6 +236,7 @@ if ("A64" IN_LIST DYNARMIC_FRONTENDS)
         frontend/A64/translate/impl/simd_two_register_misc.cpp
         frontend/A64/translate/impl/simd_vector_x_indexed_element.cpp
         frontend/A64/translate/impl/sys_dc.cpp
+        frontend/A64/translate/impl/sys_ic.cpp
         frontend/A64/translate/impl/system.cpp
         frontend/A64/translate/impl/system_flag_format.cpp
         frontend/A64/translate/impl/system_flag_manipulation.cpp

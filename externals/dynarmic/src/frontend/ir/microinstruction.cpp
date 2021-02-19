@@ -155,6 +155,7 @@ bool Inst::ReadsFromCPSR() const {
     case Opcode::A32GetCFlag:
     case Opcode::A32GetVFlag:
     case Opcode::A32GetGEFlags:
+    case Opcode::A32UpdateUpperLocationDescriptor:
     case Opcode::A64GetCFlag:
     case Opcode::A64GetNZCVRaw:
     case Opcode::ConditionalSelect32:
@@ -179,6 +180,7 @@ bool Inst::WritesToCPSR() const {
     case Opcode::A32OrQFlag:
     case Opcode::A32SetGEFlags:
     case Opcode::A32SetGEFlagsCompressed:
+    case Opcode::A32UpdateUpperLocationDescriptor:
     case Opcode::A64SetNZCVRaw:
     case Opcode::A64SetNZCV:
         return true;
@@ -518,18 +520,19 @@ bool Inst::IsSetCheckBitOperation() const {
 }
 
 bool Inst::MayHaveSideEffects() const {
-    return op == Opcode::PushRSB                        ||
-           op == Opcode::A64DataCacheOperationRaised    ||
-           IsSetCheckBitOperation()                     ||
-           IsBarrier()                                  ||
-           CausesCPUException()                         ||
-           WritesToCoreRegister()                       ||
-           WritesToSystemRegister()                     ||
-           WritesToCPSR()                               ||
-           WritesToFPCR()                               ||
-           WritesToFPSR()                               ||
-           AltersExclusiveState()                       ||
-           IsMemoryWrite()                              ||
+    return op == Opcode::PushRSB                            ||
+           op == Opcode::A64DataCacheOperationRaised        ||
+           op == Opcode::A64InstructionCacheOperationRaised ||
+           IsSetCheckBitOperation()                         ||
+           IsBarrier()                                      ||
+           CausesCPUException()                             ||
+           WritesToCoreRegister()                           ||
+           WritesToSystemRegister()                         ||
+           WritesToCPSR()                                   ||
+           WritesToFPCR()                                   ||
+           WritesToFPSR()                                   ||
+           AltersExclusiveState()                           ||
+           IsMemoryWrite()                                  ||
            IsCoprocessorInstruction();
 }
 
