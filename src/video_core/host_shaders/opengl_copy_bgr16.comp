@@ -13,18 +13,12 @@ layout(binding = 0) buffer BgrImage {
 void main() {
     const uint index = gl_GlobalInvocationID.y * gl_NumWorkGroups.x + gl_GlobalInvocationID.x;
     const uint packed_bits = bgr_copy[index];
-    uint swapped = 0;
-    // The buffer is packed 16-bit shorts, we need to swizzle two pixels per element
-    for (int i = 0; i < 2; i++) {
-        // R5 G6 B5
-        // RRRRRGGG GGGBBBBB
-        const int offset = i * 16;
-        const uint blue = bitfieldExtract(packed_bits, offset, 5);
-        const uint green = bitfieldExtract(packed_bits, 5 + offset, 6);
-        const uint red = bitfieldExtract(packed_bits, 11 + offset, 5);
-        const uint temp = ((blue << 11) | (green << 5 ) | red) << offset;
-        swapped |= temp;
-    }
-    bgr_copy[index] = swapped;
+    // R5 G6 B5
+    // RRRRRGGG GGGBBBBB
+    const uint blue = bitfieldExtract(packed_bits, 0, 5);
+    const uint green = bitfieldExtract(packed_bits, 5 + 0, 6);
+    const uint red = bitfieldExtract(packed_bits, 11 + 0, 5);
+    const uint swapped_bits = ((blue << 11) | (green << 5 ) | red);
+    bgr_copy[index] = swapped_bits;
     return;
 }
