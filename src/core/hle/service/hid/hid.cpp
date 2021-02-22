@@ -1099,13 +1099,13 @@ void Hid::GetVibrationDeviceInfo(Kernel::HLERequestContext& ctx) {
     case Controller_NPad::NpadType::JoyconDual:
     case Controller_NPad::NpadType::JoyconLeft:
     case Controller_NPad::NpadType::JoyconRight:
+    default:
         vibration_device_info.type = VibrationDeviceType::LinearResonantActuator;
         break;
     case Controller_NPad::NpadType::GameCube:
         vibration_device_info.type = VibrationDeviceType::GcErm;
         break;
     case Controller_NPad::NpadType::Pokeball:
-    default:
         vibration_device_info.type = VibrationDeviceType::Unknown;
         break;
     }
