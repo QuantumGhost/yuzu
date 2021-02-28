@@ -568,12 +568,13 @@ void TextureCacheRuntime::BlitFramebuffer(Framebuffer* dst, Framebuffer* src,
 
 void TextureCacheRuntime::AccelerateImageUpload(Image& image, const ImageBufferMap& map,
                                                 std::span<const SwizzleParameters> swizzles) {
-    if (IsPixelFormatASTC(image.info.format)) {
-        return util_shaders.ASTCDecode(image, map, swizzles);
-    }
     switch (image.info.type) {
     case ImageType::e2D:
-        return util_shaders.BlockLinearUpload2D(image, map, swizzles);
+        if (IsPixelFormatASTC(image.info.format)) {
+            return util_shaders.ASTCDecode(image, map, swizzles);
+        } else {
+            return util_shaders.BlockLinearUpload2D(image, map, swizzles);
+        }
     case ImageType::e3D:
         return util_shaders.BlockLinearUpload3D(image, map, swizzles);
     case ImageType::Linear:
