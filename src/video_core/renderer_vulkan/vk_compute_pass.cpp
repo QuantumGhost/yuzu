@@ -424,7 +424,7 @@ ASTCDecoderPass::ASTCDecoderPass(const Device& device_, VKScheduler& scheduler_,
 ASTCDecoderPass::~ASTCDecoderPass() = default;
 
 void ASTCDecoderPass::MakeDataBuffer() {
-    constexpr auto TOTAL_BUFFER_SIZE = sizeof(ASTC_BUFFER_DATA) + sizeof(SWIZZLE_TABLE);
+    constexpr size_t TOTAL_BUFFER_SIZE = sizeof(ASTC_BUFFER_DATA) + sizeof(SWIZZLE_TABLE);
     data_buffer = device.GetLogical().CreateBuffer(VkBufferCreateInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = nullptr,
@@ -458,17 +458,16 @@ void ASTCDecoderPass::MakeDataBuffer() {
                 .pNext = nullptr,
                 .srcAccessMask = 0,
                 .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
-            },
-            {}, {});
+            });
     });
 }
 
 void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
                                std::span<const VideoCommon::SwizzleParameters> swizzles) {
     using namespace VideoCommon::Accelerated;
-    const VideoCommon::Extent2D tile_size{
-        .width = VideoCore::Surface::DefaultBlockWidth(image.info.format),
-        .height = VideoCore::Surface::DefaultBlockHeight(image.info.format),
+    const std::array<u32, 2> block_dims{
+        VideoCore::Surface::DefaultBlockWidth(image.info.format),
+        VideoCore::Surface::DefaultBlockHeight(image.info.format),
     };
     scheduler.RequestOutsideRenderPassOperationContext();
     if (!data_buffer) {
@@ -498,7 +497,6 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
         };
         cmdbuf.PipelineBarrier(0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, image_barrier);
     });
-    const std::array<u32, 2> block_dims{tile_size.width, tile_size.height};
     for (const VideoCommon::SwizzleParameters& swizzle : swizzles) {
         const size_t input_offset = swizzle.buffer_offset + map.offset;
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 32U);

@@ -116,10 +116,10 @@ private:
     // Returns an unused finger id, if there is no fingers avaliable MAX_FINGERS will be returned
     std::optional<size_t> GetUnusedFingerID() const;
 
-    // If the touch is new it tries to assing a new finger id, if there is no fingers avaliable no
-    // changes will be made. Updates the coordinates if the finger id it's already set. If the touch
-    // ends delays the output by one frame to set the end_touch flag before finally freeing the
-    // finger id
+    /** If the touch is new it tries to assing a new finger id, if there is no fingers avaliable no
+     * changes will be made. Updates the coordinates if the finger id it's already set. If the touch
+     * ends delays the output by one frame to set the end_touch flag before finally freeing the
+     * finger id */
     size_t UpdateTouchInputEvent(const std::tuple<float, float, bool>& touch_input,
                                  size_t finger_id);
 

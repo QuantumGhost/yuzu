@@ -28,12 +28,11 @@ public:
                  const VideoCommon::ImageCopy& copy);
 
 private:
-    OGLBuffer bgr16_pbo{};
-    size_t bgr16_pbo_size{};
-
     [[nodiscard]] bool CopyBufferCreationNeeded(const VideoCommon::ImageCopy& copy);
-
     void CreateNewCopyBuffer(const VideoCommon::ImageCopy& copy, GLenum target, GLuint format);
+
+    OGLBuffer bgr16_pbo;
+    size_t bgr16_pbo_size{};
 };
 
 class UtilShaders {
@@ -69,7 +68,6 @@ private:
     OGLProgram block_linear_unswizzle_2d_program;
     OGLProgram block_linear_unswizzle_3d_program;
     OGLProgram pitch_unswizzle_program;
-    OGLProgram copy_bgr16_program;
     OGLProgram copy_bgra_program;
     OGLProgram copy_bc4_program;
 
