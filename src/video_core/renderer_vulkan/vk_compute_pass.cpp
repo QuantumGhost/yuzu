@@ -501,10 +501,8 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 32U);
         const u32 num_dispatches_y = Common::DivCeil(swizzle.num_tiles.height, 32U);
         const u32 num_dispatches_z = image.info.resources.layers;
-        const std::array num_image_blocks{swizzle.num_tiles.width, swizzle.num_tiles.height};
 
         update_descriptor_queue.Acquire();
-
         update_descriptor_queue.AddBuffer(map.buffer, input_offset,
                                           image.guest_size_bytes - swizzle.buffer_offset);
         update_descriptor_queue.AddBuffer(*data_buffer, offsetof(AstcBufferData, encoding_values),
