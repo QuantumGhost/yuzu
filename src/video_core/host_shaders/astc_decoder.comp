@@ -37,7 +37,6 @@
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 BEGIN_PUSH_CONSTANTS
-UNIFORM(0) uvec2 num_image_blocks;
 UNIFORM(1) uvec2 block_dims;
 
 UNIFORM(2) uint bytes_per_block_log2;
@@ -1325,7 +1324,7 @@ void main() {
 
     const ivec3 coord = ivec3(gl_GlobalInvocationID * uvec3(block_dims, 1));
     uint block_index =
-        pos.z * num_image_blocks.x * num_image_blocks.y + pos.y * num_image_blocks.x + pos.x;
+        pos.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y + pos.y * gl_WorkGroupSize.x + pos.x;
 
     current_index = 0;
     bitsread = 0;

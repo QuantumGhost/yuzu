@@ -213,7 +213,6 @@ std::array<VkDescriptorUpdateTemplateEntryKHR, 8> BuildASTCPassDescriptorUpdateT
 }
 
 struct AstcPushConstants {
-    std::array<u32, 2> num_image_blocks;
     std::array<u32, 2> blocks_dims;
     u32 bytes_per_block_log2;
     u32 layer_stride;
@@ -532,10 +531,8 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
         ASSERT(params.destination == (std::array<s32, 3>{0, 0, 0}));
 
         scheduler.Record([vk_layout, vk_pipeline, num_dispatches_x, num_dispatches_y,
-                          num_dispatches_z, num_image_blocks, block_dims, params,
-                          set](vk::CommandBuffer cmdbuf) {
+                          num_dispatches_z, block_dims, params, set](vk::CommandBuffer cmdbuf) {
             const AstcPushConstants uniforms{
-                .num_image_blocks = num_image_blocks,
                 .blocks_dims = block_dims,
                 .bytes_per_block_log2 = params.bytes_per_block_log2,
                 .layer_stride = params.layer_stride,

@@ -87,8 +87,6 @@ void UtilShaders::ASTCDecode(Image& image, const ImageBufferMap& map,
     static constexpr GLuint BINDING_BYTE_TO_16_BUFFER = 6;
 
     static constexpr GLuint BINDING_OUTPUT_IMAGE = 0;
-    static constexpr GLuint LOC_NUM_IMAGE_BLOCKS = 0;
-    static constexpr GLuint LOC_BLOCK_DIMS = 1;
 
     const Extent2D tile_size{
         .width = VideoCore::Surface::DefaultBlockWidth(image.info.format),
@@ -113,7 +111,7 @@ void UtilShaders::ASTCDecode(Image& image, const ImageBufferMap& map,
                       sizeof(AstcBufferData::replicate_byte_to_16));
 
     glFlushMappedNamedBufferRange(map.buffer, map.offset, image.guest_size_bytes);
-    glUniform2ui(LOC_BLOCK_DIMS, tile_size.width, tile_size.height);
+    glUniform2ui(1, tile_size.width, tile_size.height);
     for (const SwizzleParameters& swizzle : swizzles) {
         const size_t input_offset = swizzle.buffer_offset + map.offset;
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 32U);
@@ -123,7 +121,6 @@ void UtilShaders::ASTCDecode(Image& image, const ImageBufferMap& map,
         ASSERT(params.origin == (std::array<u32, 3>{0, 0, 0}));
         ASSERT(params.destination == (std::array<s32, 3>{0, 0, 0}));
 
-        glUniform2ui(LOC_NUM_IMAGE_BLOCKS, swizzle.num_tiles.width, swizzle.num_tiles.height);
         glUniform1ui(2, params.bytes_per_block_log2);
         glUniform1ui(3, params.layer_stride);
         glUniform1ui(4, params.block_size);
