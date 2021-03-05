@@ -24,12 +24,9 @@ ImageViewBase::ImageViewBase(const ImageViewInfo& info, const ImageInfo& image_i
           .height = std::max(image_info.size.height >> range.base.level, 1u),
           .depth = std::max(image_info.size.depth >> range.base.level, 1u),
       } {
-    const bool native_bgr =
-        Settings::values.renderer_backend.GetValue() == Settings::RendererBackend::Vulkan;
-    ASSERT_MSG(
-        VideoCore::Surface::IsViewCompatible(image_info.format, info.format, false, native_bgr),
-        "Image view format {} is incompatible with image format {}", info.format,
-        image_info.format);
+    ASSERT_MSG(VideoCore::Surface::IsViewCompatible(image_info.format, info.format, false, true),
+               "Image view format {} is incompatible with image format {}", info.format,
+               image_info.format);
     const bool is_async = Settings::values.use_asynchronous_gpu_emulation.GetValue();
     if (image_info.type == ImageType::Linear && is_async) {
         flags |= ImageViewFlagBits::PreemtiveDownload;

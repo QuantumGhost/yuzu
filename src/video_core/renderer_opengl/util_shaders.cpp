@@ -51,10 +51,9 @@ OGLProgram MakeProgram(std::string_view source) {
     return program;
 }
 
-size_t CopyBufferSize(const VideoCommon::ImageCopy& copy) {
-    const size_t size = static_cast<size_t>(copy.extent.width * copy.extent.height *
-                                            copy.src_subresource.num_layers);
-    return size;
+size_t NumPixelsInCopy(const VideoCommon::ImageCopy& copy) {
+    return static_cast<size_t>(copy.extent.width * copy.extent.height *
+                               copy.src_subresource.num_layers);
 }
 
 } // Anonymous namespace
@@ -290,7 +289,7 @@ void UtilShaders::CopyBGR(Image& dst_image, Image& src_image,
     const u32 bytes_per_block = BytesPerBlock(dst_image.info.format);
     switch (bytes_per_block) {
     case 2:
-        // BGR565 Copy
+        // BGR565 copy
         for (const ImageCopy& copy : copies) {
             ASSERT(copy.src_offset == zero_offset);
             ASSERT(copy.dst_offset == zero_offset);
@@ -298,7 +297,7 @@ void UtilShaders::CopyBGR(Image& dst_image, Image& src_image,
         }
         break;
     case 4: {
-        // BGRA8 Copy
+        // BGRA8 copy
         program_manager.BindHostCompute(copy_bgra_program.handle);
         constexpr GLenum FORMAT = GL_RGBA8;
         for (const ImageCopy& copy : copies) {
@@ -343,30 +342,29 @@ void Bgr565CopyPass::Execute(const Image& dst_image, const Image& src_image,
     }
     // Copy from source to PBO
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, bgr16_pbo.handle);
     glPixelStorei(GL_PACK_ROW_LENGTH, copy.extent.width);
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, bgr16_pbo.handle);
     glGetTextureSubImage(src_image.Handle(), 0, 0, 0, 0, copy.extent.width, copy.extent.height,
                          copy.src_subresource.num_layers, GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
-                         static_cast<GLsizei>(bgr16_pbo_size), 0);
+                         static_cast<GLsizei>(bgr16_pbo_size), nullptr);
 
     // Copy from PBO to destination in reverse order
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, bgr16_pbo.handle);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, copy.extent.width);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, bgr16_pbo.handle);
     glTextureSubImage3D(dst_image.Handle(), 0, 0, 0, 0, copy.extent.width, copy.extent.height,
-                        copy.dst_subresource.num_layers, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV, 0);
+                        copy.dst_subresource.num_layers, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_REV,
+                        nullptr);
 }
 
 bool Bgr565CopyPass::CopyBufferCreationNeeded(const ImageCopy& copy) {
-    return bgr16_pbo_size < CopyBufferSize(copy) * sizeof(u16);
+    return bgr16_pbo_size < NumPixelsInCopy(copy) * sizeof(u16);
 }
 
 void Bgr565CopyPass::CreateNewCopyBuffer(const ImageCopy& copy, GLenum target, GLuint format) {
-    bgr16_pbo.Release();
     bgr16_pbo.Create();
-    bgr16_pbo_size = CopyBufferSize(copy) * sizeof(u16);
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, bgr16_pbo.handle);
-    glNamedBufferData(bgr16_pbo.handle, bgr16_pbo_size, 0, GL_STREAM_COPY);
+    bgr16_pbo_size = NumPixelsInCopy(copy) * sizeof(u16);
+    glNamedBufferData(bgr16_pbo.handle, bgr16_pbo_size, nullptr, GL_STREAM_COPY);
 }
 
 } // namespace OpenGL

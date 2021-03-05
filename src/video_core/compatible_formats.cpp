@@ -271,23 +271,15 @@ bool IsViewCompatible(PixelFormat format_a, PixelFormat format_b, bool broken_vi
         // If format views are broken, only accept formats that are identical.
         return format_a == format_b;
     }
-    if (native_bgr) {
-        static constexpr Table TABLE = MakeNativeBgrViewTable();
-        return IsSupported(TABLE, format_a, format_b);
-    } else {
-        static constexpr Table TABLE = MakeNonNativeBgrViewTable();
-        return IsSupported(TABLE, format_a, format_b);
-    }
+    static constexpr Table BGR_TABLE = MakeNativeBgrViewTable();
+    static constexpr Table NO_BGR_TABLE = MakeNonNativeBgrViewTable();
+    return IsSupported(native_bgr ? BGR_TABLE : NO_BGR_TABLE, format_a, format_b);
 }
 
 bool IsCopyCompatible(PixelFormat format_a, PixelFormat format_b, bool native_bgr) {
-    if (native_bgr) {
-        static constexpr Table TABLE = MakeNativeBgrCopyTable();
-        return IsSupported(TABLE, format_a, format_b);
-    } else {
-        static constexpr Table TABLE = MakeNonNativeBgrCopyTable();
-        return IsSupported(TABLE, format_a, format_b);
-    }
+    static constexpr Table BGR_TABLE = MakeNativeBgrCopyTable();
+    static constexpr Table NO_BGR_TABLE = MakeNonNativeBgrCopyTable();
+    return IsSupported(native_bgr ? BGR_TABLE : NO_BGR_TABLE, format_a, format_b);
 }
 
 } // namespace VideoCore::Surface
