@@ -20,8 +20,31 @@
  *
  */
 /*
- *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
- *  SPDX-License-Identifier: GPL-2.0
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ *  This file is provided under the Apache License 2.0, or the
+ *  GNU General Public License v2.0 or later.
+ *
+ *  **********
+ *  Apache License 2.0:
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  **********
+ *
+ *  **********
+ *  GNU General Public License v2.0 or later:
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +60,7 @@
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- *  This file is part of mbed TLS (https://tls.mbed.org)
+ *  **********
  */
 #ifndef MBEDTLS_NET_SOCKETS_H
 #define MBEDTLS_NET_SOCKETS_H
@@ -86,7 +109,7 @@ extern "C" {
  * (eg two file descriptors for combined IPv4 + IPv6 support, or additional
  * structures for hand-made UDP demultiplexing).
  */
-typedef struct
+typedef struct mbedtls_net_context
 {
     int fd;             /**< The underlying file descriptor                 */
 }
@@ -128,6 +151,7 @@ int mbedtls_net_connect( mbedtls_net_context *ctx, const char *host, const char 
  *
  * \return         0 if successful, or one of:
  *                      MBEDTLS_ERR_NET_SOCKET_FAILED,
+ *                      MBEDTLS_ERR_NET_UNKNOWN_HOST,
  *                      MBEDTLS_ERR_NET_BIND_FAILED,
  *                      MBEDTLS_ERR_NET_LISTEN_FAILED
  *
@@ -147,6 +171,8 @@ int mbedtls_net_bind( mbedtls_net_context *ctx, const char *bind_ip, const char 
  *                  can be NULL if client_ip is null
  *
  * \return          0 if successful, or
+ *                  MBEDTLS_ERR_NET_SOCKET_FAILED,
+ *                  MBEDTLS_ERR_NET_BIND_FAILED,
  *                  MBEDTLS_ERR_NET_ACCEPT_FAILED, or
  *                  MBEDTLS_ERR_NET_BUFFER_TOO_SMALL if buf_size is too small,
  *                  MBEDTLS_ERR_SSL_WANT_READ if bind_fd was set to
@@ -158,6 +184,10 @@ int mbedtls_net_accept( mbedtls_net_context *bind_ctx,
 
 /**
  * \brief          Check and wait for the context to be ready for read/write
+ *
+ * \note           The current implementation of this function uses
+ *                 select() and returns an error if the file descriptor
+ *                 is \c FD_SETSIZE or greater.
  *
  * \param ctx      Socket to check
  * \param rw       Bitflag composed of MBEDTLS_NET_POLL_READ and
@@ -240,16 +270,21 @@ int mbedtls_net_send( void *ctx, const unsigned char *buf, size_t len );
  *                 'timeout' seconds. If no error occurs, the actual amount
  *                 read is returned.
  *
+ * \note           The current implementation of this function uses
+ *                 select() and returns an error if the file descriptor
+ *                 is \c FD_SETSIZE or greater.
+ *
  * \param ctx      Socket
  * \param buf      The buffer to write to
  * \param len      Maximum length of the buffer
  * \param timeout  Maximum number of milliseconds to wait for data
  *                 0 means no timeout (wait forever)
  *
- * \return         the number of bytes received,
- *                 or a non-zero error code:
- *                 MBEDTLS_ERR_SSL_TIMEOUT if the operation timed out,
+ * \return         The number of bytes received if successful.
+ *                 MBEDTLS_ERR_SSL_TIMEOUT if the operation timed out.
  *                 MBEDTLS_ERR_SSL_WANT_READ if interrupted by a signal.
+ *                 Another negative error code (MBEDTLS_ERR_NET_xxx)
+ *                 for other failures.
  *
  * \note           This function will block (until data becomes available or
  *                 timeout is reached) even if the socket is set to

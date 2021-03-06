@@ -1,8 +1,31 @@
 /*
  *  Version feature information
  *
- *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
- *  SPDX-License-Identifier: GPL-2.0
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ *  This file is provided under the Apache License 2.0, or the
+ *  GNU General Public License v2.0 or later.
+ *
+ *  **********
+ *  Apache License 2.0:
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  **********
+ *
+ *  **********
+ *  GNU General Public License v2.0 or later:
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +41,7 @@
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- *  This file is part of mbed TLS (https://tls.mbed.org)
+ *  **********
  */
 
 #if !defined(MBEDTLS_CONFIG_FILE)
@@ -86,6 +109,12 @@ static const char *features[] = {
 #if defined(MBEDTLS_DEPRECATED_REMOVED)
     "MBEDTLS_DEPRECATED_REMOVED",
 #endif /* MBEDTLS_DEPRECATED_REMOVED */
+#if defined(MBEDTLS_CHECK_PARAMS)
+    "MBEDTLS_CHECK_PARAMS",
+#endif /* MBEDTLS_CHECK_PARAMS */
+#if defined(MBEDTLS_CHECK_PARAMS_ASSERT)
+    "MBEDTLS_CHECK_PARAMS_ASSERT",
+#endif /* MBEDTLS_CHECK_PARAMS_ASSERT */
 #if defined(MBEDTLS_TIMING_ALT)
     "MBEDTLS_TIMING_ALT",
 #endif /* MBEDTLS_TIMING_ALT */
@@ -248,6 +277,12 @@ static const char *features[] = {
 #if defined(MBEDTLS_ECP_NORMALIZE_MXZ_ALT)
     "MBEDTLS_ECP_NORMALIZE_MXZ_ALT",
 #endif /* MBEDTLS_ECP_NORMALIZE_MXZ_ALT */
+#if defined(MBEDTLS_TEST_CONSTANT_FLOW_MEMSAN)
+    "MBEDTLS_TEST_CONSTANT_FLOW_MEMSAN",
+#endif /* MBEDTLS_TEST_CONSTANT_FLOW_MEMSAN */
+#if defined(MBEDTLS_TEST_CONSTANT_FLOW_VALGRIND)
+    "MBEDTLS_TEST_CONSTANT_FLOW_VALGRIND",
+#endif /* MBEDTLS_TEST_CONSTANT_FLOW_VALGRIND */
 #if defined(MBEDTLS_TEST_NULL_ENTROPY)
     "MBEDTLS_TEST_NULL_ENTROPY",
 #endif /* MBEDTLS_TEST_NULL_ENTROPY */
@@ -293,12 +328,18 @@ static const char *features[] = {
 #if defined(MBEDTLS_CIPHER_PADDING_ZEROS)
     "MBEDTLS_CIPHER_PADDING_ZEROS",
 #endif /* MBEDTLS_CIPHER_PADDING_ZEROS */
+#if defined(MBEDTLS_CTR_DRBG_USE_128_BIT_KEY)
+    "MBEDTLS_CTR_DRBG_USE_128_BIT_KEY",
+#endif /* MBEDTLS_CTR_DRBG_USE_128_BIT_KEY */
 #if defined(MBEDTLS_ENABLE_WEAK_CIPHERSUITES)
     "MBEDTLS_ENABLE_WEAK_CIPHERSUITES",
 #endif /* MBEDTLS_ENABLE_WEAK_CIPHERSUITES */
 #if defined(MBEDTLS_REMOVE_ARC4_CIPHERSUITES)
     "MBEDTLS_REMOVE_ARC4_CIPHERSUITES",
 #endif /* MBEDTLS_REMOVE_ARC4_CIPHERSUITES */
+#if defined(MBEDTLS_REMOVE_3DES_CIPHERSUITES)
+    "MBEDTLS_REMOVE_3DES_CIPHERSUITES",
+#endif /* MBEDTLS_REMOVE_3DES_CIPHERSUITES */
 #if defined(MBEDTLS_ECP_DP_SECP192R1_ENABLED)
     "MBEDTLS_ECP_DP_SECP192R1_ENABLED",
 #endif /* MBEDTLS_ECP_DP_SECP192R1_ENABLED */
@@ -341,6 +382,12 @@ static const char *features[] = {
 #if defined(MBEDTLS_ECP_NIST_OPTIM)
     "MBEDTLS_ECP_NIST_OPTIM",
 #endif /* MBEDTLS_ECP_NIST_OPTIM */
+#if defined(MBEDTLS_ECP_NO_INTERNAL_RNG)
+    "MBEDTLS_ECP_NO_INTERNAL_RNG",
+#endif /* MBEDTLS_ECP_NO_INTERNAL_RNG */
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+    "MBEDTLS_ECP_RESTARTABLE",
+#endif /* MBEDTLS_ECP_RESTARTABLE */
 #if defined(MBEDTLS_ECDSA_DETERMINISTIC)
     "MBEDTLS_ECDSA_DETERMINISTIC",
 #endif /* MBEDTLS_ECDSA_DETERMINISTIC */
@@ -506,6 +553,9 @@ static const char *features[] = {
 #if defined(MBEDTLS_SSL_TRUNCATED_HMAC_COMPAT)
     "MBEDTLS_SSL_TRUNCATED_HMAC_COMPAT",
 #endif /* MBEDTLS_SSL_TRUNCATED_HMAC_COMPAT */
+#if defined(MBEDTLS_TEST_HOOKS)
+    "MBEDTLS_TEST_HOOKS",
+#endif /* MBEDTLS_TEST_HOOKS */
 #if defined(MBEDTLS_THREADING_ALT)
     "MBEDTLS_THREADING_ALT",
 #endif /* MBEDTLS_THREADING_ALT */

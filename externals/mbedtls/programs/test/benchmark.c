@@ -1,8 +1,31 @@
 /*
  *  Benchmark demonstration program
  *
- *  Copyright (C) 2006-2016, ARM Limited, All Rights Reserved
- *  SPDX-License-Identifier: GPL-2.0
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ *  This file is provided under the Apache License 2.0, or the
+ *  GNU General Public License v2.0 or later.
+ *
+ *  **********
+ *  Apache License 2.0:
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  **********
+ *
+ *  **********
+ *  GNU General Public License v2.0 or later:
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +41,7 @@
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- *  This file is part of mbed TLS (https://tls.mbed.org)
+ *  **********
  */
 
 #if !defined(MBEDTLS_CONFIG_FILE)
@@ -31,17 +54,21 @@
 #include "mbedtls/platform.h"
 #else
 #include <stdio.h>
+#include <stdlib.h>
 #define mbedtls_exit       exit
 #define mbedtls_printf     printf
 #define mbedtls_snprintf   snprintf
 #define mbedtls_free       free
+#define mbedtls_exit            exit
+#define MBEDTLS_EXIT_SUCCESS    EXIT_SUCCESS
+#define MBEDTLS_EXIT_FAILURE    EXIT_FAILURE
 #endif
 
 #if !defined(MBEDTLS_TIMING_C)
 int main( void )
 {
     mbedtls_printf("MBEDTLS_TIMING_C not defined.\n");
-    return( 0 );
+    mbedtls_exit( 0 );
 }
 #else
 
@@ -153,6 +180,16 @@ do {                                                                    \
 
 #if defined(MBEDTLS_MEMORY_BUFFER_ALLOC_C) && defined(MBEDTLS_MEMORY_DEBUG)
 
+/* How much space to reserve for the title when printing heap usage results.
+ * Updated manually as the output of the following command:
+ *
+ *  sed -n 's/.*[T]IME_PUBLIC.*"\(.*\)",/\1/p' programs/test/benchmark.c |
+ *      awk '{print length+2}' | sort -rn | head -n1
+ *
+ * This computes the maximum length of a title +2 (because we appends "/s").
+ * (If the value is too small, the only consequence is poor alignement.) */
+#define TITLE_SPACE 11
+
 #define MEMORY_MEASURE_INIT                                             \
     size_t max_used, max_blocks, max_bytes;                             \
     size_t prv_used, prv_blocks;                                        \
@@ -161,7 +198,8 @@ do {                                                                    \
 
 #define MEMORY_MEASURE_PRINT( title_len )                               \
     mbedtls_memory_buffer_alloc_max_get( &max_used, &max_blocks );      \
-    for( ii = 12 - title_len; ii != 0; ii-- ) mbedtls_printf( " " );    \
+    ii = TITLE_SPACE > (title_len) ? TITLE_SPACE - (title_len) : 1;     \
+    while( ii-- ) mbedtls_printf( " " );                                \
     max_used -= prv_used;                                               \
     max_blocks -= prv_blocks;                                           \
     max_bytes = max_used + MEM_BLOCK_OVERHEAD * max_blocks;             \
@@ -255,6 +293,7 @@ typedef struct {
          havege, ctr_drbg, hmac_drbg,
          rsa, dhm, ecdsa, ecdh;
 } todo_list;
+
 
 int main( int argc, char *argv[] )
 {
@@ -671,12 +710,13 @@ int main( int argc, char *argv[] )
         mbedtls_ctr_drbg_context ctr_drbg;
 
         mbedtls_ctr_drbg_init( &ctr_drbg );
-
         if( mbedtls_ctr_drbg_seed( &ctr_drbg, myrand, NULL, NULL, 0 ) != 0 )
             mbedtls_exit(1);
         TIME_AND_TSC( "CTR_DRBG (NOPR)",
                 mbedtls_ctr_drbg_random( &ctr_drbg, buf, BUFSIZE ) );
+        mbedtls_ctr_drbg_free( &ctr_drbg );
 
+        mbedtls_ctr_drbg_init( &ctr_drbg );
         if( mbedtls_ctr_drbg_seed( &ctr_drbg, myrand, NULL, NULL, 0 ) != 0 )
             mbedtls_exit(1);
         mbedtls_ctr_drbg_set_prediction_resistance( &ctr_drbg, MBEDTLS_CTR_DRBG_PR_ON );
@@ -702,7 +742,6 @@ int main( int argc, char *argv[] )
             mbedtls_exit(1);
         TIME_AND_TSC( "HMAC_DRBG SHA-1 (NOPR)",
                 mbedtls_hmac_drbg_random( &hmac_drbg, buf, BUFSIZE ) );
-        mbedtls_hmac_drbg_free( &hmac_drbg );
 
         if( mbedtls_hmac_drbg_seed( &hmac_drbg, md_info, myrand, NULL, NULL, 0 ) != 0 )
             mbedtls_exit(1);
@@ -710,7 +749,6 @@ int main( int argc, char *argv[] )
                                              MBEDTLS_HMAC_DRBG_PR_ON );
         TIME_AND_TSC( "HMAC_DRBG SHA-1 (PR)",
                 mbedtls_hmac_drbg_random( &hmac_drbg, buf, BUFSIZE ) );
-        mbedtls_hmac_drbg_free( &hmac_drbg );
 #endif
 
 #if defined(MBEDTLS_SHA256_C)
@@ -721,7 +759,6 @@ int main( int argc, char *argv[] )
             mbedtls_exit(1);
         TIME_AND_TSC( "HMAC_DRBG SHA-256 (NOPR)",
                 mbedtls_hmac_drbg_random( &hmac_drbg, buf, BUFSIZE ) );
-        mbedtls_hmac_drbg_free( &hmac_drbg );
 
         if( mbedtls_hmac_drbg_seed( &hmac_drbg, md_info, myrand, NULL, NULL, 0 ) != 0 )
             mbedtls_exit(1);
@@ -729,8 +766,8 @@ int main( int argc, char *argv[] )
                                              MBEDTLS_HMAC_DRBG_PR_ON );
         TIME_AND_TSC( "HMAC_DRBG SHA-256 (PR)",
                 mbedtls_hmac_drbg_random( &hmac_drbg, buf, BUFSIZE ) );
-        mbedtls_hmac_drbg_free( &hmac_drbg );
 #endif
+        mbedtls_hmac_drbg_free( &hmac_drbg );
     }
 #endif
 
@@ -867,7 +904,7 @@ int main( int argc, char *argv[] )
     }
 #endif
 
-#if defined(MBEDTLS_ECDH_C)
+#if defined(MBEDTLS_ECDH_C) && defined(MBEDTLS_ECDH_LEGACY_CONTEXT)
     if( todo.ecdh )
     {
         mbedtls_ecdh_context ecdh;
@@ -999,7 +1036,7 @@ int main( int argc, char *argv[] )
     fflush( stdout ); getchar();
 #endif
 
-    return( 0 );
+    mbedtls_exit( 0 );
 }
 
 #endif /* MBEDTLS_TIMING_C */

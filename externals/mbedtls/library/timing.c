@@ -1,8 +1,31 @@
 /*
  *  Portable interface to the CPU cycle counter
  *
- *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
- *  SPDX-License-Identifier: GPL-2.0
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ *  This file is provided under the Apache License 2.0, or the
+ *  GNU General Public License v2.0 or later.
+ *
+ *  **********
+ *  Apache License 2.0:
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  **********
+ *
+ *  **********
+ *  GNU General Public License v2.0 or later:
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +41,7 @@
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- *  This file is part of mbed TLS (https://tls.mbed.org)
+ *  **********
  */
 
 #if !defined(MBEDTLS_CONFIG_FILE)
@@ -53,7 +76,7 @@
 #if defined(_WIN32) && !defined(EFIX64) && !defined(EFI32)
 
 #include <windows.h>
-#include <winbase.h>
+#include <process.h>
 
 struct _hr_time
 {
@@ -269,18 +292,17 @@ unsigned long mbedtls_timing_get_timer( struct mbedtls_timing_hr_time *val, int 
 /* It's OK to use a global because alarm() is supposed to be global anyway */
 static DWORD alarmMs;
 
-static DWORD WINAPI TimerProc( LPVOID TimerContext )
+static void TimerProc( void *TimerContext )
 {
-    ((void) TimerContext);
+    (void) TimerContext;
     Sleep( alarmMs );
     mbedtls_timing_alarmed = 1;
-    return( TRUE );
+    /* _endthread will be called implicitly on return
+     * That ensures execution of thread funcition's epilogue */
 }
 
 void mbedtls_set_alarm( int seconds )
 {
-    DWORD ThreadId;
-
     if( seconds == 0 )
     {
         /* No need to create a thread for this simple case.
@@ -291,7 +313,7 @@ void mbedtls_set_alarm( int seconds )
 
     mbedtls_timing_alarmed = 0;
     alarmMs = seconds * 1000;
-    CloseHandle( CreateThread( NULL, 0, TimerProc, NULL, 0, &ThreadId ) );
+    (void) _beginthread( TimerProc, 0, NULL );
 }
 
 #else /* _WIN32 && !EFIX64 && !EFI32 */

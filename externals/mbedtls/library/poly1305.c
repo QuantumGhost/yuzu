@@ -3,8 +3,31 @@
  *
  * \brief Poly1305 authentication algorithm.
  *
- *  Copyright (C) 2006-2016, ARM Limited, All Rights Reserved
- *  SPDX-License-Identifier: GPL-2.0
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ *  This file is provided under the Apache License 2.0, or the
+ *  GNU General Public License v2.0 or later.
+ *
+ *  **********
+ *  Apache License 2.0:
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  **********
+ *
+ *  **********
+ *  GNU General Public License v2.0 or later:
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +43,7 @@
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- *  This file is part of mbed TLS (https://tls.mbed.org)
+ *  **********
  */
 #if !defined(MBEDTLS_CONFIG_FILE)
 #include "mbedtls/config.h"
@@ -51,13 +74,19 @@
 #define inline __inline
 #endif
 
+/* Parameter validation macros */
+#define POLY1305_VALIDATE_RET( cond )                                       \
+    MBEDTLS_INTERNAL_VALIDATE_RET( cond, MBEDTLS_ERR_POLY1305_BAD_INPUT_DATA )
+#define POLY1305_VALIDATE( cond )                                           \
+    MBEDTLS_INTERNAL_VALIDATE( cond )
+
 #define POLY1305_BLOCK_SIZE_BYTES ( 16U )
 
 #define BYTES_TO_U32_LE( data, offset )                           \
-    ( (uint32_t) data[offset]                                     \
-          | (uint32_t) ( (uint32_t) data[( offset ) + 1] << 8 )   \
-          | (uint32_t) ( (uint32_t) data[( offset ) + 2] << 16 )  \
-          | (uint32_t) ( (uint32_t) data[( offset ) + 3] << 24 )  \
+    ( (uint32_t) (data)[offset]                                     \
+          | (uint32_t) ( (uint32_t) (data)[( offset ) + 1] << 8 )   \
+          | (uint32_t) ( (uint32_t) (data)[( offset ) + 2] << 16 )  \
+          | (uint32_t) ( (uint32_t) (data)[( offset ) + 3] << 24 )  \
     )
 
 /*
@@ -278,27 +307,24 @@ static void poly1305_compute_mac( const mbedtls_poly1305_context *ctx,
 
 void mbedtls_poly1305_init( mbedtls_poly1305_context *ctx )
 {
-    if( ctx != NULL )
-    {
-        mbedtls_platform_zeroize( ctx, sizeof( mbedtls_poly1305_context ) );
-    }
+    POLY1305_VALIDATE( ctx != NULL );
+
+    mbedtls_platform_zeroize( ctx, sizeof( mbedtls_poly1305_context ) );
 }
 
 void mbedtls_poly1305_free( mbedtls_poly1305_context *ctx )
 {
-    if( ctx != NULL )
-    {
-        mbedtls_platform_zeroize( ctx, sizeof( mbedtls_poly1305_context ) );
-    }
+    if( ctx == NULL )
+        return;
+
+    mbedtls_platform_zeroize( ctx, sizeof( mbedtls_poly1305_context ) );
 }
 
 int mbedtls_poly1305_starts( mbedtls_poly1305_context *ctx,
                              const unsigned char key[32] )
 {
-    if( ctx == NULL || key == NULL )
-    {
-        return( MBEDTLS_ERR_POLY1305_BAD_INPUT_DATA );
-    }
+    POLY1305_VALIDATE_RET( ctx != NULL );
+    POLY1305_VALIDATE_RET( key != NULL );
 
     /* r &= 0x0ffffffc0ffffffc0ffffffc0fffffff */
     ctx->r[0] = BYTES_TO_U32_LE( key, 0 )  & 0x0FFFFFFFU;
@@ -333,16 +359,8 @@ int mbedtls_poly1305_update( mbedtls_poly1305_context *ctx,
     size_t remaining = ilen;
     size_t queue_free_len;
     size_t nblocks;
-
-    if( ctx == NULL )
-    {
-        return( MBEDTLS_ERR_POLY1305_BAD_INPUT_DATA );
-    }
-    else if( ( ilen > 0U ) && ( input == NULL ) )
-    {
-        /* input pointer is allowed to be NULL only if ilen == 0 */
-        return( MBEDTLS_ERR_POLY1305_BAD_INPUT_DATA );
-    }
+    POLY1305_VALIDATE_RET( ctx != NULL );
+    POLY1305_VALIDATE_RET( ilen == 0 || input != NULL );
 
     if( ( remaining > 0U ) && ( ctx->queue_len > 0U ) )
     {
@@ -400,10 +418,8 @@ int mbedtls_poly1305_update( mbedtls_poly1305_context *ctx,
 int mbedtls_poly1305_finish( mbedtls_poly1305_context *ctx,
                              unsigned char mac[16] )
 {
-    if( ( ctx == NULL ) || ( mac == NULL ) )
-    {
-        return( MBEDTLS_ERR_POLY1305_BAD_INPUT_DATA );
-    }
+    POLY1305_VALIDATE_RET( ctx != NULL );
+    POLY1305_VALIDATE_RET( mac != NULL );
 
     /* Process any leftover data */
     if( ctx->queue_len > 0U )
@@ -433,6 +449,9 @@ int mbedtls_poly1305_mac( const unsigned char key[32],
 {
     mbedtls_poly1305_context ctx;
     int ret;
+    POLY1305_VALIDATE_RET( key != NULL );
+    POLY1305_VALIDATE_RET( mac != NULL );
+    POLY1305_VALIDATE_RET( ilen == 0 || input != NULL );
 
     mbedtls_poly1305_init( &ctx );
 
