@@ -151,6 +151,9 @@ uint color_endpoint_data[16];
 int color_bitsread = 0;
 uint total_color_bitsread = 0;
 int color_index = 0;
+
+// Four values, two endpoints, four maximum paritions
+uint color_values[32];
 int colvals_index = 0;
 
 // Weight data globals
@@ -597,8 +600,7 @@ void DecodeIntegerSequence(uint max_range, uint num_values) {
     }
 }
 
-void DecodeColorValues(out uint color_values[32], uvec4 modes, uint num_partitions,
-                       uint color_data_bits) {
+void DecodeColorValues(uvec4 modes, uint num_partitions, uint color_data_bits) {
     uint num_values = 0;
     for (uint i = 0; i < num_partitions; i++) {
         num_values += ((modes[i] >> 2) + 1) << 1;
@@ -738,8 +740,7 @@ ivec4 BlueContract(int a, int r, int g, int b) {
     return ivec4(a, (r + b) >> 1, (g + b) >> 1, b);
 }
 
-void ComputeEndpoints(out uvec4 ep1, out uvec4 ep2, inout uint color_values[32],
-                      uint color_endpoint_mode) {
+void ComputeEndpoints(out uvec4 ep1, out uvec4 ep2, uint color_endpoint_mode) {
 #define READ_UINT_VALUES(N)                                                                        \
     uint v[N];                                                                                     \
     for (uint i = 0; i < N; i++) {                                                                 \
@@ -782,18 +783,18 @@ void ComputeEndpoints(out uvec4 ep1, out uvec4 ep2, inout uint color_values[32],
         v[3] = transferred.x;
         v[2] = transferred.y;
         ep1 = ClampByte(ivec4(v[2], v[0], v[0], v[0]));
-        ep2 = ClampByte(ivec4((v[2] + v[3]), v[0] + v[1], v[0] + v[1], v[0] + v[1]));
+        ep2 = ClampByte(ivec4(v[2] + v[3], v[0] + v[1], v[0] + v[1], v[0] + v[1]));
         break;
     }
     case 6: {
         READ_UINT_VALUES(4)
-        ep1 = uvec4(0xFF, v[0] * v[3] >> 8, v[1] * v[3] >> 8, v[2] * v[3] >> 8);
+        ep1 = uvec4(0xFF, (v[0] * v[3]) >> 8, (v[1] * v[3]) >> 8, (v[2] * v[3]) >> 8);
         ep2 = uvec4(0xFF, v[0], v[1], v[2]);
         break;
     }
     case 8: {
         READ_UINT_VALUES(6)
-        if (v[1] + v[3] + v[5] >= v[0] + v[2] + v[4]) {
+        if ((v[1] + v[3] + v[5]) >= (v[0] + v[2] + v[4])) {
             ep1 = uvec4(0xFF, v[0], v[2], v[4]);
             ep2 = uvec4(0xFF, v[1], v[3], v[5]);
         } else {
@@ -813,7 +814,7 @@ void ComputeEndpoints(out uvec4 ep1, out uvec4 ep2, inout uint color_values[32],
         transferred = BitTransferSigned(v[5], v[4]);
         v[5] = transferred.x;
         v[4] = transferred.y;
-        if (v[1] + v[3] + v[5] >= 0) {
+        if ((v[1] + v[3] + v[5]) >= 0) {
             ep1 = ClampByte(ivec4(0xFF, v[0], v[2], v[4]));
             ep2 = ClampByte(ivec4(0xFF, v[0] + v[1], v[2] + v[3], v[4] + v[5]));
         } else {
@@ -824,13 +825,13 @@ void ComputeEndpoints(out uvec4 ep1, out uvec4 ep2, inout uint color_values[32],
     }
     case 10: {
         READ_UINT_VALUES(6)
-        ep1 = uvec4(v[4], v[0] * v[3] >> 8, v[1] * v[3] >> 8, v[2] * v[3] >> 8);
+        ep1 = uvec4(v[4], (v[0] * v[3]) >> 8, (v[1] * v[3]) >> 8, (v[2] * v[3]) >> 8);
         ep2 = uvec4(v[5], v[0], v[1], v[2]);
         break;
     }
     case 12: {
         READ_UINT_VALUES(8)
-        if (v[1] + v[3] + v[5] >= v[0] + v[2] + v[4]) {
+        if ((v[1] + v[3] + v[5]) >= (v[0] + v[2] + v[4])) {
             ep1 = uvec4(v[6], v[0], v[2], v[4]);
             ep2 = uvec4(v[7], v[1], v[3], v[5]);
         } else {
@@ -856,13 +857,19 @@ void ComputeEndpoints(out uvec4 ep1, out uvec4 ep2, inout uint color_values[32],
         v[7] = transferred.x;
         v[6] = transferred.y;
 
-        if (v[1] + v[3] + v[5] >= 0) {
+        if ((v[1] + v[3] + v[5]) >= 0) {
             ep1 = ClampByte(ivec4(v[6], v[0], v[2], v[4]));
             ep2 = ClampByte(ivec4(v[7] + v[6], v[0] + v[1], v[2] + v[3], v[4] + v[5]));
         } else {
             ep1 = ClampByte(BlueContract(v[6] + v[7], v[0] + v[1], v[2] + v[3], v[4] + v[5]));
             ep2 = ClampByte(BlueContract(v[6], v[0], v[2], v[4]));
         }
+        break;
+    }
+    default: {
+        // HDR mode, or more likely a bug computing the color_endpoint_mode
+        ep1 = uvec4(0xFF, 0xFF, 0, 0);
+        ep2 = uvec4(0xFF, 0xFF, 0, 0);
         break;
     }
     }
@@ -1177,7 +1184,7 @@ void DecompressBlock(ivec3 coord, uint block_index) {
     uint ced_pointer = 0;
     uint base_cem = 0;
     if (num_partitions == 1) {
-        color_endpoint_mode[0] = StreamBits(4);
+        color_endpoint_mode.x = StreamBits(4);
         partition_index = 0;
     } else {
         partition_index = StreamBits(10);
@@ -1227,20 +1234,20 @@ void DecompressBlock(ivec3 coord, uint block_index) {
         uint extra_cem = StreamBits(extra_cem_bits);
         uint cem = (extra_cem << 6) | base_cem;
         cem >>= 2;
-        bvec4 C = bvec4(false);
+        uvec4 C = uvec4(0);
         for (uint i = 0; i < num_partitions; i++) {
-            C[i] = (cem & 1) == 0;
+            C[i] = (cem & 1);
             cem >>= 1;
         }
-        uint M[4] = {0, 0, 0, 0};
+        uvec4 M = uvec4(0);
         for (uint i = 0; i < num_partitions; i++) {
             M[i] = cem & 3;
             cem >>= 2;
         }
         for (uint i = 0; i < num_partitions; i++) {
             color_endpoint_mode[i] = base_mode;
-            if (C[i]) {
-                color_endpoint_mode[i] -= 1;
+            if (C[i] == 0) {
+                --color_endpoint_mode[i];
             }
             color_endpoint_mode[i] <<= 2;
             color_endpoint_mode[i] |= M[i];
@@ -1251,12 +1258,11 @@ void DecompressBlock(ivec3 coord, uint block_index) {
             color_endpoint_mode[i] = cem;
         }
     }
-    uint color_values[32]; // Four values, two endpoints, four maximum paritions
-    DecodeColorValues(color_values, color_endpoint_mode, num_partitions, color_data_bits);
+    DecodeColorValues(color_endpoint_mode, num_partitions, color_data_bits);
 
     uvec4 endpoints[4][2];
     for (uint i = 0; i < num_partitions; i++) {
-        ComputeEndpoints(endpoints[i][0], endpoints[i][1], color_values, color_endpoint_mode[i]);
+        ComputeEndpoints(endpoints[i][0], endpoints[i][1], color_endpoint_mode[i]);
     }
 
     for (uint i = 0; i < 16; i++) {
@@ -1299,7 +1305,7 @@ void DecompressBlock(ivec3 coord, uint block_index) {
                 }
                 weight_vec[c] = unquantized_texel_weights[plane_vec[c]][j * block_dims.x + i];
             }
-            vec4 Cf = vec4((C0 * (uvec4(64) - weight_vec) + C1 * weight_vec + uvec4(32)) >> 6);
+            vec4 Cf = vec4((C0 * (uvec4(64) - weight_vec) + C1 * weight_vec + uvec4(32)) / 64);
             p = (Cf / 65535.0);
             imageStore(dest_image, coord + ivec3(i, j, 0), p.gbar);
         }
