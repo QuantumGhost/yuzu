@@ -1136,10 +1136,8 @@ void FillError(ivec3 coord) {
     }
 }
 
-void FillVoidExtentLDR(ivec3 coord, uint block_index) {
-    for (int i = 0; i < 4; i++) {
-        StreamBits(13);
-    }
+void FillVoidExtentLDR(ivec3 coord) {
+    StreamBits(52);
     uint r_u = StreamBits(16);
     uint g_u = StreamBits(16);
     uint b_u = StreamBits(16);
@@ -1166,10 +1164,10 @@ void DecompressBlock(ivec3 coord, uint block_index) {
         return;
     }
     if (params.void_extent_ldr) {
-        FillVoidExtentLDR(coord, block_index);
+        FillVoidExtentLDR(coord);
         return;
     }
-    if (params.size.x > block_dims.x || params.size.y > block_dims.y) {
+    if ((params.size.x > block_dims.x) || (params.size.y > block_dims.y)) {
         FillError(coord);
         return;
     }
