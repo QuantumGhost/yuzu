@@ -129,11 +129,12 @@ void UtilShaders::ASTCDecode(Image& image, const ImageBufferMap& map,
 
         glBindImageTexture(BINDING_OUTPUT_IMAGE, image.StorageHandle(), swizzle.level, GL_TRUE, 0,
                            GL_WRITE_ONLY, GL_RGBA8);
-
         // ASTC texture data
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, BINDING_INPUT_BUFFER, map.buffer, input_offset,
                           image.guest_size_bytes - swizzle.buffer_offset);
 
+        // Ensure buffer data is valid before dispatching compute
+        glFinish();
         glDispatchCompute(num_dispatches_x, num_dispatches_y, image.info.resources.layers);
     }
     program_manager.RestoreGuestCompute();
