@@ -472,30 +472,33 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
     if (!data_buffer) {
         MakeDataBuffer();
     }
+    const VkPipeline vk_pipeline = *pipeline;
     const VkImageAspectFlags aspect_mask = image.AspectMask();
     const VkImage vk_image = image.Handle();
     const bool is_initialized = image.ExchangeInitialization();
-    scheduler.Record([vk_image, aspect_mask, is_initialized](vk::CommandBuffer cmdbuf) {
-        const VkImageMemoryBarrier image_barrier{
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = nullptr,
-            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-            .oldLayout = is_initialized ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = vk_image,
-            .subresourceRange{
-                .aspectMask = aspect_mask,
-                .baseMipLevel = 0,
-                .levelCount = VK_REMAINING_MIP_LEVELS,
-                .baseArrayLayer = 0,
-                .layerCount = VK_REMAINING_ARRAY_LAYERS,
-            },
-        };
-        cmdbuf.PipelineBarrier(0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, image_barrier);
-    });
+    scheduler.Record(
+        [vk_pipeline, vk_image, aspect_mask, is_initialized](vk::CommandBuffer cmdbuf) {
+            const VkImageMemoryBarrier image_barrier{
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                .oldLayout = is_initialized ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = vk_image,
+                .subresourceRange{
+                    .aspectMask = aspect_mask,
+                    .baseMipLevel = 0,
+                    .levelCount = VK_REMAINING_MIP_LEVELS,
+                    .baseArrayLayer = 0,
+                    .layerCount = VK_REMAINING_ARRAY_LAYERS,
+                },
+            };
+            cmdbuf.PipelineBarrier(0, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, image_barrier);
+            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, vk_pipeline);
+        });
     for (const VideoCommon::SwizzleParameters& swizzle : swizzles) {
         const size_t input_offset = swizzle.buffer_offset + map.offset;
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 32U);
@@ -522,14 +525,13 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
 
         const VkDescriptorSet set = CommitDescriptorSet(update_descriptor_queue);
         const VkPipelineLayout vk_layout = *layout;
-        const VkPipeline vk_pipeline = *pipeline;
+
         // To unswizzle the ASTC data
         const auto params = MakeBlockLinearSwizzle2DParams(swizzle, image.info);
         ASSERT(params.origin == (std::array<u32, 3>{0, 0, 0}));
         ASSERT(params.destination == (std::array<s32, 3>{0, 0, 0}));
-
-        scheduler.Record([vk_layout, vk_pipeline, num_dispatches_x, num_dispatches_y,
-                          num_dispatches_z, block_dims, params, set](vk::CommandBuffer cmdbuf) {
+        scheduler.Record([vk_layout, num_dispatches_x, num_dispatches_y, num_dispatches_z,
+                          block_dims, params, set](vk::CommandBuffer cmdbuf) {
             const AstcPushConstants uniforms{
                 .blocks_dims = block_dims,
                 .bytes_per_block_log2 = params.bytes_per_block_log2,
@@ -539,7 +541,6 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
                 .block_height = params.block_height,
                 .block_height_mask = params.block_height_mask,
             };
-            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, vk_pipeline);
             cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, vk_layout, 0, set, {});
             cmdbuf.PushConstants(vk_layout, VK_SHADER_STAGE_COMPUTE_BIT, uniforms);
             cmdbuf.Dispatch(num_dispatches_x, num_dispatches_y, num_dispatches_z);

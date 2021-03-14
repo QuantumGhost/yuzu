@@ -111,6 +111,8 @@ void UtilShaders::ASTCDecode(Image& image, const ImageBufferMap& map,
 
     glFlushMappedNamedBufferRange(map.buffer, map.offset, image.guest_size_bytes);
     glUniform2ui(1, tile_size.width, tile_size.height);
+    // Ensure buffer data is valid before dispatching
+    glFlush();
     for (const SwizzleParameters& swizzle : swizzles) {
         const size_t input_offset = swizzle.buffer_offset + map.offset;
         const u32 num_dispatches_x = Common::DivCeil(swizzle.num_tiles.width, 32U);
@@ -133,8 +135,6 @@ void UtilShaders::ASTCDecode(Image& image, const ImageBufferMap& map,
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, BINDING_INPUT_BUFFER, map.buffer, input_offset,
                           image.guest_size_bytes - swizzle.buffer_offset);
 
-        // Ensure buffer data is valid before dispatching compute
-        glFinish();
         glDispatchCompute(num_dispatches_x, num_dispatches_y, image.info.resources.layers);
     }
     program_manager.RestoreGuestCompute();
