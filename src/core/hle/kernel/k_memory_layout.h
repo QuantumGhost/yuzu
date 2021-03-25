@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <utility>
+
 #include "common/alignment.h"
 #include "common/common_sizes.h"
 #include "common/common_types.h"
@@ -14,20 +16,20 @@
 
 namespace Kernel {
 
-constexpr std::size_t L1BlockSize = Size_1_GB;
-constexpr std::size_t L2BlockSize = Size_2_MB;
+constexpr std::size_t L1BlockSize = Common::Size_1_GB;
+constexpr std::size_t L2BlockSize = Common::Size_2_MB;
 
 constexpr std::size_t GetMaximumOverheadSize(std::size_t size) {
     return (Common::DivideUp(size, L1BlockSize) + Common::DivideUp(size, L2BlockSize)) * PageSize;
 }
 
-constexpr std::size_t MainMemorySize = Size_4_GB;
-constexpr std::size_t MainMemorySizeMax = Size_8_GB;
+constexpr std::size_t MainMemorySize = Common::Size_4_GB;
+constexpr std::size_t MainMemorySizeMax = Common::Size_8_GB;
 
 constexpr std::size_t ReservedEarlyDramSize = 0x60000;
 constexpr std::size_t DramPhysicalAddress = 0x80000000;
 
-constexpr std::size_t KernelAslrAlignment = Size_2_MB;
+constexpr std::size_t KernelAslrAlignment = Common::Size_2_MB;
 constexpr std::size_t KernelVirtualAddressSpaceWidth = 1ULL << 39;
 constexpr std::size_t KernelPhysicalAddressSpaceWidth = 1ULL << 48;
 
@@ -51,10 +53,10 @@ constexpr std::size_t KernelPhysicalAddressSpaceSize =
 constexpr std::size_t KernelPhysicalAddressCodeBase = DramPhysicalAddress + ReservedEarlyDramSize;
 
 constexpr std::size_t KernelPageTableHeapSize = GetMaximumOverheadSize(MainMemorySizeMax);
-constexpr std::size_t KernelInitialPageHeapSize = Size_128_KB;
+constexpr std::size_t KernelInitialPageHeapSize = Common::Size_128_KB;
 
-constexpr std::size_t KernelSlabHeapDataSize = Size_5_MB;
-constexpr std::size_t KernelSlabHeapGapsSize = Size_2_MB - Size_64_KB;
+constexpr std::size_t KernelSlabHeapDataSize = Common::Size_5_MB;
+constexpr std::size_t KernelSlabHeapGapsSize = Common::Size_2_MB - Common::Size_64_KB;
 constexpr std::size_t KernelSlabHeapSize = KernelSlabHeapDataSize + KernelSlabHeapGapsSize;
 
 // NOTE: This is calculated from KThread slab counts, assuming KThread size <= 0x860.
@@ -208,7 +210,7 @@ public:
                               static_cast<KMemoryRegionType>(KMemoryRegionAttr_LinearMapped));
     }
 
-    std::tuple<size_t, size_t> GetTotalAndKernelMemorySizes() const {
+    std::pair<size_t, size_t> GetTotalAndKernelMemorySizes() const {
         size_t total_size = 0, kernel_size = 0;
         for (const auto& region : GetPhysicalMemoryRegionTree()) {
             if (region.IsDerivedFrom(KMemoryRegionType_Dram)) {
@@ -218,7 +220,7 @@ public:
                 }
             }
         }
-        return std::make_tuple(total_size, kernel_size);
+        return std::make_pair(total_size, kernel_size);
     }
 
     void InitializeLinearMemoryRegionTrees(PAddr aligned_linear_phys_start,
