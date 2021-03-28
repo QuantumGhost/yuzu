@@ -171,6 +171,14 @@ struct ThumbTranslatorVisitor final {
     bool thumb16_B_t1(Cond cond, Imm<8> imm8);
     bool thumb16_B_t2(Imm<11> imm11);
 
+    // thumb32 load/store multiple instructions
+    bool thumb32_LDMDB(bool W, Reg n, Imm<16> reg_list);
+    bool thumb32_LDMIA(bool W, Reg n, Imm<16> reg_list);
+    bool thumb32_POP(Imm<16> reg_list);
+    bool thumb32_PUSH(Imm<15> reg_list);
+    bool thumb32_STMIA(bool W, Reg n, Imm<15> reg_list);
+    bool thumb32_STMDB(bool W, Reg n, Imm<15> reg_list);
+
     // thumb32 data processing (shifted register) instructions
     bool thumb32_TST_reg(Reg n, Imm<3> imm3, Imm<2> imm2, ShiftType type, Reg m);
     bool thumb32_AND_reg(bool S, Reg n, Imm<3> imm3, Reg d, Imm<2> imm2, ShiftType type, Reg m);
@@ -209,6 +217,8 @@ struct ThumbTranslatorVisitor final {
     bool thumb32_RSB_imm(Imm<1> i, bool S, Reg n, Imm<3> imm3, Reg d, Imm<8> imm8);
 
     // thumb32 data processing (plain binary immediate) instructions.
+    bool thumb32_ADR_t2(Imm<1> imm1, Imm<3> imm3, Reg d, Imm<8> imm8);
+    bool thumb32_ADR_t3(Imm<1> imm1, Imm<3> imm3, Reg d, Imm<8> imm8);
     bool thumb32_ADD_imm_2(Imm<1> imm1, Imm<3> imm3, Reg d, Imm<8> imm8);
     bool thumb32_BFC(Imm<3> imm3, Reg d, Imm<2> imm2, Imm<5> msb);
     bool thumb32_BFI(Reg n, Imm<3> imm3, Reg d, Imm<2> imm2, Imm<5> msb);
@@ -243,8 +253,20 @@ struct ThumbTranslatorVisitor final {
     bool thumb32_B_cond(Imm<1> S, Cond cond, Imm<6> hi, Imm<1> j1, Imm<1> j2, Imm<11> lo);
 
     // thumb32 store single data item instructions
+    bool thumb32_STRB_imm_1(Reg n, Reg t, bool P, bool U, Imm<8> imm8);
+    bool thumb32_STRB_imm_2(Reg n, Reg t, Imm<8> imm8);
+    bool thumb32_STRB_imm_3(Reg n, Reg t, Imm<12> imm12);
+    bool thumb32_STRBT(Reg n, Reg t, Imm<8> imm8);
     bool thumb32_STRB(Reg n, Reg t, Imm<2> imm2, Reg m);
+    bool thumb32_STRH_imm_1(Reg n, Reg t, bool P, bool U, Imm<8> imm8);
+    bool thumb32_STRH_imm_2(Reg n, Reg t, Imm<8> imm8);
+    bool thumb32_STRH_imm_3(Reg n, Reg t, Imm<12> imm12);
+    bool thumb32_STRHT(Reg n, Reg t, Imm<8> imm8);
     bool thumb32_STRH(Reg n, Reg t, Imm<2> imm2, Reg m);
+    bool thumb32_STR_imm_1(Reg n, Reg t, bool P, bool U, Imm<8> imm8);
+    bool thumb32_STR_imm_2(Reg n, Reg t, Imm<8> imm8);
+    bool thumb32_STR_imm_3(Reg n, Reg t, Imm<12> imm12);
+    bool thumb32_STRT(Reg n, Reg t, Imm<8> imm8);
     bool thumb32_STR_reg(Reg n, Reg t, Imm<2> imm2, Reg m);
 
     // thumb32 load byte and memory hints
@@ -266,6 +288,25 @@ struct ThumbTranslatorVisitor final {
     bool thumb32_LDRSB_imm8(Reg n, Reg t, bool P, bool U, bool W, Imm<8> imm8);
     bool thumb32_LDRSB_imm12(Reg n, Reg t, Imm<12> imm12);
     bool thumb32_LDRSBT(Reg n, Reg t, Imm<8> imm8);
+
+    // thumb32 load halfword instructions
+    bool thumb32_LDRH_lit(bool U, Reg t, Imm<12> imm12);
+    bool thumb32_LDRH_reg(Reg n, Reg t, Imm<2> imm2, Reg m);
+    bool thumb32_LDRH_imm8(Reg n, Reg t, bool P, bool U, bool W, Imm<8> imm8);
+    bool thumb32_LDRH_imm12(Reg n, Reg t, Imm<12> imm12);
+    bool thumb32_LDRHT(Reg n, Reg t, Imm<8> imm8);
+    bool thumb32_LDRSH_lit(bool U, Reg t, Imm<12> imm12);
+    bool thumb32_LDRSH_reg(Reg n, Reg t, Imm<2> imm2, Reg m);
+    bool thumb32_LDRSH_imm8(Reg n, Reg t, bool P, bool U, bool W, Imm<8> imm8);
+    bool thumb32_LDRSH_imm12(Reg n, Reg t, Imm<12> imm12);
+    bool thumb32_LDRSHT(Reg n, Reg t, Imm<8> imm8);
+
+    // thumb32 load word instructions
+    bool thumb32_LDR_lit(bool U, Reg t, Imm<12> imm12);
+    bool thumb32_LDR_reg(Reg n, Reg t, Imm<2> imm2, Reg m);
+    bool thumb32_LDR_imm8(Reg n, Reg t, bool P, bool U, bool W, Imm<8> imm8);
+    bool thumb32_LDR_imm12(Reg n, Reg t, Imm<12> imm12);
+    bool thumb32_LDRT(Reg n, Reg t, Imm<8> imm8);
 
     // thumb32 data processing (register) instructions
     bool thumb32_ASR_reg(Reg m, Reg d, Reg s);
