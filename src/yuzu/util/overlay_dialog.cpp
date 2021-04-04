@@ -62,7 +62,7 @@ void OverlayDialog::InitializeRegularTextDialog(const QString& title_text, const
     ui->label_title->setText(title_text);
     ui->label_dialog->setText(body_text);
     ui->button_cancel->setText(left_button_text);
-    ui->button_ok->setText(right_button_text);
+    ui->button_ok_label->setText(right_button_text);
 
     ui->label_dialog->setAlignment(alignment);
 
@@ -79,8 +79,8 @@ void OverlayDialog::InitializeRegularTextDialog(const QString& title_text, const
     }
 
     if (right_button_text.isEmpty()) {
-        ui->button_ok->hide();
-        ui->button_ok->setEnabled(false);
+        ui->button_ok_label->hide();
+        ui->button_ok_label->setEnabled(false);
     }
 
     connect(
@@ -91,7 +91,7 @@ void OverlayDialog::InitializeRegularTextDialog(const QString& title_text, const
         },
         Qt::QueuedConnection);
     connect(
-        ui->button_ok, &QPushButton::clicked, this,
+        ui->button_ok_label, &QPushButton::clicked, this,
         [this](bool) {
             StopInputThread();
             QDialog::accept();
@@ -172,7 +172,7 @@ void OverlayDialog::MoveAndResizeWindow() {
         ui->label_title->setFont(title_text_font);
         ui->label_dialog->setFont(body_text_font);
         ui->button_cancel->setFont(button_text_font);
-        ui->button_ok->setFont(button_text_font);
+        ui->button_ok_label->setFont(button_text_font);
     }
 
     QDialog::move(pos);
@@ -192,7 +192,7 @@ void OverlayDialog::HandleButtonPressedOnce() {
 
 void OverlayDialog::TranslateButtonPress(HIDButton button) {
     QPushButton* left_button = use_rich_text ? ui->button_cancel_rich : ui->button_cancel;
-    QPushButton* right_button = use_rich_text ? ui->button_ok_rich : ui->button_ok;
+    QPushButton* right_button = use_rich_text ? ui->button_ok_rich : ui->button_ok_label;
 
     // TODO (Morph): Handle QTextBrowser text scrolling
     // TODO (Morph): focusPrevious/NextChild() doesn't work well with the rich text dialog, fix it

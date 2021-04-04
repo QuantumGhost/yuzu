@@ -13,11 +13,11 @@
 
 namespace Service::AM::Applets {
 
-static constexpr std::size_t MAX_OK_TEXT_LENGTH = 8;
-static constexpr std::size_t MAX_HEADER_TEXT_LENGTH = 64;
-static constexpr std::size_t MAX_SUB_TEXT_LENGTH = 128;
-static constexpr std::size_t MAX_GUIDE_TEXT_LENGTH = 256;
-static constexpr std::size_t STRING_BUFFER_SIZE = 0x7D4;
+constexpr std::size_t MAX_OK_TEXT_LENGTH = 8;
+constexpr std::size_t MAX_HEADER_TEXT_LENGTH = 64;
+constexpr std::size_t MAX_SUB_TEXT_LENGTH = 128;
+constexpr std::size_t MAX_GUIDE_TEXT_LENGTH = 256;
+constexpr std::size_t STRING_BUFFER_SIZE = 0x7D4;
 
 enum class SwkbdAppletVersion : u32_le {
     Version5 = 0x5,          // 1.0.0
