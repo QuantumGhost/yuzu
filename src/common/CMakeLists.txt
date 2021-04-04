@@ -109,7 +109,6 @@ add_library(common STATIC
     cityhash.h
     common_funcs.h
     common_paths.h
-    common_sizes.h
     common_types.h
     concepts.h
     div_ceil.h

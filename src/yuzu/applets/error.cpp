@@ -19,11 +19,11 @@ QtErrorDisplay::~QtErrorDisplay() = default;
 void QtErrorDisplay::ShowError(ResultCode error, std::function<void()> finished) const {
     callback = std::move(finished);
     emit MainWindowDisplayError(
-        tr("Error Code: %1-%2 (0x%3)")
+        tr("An error has occurred.\nPlease try again or contact the developer of the "
+           "software.\n\nError Code: %1-%2 (0x%3)")
             .arg(static_cast<u32>(error.module.Value()) + 2000, 4, 10, QChar::fromLatin1('0'))
             .arg(error.description, 4, 10, QChar::fromLatin1('0'))
-            .arg(error.raw, 8, 16, QChar::fromLatin1('0')),
-        tr("An error has occurred.\nPlease try again or contact the developer of the software."));
+            .arg(error.raw, 8, 16, QChar::fromLatin1('0')));
 }
 
 void QtErrorDisplay::ShowErrorWithTimestamp(ResultCode error, std::chrono::seconds time,
@@ -32,14 +32,13 @@ void QtErrorDisplay::ShowErrorWithTimestamp(ResultCode error, std::chrono::secon
 
     const QDateTime date_time = QDateTime::fromSecsSinceEpoch(time.count());
     emit MainWindowDisplayError(
-        tr("Error Code: %1-%2 (0x%3)")
+        tr("An error occurred on %1 at %2.\nPlease try again or contact the "
+           "developer of the software.\n\nError Code: %3-%4 (0x%5)")
+            .arg(date_time.toString(QStringLiteral("dddd, MMMM d, yyyy")))
+            .arg(date_time.toString(QStringLiteral("h:mm:ss A")))
             .arg(static_cast<u32>(error.module.Value()) + 2000, 4, 10, QChar::fromLatin1('0'))
             .arg(error.description, 4, 10, QChar::fromLatin1('0'))
-            .arg(error.raw, 8, 16, QChar::fromLatin1('0')),
-        tr("An error occurred on %1 at %2.\nPlease try again or contact the developer of the "
-           "software.")
-            .arg(date_time.toString(QStringLiteral("dddd, MMMM d, yyyy")))
-            .arg(date_time.toString(QStringLiteral("h:mm:ss A"))));
+            .arg(error.raw, 8, 16, QChar::fromLatin1('0')));
 }
 
 void QtErrorDisplay::ShowCustomErrorText(ResultCode error, std::string dialog_text,
@@ -47,11 +46,10 @@ void QtErrorDisplay::ShowCustomErrorText(ResultCode error, std::string dialog_te
                                          std::function<void()> finished) const {
     callback = std::move(finished);
     emit MainWindowDisplayError(
-        tr("Error Code: %1-%2 (0x%3)")
+        tr("An error has occurred.\nError Code: %1-%2 (0x%3)\n\n%4\n\n%5")
             .arg(static_cast<u32>(error.module.Value()) + 2000, 4, 10, QChar::fromLatin1('0'))
             .arg(error.description, 4, 10, QChar::fromLatin1('0'))
-            .arg(error.raw, 8, 16, QChar::fromLatin1('0')),
-        tr("An error has occurred.\n\n%1\n\n%2")
+            .arg(error.raw, 8, 16, QChar::fromLatin1('0'))
             .arg(QString::fromStdString(dialog_text))
             .arg(QString::fromStdString(fullscreen_text)));
 }

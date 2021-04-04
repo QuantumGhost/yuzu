@@ -139,7 +139,6 @@ struct Values {
     Setting<int> vulkan_device;
 
     Setting<u16> resolution_factor{1};
-    Setting<int> fullscreen_mode;
     Setting<int> aspect_ratio;
     Setting<int> max_anisotropy;
     Setting<bool> use_frame_limit;
@@ -223,7 +222,6 @@ struct Values {
     bool quest_flag;
     bool disable_macro_jit;
     bool extended_logging;
-    bool use_auto_stub;
 
     // Miscellaneous
     std::string log_filter;

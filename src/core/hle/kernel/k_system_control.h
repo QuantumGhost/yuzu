@@ -6,18 +6,14 @@
 
 #include "common/common_types.h"
 
-#define BOARD_NINTENDO_NX
-
-#ifdef BOARD_NINTENDO_NX
-
-#include "core/hle/kernel/board/nintendo/nx/k_system_control.h"
-
 namespace Kernel {
 
-using Kernel::Board::Nintendo::Nx::KSystemControl;
+class KSystemControl {
+public:
+    KSystemControl() = default;
+
+    static u64 GenerateRandomRange(u64 min, u64 max);
+    static u64 GenerateRandomU64();
+};
 
 } // namespace Kernel
-
-#else
-#error "Unknown board for KSystemControl"
-#endif

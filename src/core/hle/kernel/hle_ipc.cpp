@@ -75,14 +75,10 @@ void HLERequestContext::ParseCommandBuffer(const HandleTable& handle_table, u32_
         if (incoming) {
             // Populate the object lists with the data in the IPC request.
             for (u32 handle = 0; handle < handle_descriptor_header->num_handles_to_copy; ++handle) {
-                const u32 copy_handle{rp.Pop<Handle>()};
-                copy_handles.push_back(copy_handle);
-                copy_objects.push_back(handle_table.GetGeneric(copy_handle));
+                copy_objects.push_back(handle_table.GetGeneric(rp.Pop<Handle>()));
             }
             for (u32 handle = 0; handle < handle_descriptor_header->num_handles_to_move; ++handle) {
-                const u32 move_handle{rp.Pop<Handle>()};
-                move_handles.push_back(move_handle);
-                move_objects.push_back(handle_table.GetGeneric(move_handle));
+                move_objects.push_back(handle_table.GetGeneric(rp.Pop<Handle>()));
             }
         } else {
             // For responses we just ignore the handles, they're empty and will be populated when

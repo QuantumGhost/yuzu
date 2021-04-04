@@ -37,13 +37,9 @@ enum class GameListRemoveTarget;
 enum class InstalledEntryType;
 class GameListPlaceholder;
 
-class QtSoftwareKeyboardDialog;
-
 namespace Core::Frontend {
 struct ControllerParameters;
-struct InlineAppearParameters;
-struct InlineTextParameters;
-struct KeyboardInitializeParameters;
+struct SoftwareKeyboardParameters;
 } // namespace Core::Frontend
 
 namespace DiscordRPC {
@@ -61,11 +57,8 @@ class InputSubsystem;
 }
 
 namespace Service::AM::Applets {
-enum class SwkbdResult : u32;
-enum class SwkbdTextCheckResult : u32;
-enum class SwkbdReplyType : u32;
 enum class WebExitReason : u32;
-} // namespace Service::AM::Applets
+}
 
 enum class EmulatedDirectoryTarget {
     NAND,
@@ -135,10 +128,8 @@ signals:
 
     void ProfileSelectorFinishedSelection(std::optional<Common::UUID> uuid);
 
-    void SoftwareKeyboardSubmitNormalText(Service::AM::Applets::SwkbdResult result,
-                                          std::u16string submitted_text);
-    void SoftwareKeyboardSubmitInlineText(Service::AM::Applets::SwkbdReplyType reply_type,
-                                          std::u16string submitted_text, s32 cursor_position);
+    void SoftwareKeyboardFinishedText(std::optional<std::u16string> text);
+    void SoftwareKeyboardFinishedCheckDialog();
 
     void WebBrowserExtractOfflineRomFS();
     void WebBrowserClosed(Service::AM::Applets::WebExitReason exit_reason, std::string last_url);
@@ -148,24 +139,15 @@ public slots:
     void OnExecuteProgram(std::size_t program_index);
     void ControllerSelectorReconfigureControllers(
         const Core::Frontend::ControllerParameters& parameters);
-    void SoftwareKeyboardInitialize(
-        bool is_inline, Core::Frontend::KeyboardInitializeParameters initialize_parameters);
-    void SoftwareKeyboardShowNormal();
-    void SoftwareKeyboardShowTextCheck(Service::AM::Applets::SwkbdTextCheckResult text_check_result,
-                                       std::u16string text_check_message);
-    void SoftwareKeyboardShowInline(Core::Frontend::InlineAppearParameters appear_parameters);
-    void SoftwareKeyboardHideInline();
-    void SoftwareKeyboardInlineTextChanged(Core::Frontend::InlineTextParameters text_parameters);
-    void SoftwareKeyboardExit();
-    void ErrorDisplayDisplayError(QString error_code, QString error_text);
+    void ErrorDisplayDisplayError(QString body);
     void ProfileSelectorSelectProfile();
+    void SoftwareKeyboardGetText(const Core::Frontend::SoftwareKeyboardParameters& parameters);
+    void SoftwareKeyboardInvokeCheckDialog(std::u16string error_message);
     void WebBrowserOpenWebPage(std::string_view main_url, std::string_view additional_args,
                                bool is_local);
     void OnAppFocusStateChanged(Qt::ApplicationState state);
 
 private:
-    void RegisterMetaTypes();
-
     void InitializeWidgets();
     void InitializeDebugWidgets();
     void InitializeRecentFileMenuActions();
@@ -351,9 +333,6 @@ private:
 
     // Disables the web applet for the rest of the emulated session
     bool disable_web_applet{};
-
-    // Applets
-    QtSoftwareKeyboardDialog* software_keyboard = nullptr;
 
 protected:
     void dropEvent(QDropEvent* event) override;

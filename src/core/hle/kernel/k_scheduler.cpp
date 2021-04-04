@@ -62,7 +62,7 @@ void KScheduler::RescheduleCores(KernelCore& kernel, u64 cores_pending_reschedul
 }
 
 u64 KScheduler::UpdateHighestPriorityThread(KThread* highest_thread) {
-    KScopedSpinLock lk{guard};
+    std::scoped_lock lock{guard};
     if (KThread* prev_highest_thread = state.highest_priority_thread;
         prev_highest_thread != highest_thread) {
         if (prev_highest_thread != nullptr) {
@@ -637,11 +637,11 @@ void KScheduler::RescheduleCurrentCore() {
     if (phys_core.IsInterrupted()) {
         phys_core.ClearInterrupt();
     }
-    guard.Lock();
+    guard.lock();
     if (state.needs_scheduling.load()) {
         Schedule();
     } else {
-        guard.Unlock();
+        guard.unlock();
     }
 }
 
@@ -669,7 +669,7 @@ void KScheduler::Unload(KThread* thread) {
         } else {
             prev_thread = nullptr;
         }
-        thread->context_guard.Unlock();
+        thread->context_guard.unlock();
     }
 }
 
@@ -713,7 +713,7 @@ void KScheduler::ScheduleImpl() {
 
     // If we're not actually switching thread, there's nothing to do.
     if (next_thread == current_thread.load()) {
-        guard.Unlock();
+        guard.unlock();
         return;
     }
 
@@ -732,7 +732,7 @@ void KScheduler::ScheduleImpl() {
     } else {
         old_context = &idle_thread->GetHostContext();
     }
-    guard.Unlock();
+    guard.unlock();
 
     Common::Fiber::YieldTo(*old_context, *switch_fiber);
     /// When a thread wakes up, the scheduler may have changed to other in another core.
@@ -748,24 +748,24 @@ void KScheduler::OnSwitch(void* this_scheduler) {
 void KScheduler::SwitchToCurrent() {
     while (true) {
         {
-            KScopedSpinLock lk{guard};
+            std::scoped_lock lock{guard};
             current_thread.store(state.highest_priority_thread);
             state.needs_scheduling.store(false);
         }
         const auto is_switch_pending = [this] {
-            KScopedSpinLock lk{guard};
+            std::scoped_lock lock{guard};
             return state.needs_scheduling.load();
         };
         do {
             auto next_thread = current_thread.load();
             if (next_thread != nullptr) {
-                next_thread->context_guard.Lock();
+                next_thread->context_guard.lock();
                 if (next_thread->GetRawState() != ThreadState::Runnable) {
-                    next_thread->context_guard.Unlock();
+                    next_thread->context_guard.unlock();
                     break;
                 }
                 if (next_thread->GetActiveCore() != core_id) {
-                    next_thread->context_guard.Unlock();
+                    next_thread->context_guard.unlock();
                     break;
                 }
             }
