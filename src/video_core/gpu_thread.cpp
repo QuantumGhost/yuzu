@@ -64,7 +64,7 @@ static void RunThread(Core::System& system, VideoCore::RendererBase& renderer,
         if (next.block) {
             // We have to lock the write_lock to ensure that the condition_variable wait not get a
             // race between the check and the lock itself.
-            std::lock_guard<std::mutex> lk(state.write_lock);
+            std::lock_guard lk(state.write_lock);
             state.cv.notify_all();
         }
     }
@@ -135,7 +135,7 @@ void ThreadManager::ShutDown() {
     }
 
     {
-        std::lock_guard<std::mutex> lk(state.write_lock);
+        std::lock_guard lk(state.write_lock);
         state.is_running = false;
         state.cv.notify_all();
     }
@@ -159,12 +159,12 @@ u64 ThreadManager::PushCommand(CommandData&& command_data, bool block) {
         block = true;
     }
 
-    std::unique_lock<std::mutex> lk(state.write_lock);
+    std::unique_lock lk(state.write_lock);
     const u64 fence{++state.last_fence};
     state.queue.Push(CommandDataContainer(std::move(command_data), fence, block));
 
     if (block) {
-        state.cv.wait(lk, [this, fence]() {
+        state.cv.wait(lk, [this, fence] {
             return fence <= state.signaled_fence.load(std::memory_order_relaxed) ||
                    !state.is_running;
         });
