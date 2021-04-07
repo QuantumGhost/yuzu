@@ -130,7 +130,7 @@
             <widget class="QComboBox" name="fullscreen_mode_combobox">
              <item>
               <property name="text">
-               <string>Borderless Windowed (Default)</string>
+               <string>Borderless Windowed</string>
               </property>
              </item>
              <item>

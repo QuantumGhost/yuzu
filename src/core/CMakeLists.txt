@@ -271,9 +271,9 @@ add_library(core STATIC
     hle/service/am/applets/general_backend.h
     hle/service/am/applets/profile_select.cpp
     hle/service/am/applets/profile_select.h
-    hle/service/am/applets/software_keyboard_types.h
     hle/service/am/applets/software_keyboard.cpp
     hle/service/am/applets/software_keyboard.h
+    hle/service/am/applets/software_keyboard_types.h
     hle/service/am/applets/web_browser.cpp
     hle/service/am/applets/web_browser.h
     hle/service/am/applets/web_types.h
