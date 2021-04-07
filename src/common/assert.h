@@ -4,9 +4,12 @@
 
 #pragma once
 
-#include <cstdlib>
-#include "common/common_funcs.h"
 #include "common/logging/log.h"
+
+// Sometimes we want to try to continue even after hitting an assert.
+// However touching this file yields a global recompilation as this header is included almost
+// everywhere. So let's just move the handling of the failed assert to a single cpp file.
+void assert_handle_failure();
 
 // For asserts we'd like to keep all the junk executed when an assert happens away from the
 // important code in the function. One way of doing this is to put all the relevant code inside a
@@ -17,31 +20,33 @@
 // enough for our purposes.
 template <typename Fn>
 #if defined(_MSC_VER)
-[[msvc::noinline, noreturn]]
+[[msvc::noinline]]
 #elif defined(__GNUC__)
-[[gnu::cold, gnu::noinline, noreturn]]
+[[gnu::cold, gnu::noinline]]
 #endif
 static void
 assert_noinline_call(const Fn& fn) {
     fn();
-    Crash();
-    exit(1); // Keeps GCC's mouth shut about this actually returning
+    assert_handle_failure();
 }
 
 #define ASSERT(_a_)                                                                                \
-    if (!(_a_)) {                                                                                  \
-        LOG_CRITICAL(Debug, "Assertion Failed!");                                                  \
-    }
+    do                                                                                             \
+        if (!(_a_)) {                                                                              \
+            assert_noinline_call([] { LOG_CRITICAL(Debug, "Assertion Failed!"); });                \
+        }                                                                                          \
+    while (0)
 
 #define ASSERT_MSG(_a_, ...)                                                                       \
-    if (!(_a_)) {                                                                                  \
-        LOG_CRITICAL(Debug, "Assertion Failed! " __VA_ARGS__);                                     \
-    }
+    do                                                                                             \
+        if (!(_a_)) {                                                                              \
+            assert_noinline_call([&] { LOG_CRITICAL(Debug, "Assertion Failed!\n" __VA_ARGS__); }); \
+        }                                                                                          \
+    while (0)
 
-#define UNREACHABLE()                                                                              \
-    { LOG_CRITICAL(Debug, "Unreachable code!"); }
+#define UNREACHABLE() assert_noinline_call([] { LOG_CRITICAL(Debug, "Unreachable code!"); })
 #define UNREACHABLE_MSG(...)                                                                       \
-    { LOG_CRITICAL(Debug, "Unreachable code!\n" __VA_ARGS__); }
+    assert_noinline_call([&] { LOG_CRITICAL(Debug, "Unreachable code!\n" __VA_ARGS__); })
 
 #ifdef _DEBUG
 #define DEBUG_ASSERT(_a_) ASSERT(_a_)
