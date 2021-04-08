@@ -387,7 +387,8 @@ void SoftwareKeyboard::SubmitForTextCheck(std::u16string submitted_text) {
                   Common::UTF16ToUTF8(current_text));
 
         std::memcpy(out_data.data(), &buffer_size, sizeof(u64));
-        std::memcpy(out_data.data() + sizeof(u64), current_text.data(), buffer_size);
+        std::memcpy(out_data.data() + sizeof(u64), current_text.data(),
+                    current_text.size() * sizeof(char16_t));
     }
 
     broker.PushInteractiveDataFromApplet(std::make_shared<IStorage>(system, std::move(out_data)));
