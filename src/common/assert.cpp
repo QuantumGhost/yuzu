@@ -4,4 +4,8 @@
 
 #include "common/assert.h"
 
-void assert_handle_failure() {}
+#include "common/common_funcs.h"
+
+void assert_handle_failure() {
+    Crash();
+}

@@ -25,8 +25,7 @@ namespace Service::AM::Applets {
 
 class WebBrowser final : public Applet {
 public:
-    WebBrowser(Core::System& system_, LibraryAppletMode applet_mode_,
-               const Core::Frontend::WebBrowserApplet& frontend_);
+    WebBrowser(Core::System& system_, const Core::Frontend::WebBrowserApplet& frontend_);
 
     ~WebBrowser() override;
 
@@ -64,7 +63,6 @@ private:
     void ExecuteWifi();
     void ExecuteLobby();
 
-    LibraryAppletMode applet_mode;
     const Core::Frontend::WebBrowserApplet& frontend;
 
     bool complete{false};

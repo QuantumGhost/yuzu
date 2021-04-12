@@ -62,14 +62,6 @@ enum class AppletId : u32 {
     MyPage = 0x1A,
 };
 
-enum class LibraryAppletMode : u32 {
-    AllForeground = 0,
-    Background = 1,
-    NoUI = 2,
-    BackgroundIndirectDisplay = 3,
-    AllForegroundInitiallyHidden = 4,
-};
-
 class AppletDataBroker final {
 public:
     explicit AppletDataBroker(Kernel::KernelCore& kernel_);
@@ -208,7 +200,7 @@ public:
     void SetDefaultAppletsIfMissing();
     void ClearAll();
 
-    std::shared_ptr<Applet> GetApplet(AppletId id, LibraryAppletMode mode) const;
+    std::shared_ptr<Applet> GetApplet(AppletId id) const;
 
 private:
     AppletFrontendSet frontend;
