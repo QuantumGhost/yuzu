@@ -79,6 +79,11 @@ const float fswzadd_modifiers_a[] = float[4](-1.0f,  1.0f, -1.0f,  0.0f );
 const float fswzadd_modifiers_b[] = float[4](-1.0f, -1.0f,  1.0f, -1.0f );
 )";
 
+enum class HelperFunction {
+    SignedAtomic = 0,
+    Total,
+};
+
 class ShaderWriter final {
 public:
     void AddExpression(std::string_view text) {
@@ -434,6 +439,28 @@ public:
         DeclareInternalFlags();
         DeclareCustomVariables();
         DeclarePhysicalAttributeReader();
+        DeclareHelpersForward();
+
+        const auto& subfunctions = ir.GetSubFunctions();
+        auto it = subfunctions.rbegin();
+        while (it != subfunctions.rend()) {
+            context_func = *it;
+            code.AddLine("void func_{}() {{", context_func->GetId());
+            ++code.scope;
+
+            if (context_func->IsDecompiled()) {
+                DecompileAST();
+            } else {
+                DecompileBranchMode();
+            }
+
+            --code.scope;
+            code.AddLine("}}");
+
+            it++;
+        }
+
+        context_func = ir.GetMainFunction();
 
         code.AddLine("void main() {{");
         ++code.scope;
@@ -442,7 +469,7 @@ public:
             code.AddLine("gl_Position = vec4(0.0f, 0.0f, 0.0f, 1.0f);");
         }
 
-        if (ir.IsDecompiled()) {
+        if (context_func->IsDecompiled()) {
             DecompileAST();
         } else {
             DecompileBranchMode();
@@ -450,6 +477,9 @@ public:
 
         --code.scope;
         code.AddLine("}}");
+
+        code.AddNewLine();
+        DeclareHelpers();
     }
 
     std::string GetResult() {
@@ -462,13 +492,13 @@ private:
 
     void DecompileBranchMode() {
         // VM's program counter
-        const auto first_address = ir.GetBasicBlocks().begin()->first;
+        const auto first_address = context_func->GetBasicBlocks().begin()->first;
         code.AddLine("uint jmp_to = {}U;", first_address);
 
         // TODO(Subv): Figure out the actual depth of the flow stack, for now it seems
         // unlikely that shaders will use 20 nested SSYs and PBKs.
         constexpr u32 FLOW_STACK_SIZE = 20;
-        if (!ir.IsFlowStackDisabled()) {
+        if (!context_func->IsFlowStackDisabled()) {
             for (const auto stack : std::array{MetaStackClass::Ssy, MetaStackClass::Pbk}) {
                 code.AddLine("uint {}[{}];", FlowStackName(stack), FLOW_STACK_SIZE);
                 code.AddLine("uint {} = 0U;", FlowStackTopName(stack));
@@ -480,7 +510,7 @@ private:
 
         code.AddLine("switch (jmp_to) {{");
 
-        for (const auto& pair : ir.GetBasicBlocks()) {
+        for (const auto& pair : context_func->GetBasicBlocks()) {
             const auto& [address, bb] = pair;
             code.AddLine("case 0x{:X}U: {{", address);
             ++code.scope;
@@ -599,7 +629,7 @@ private:
                 size = limit;
             }
 
-            code.AddLine("shared uint smem[{}];", size / 4);
+            code.AddLine("shared uint {}[{}];", GetSharedMemory(), size / 4);
             code.AddNewLine();
         }
         code.AddLine("layout (local_size_x = {}, local_size_y = {}, local_size_z = {}) in;",
@@ -983,6 +1013,27 @@ private:
         }
     }
 
+    void DeclareHelpersForward() {
+        code.AddLine("int Helpers_AtomicShared(uint offset, int value, bool is_min);");
+        code.AddNewLine();
+    }
+
+    void DeclareHelpers() {
+        if (IsHelperEnabled(HelperFunction::SignedAtomic)) {
+            code.AddLine(
+                R"(int Helpers_AtomicShared(uint offset, int value, bool is_min) {{
+    uint oldValue, newValue;
+    do {{
+        oldValue = {}[offset];
+        newValue = is_min ? uint(min(int(oldValue), value)) : uint(max(int(oldValue), value));
+    }} while (atomicCompSwap({}[offset], newValue, oldValue) != oldValue);
+    return int(oldValue);
+}})",
+                GetSharedMemory(), GetSharedMemory());
+            code.AddNewLine();
+        }
+    }
+
     void VisitBlock(const NodeBlock& bb) {
         for (const auto& node : bb) {
             Visit(node).CheckVoid();
@@ -1109,7 +1160,9 @@ private:
         }
 
         if (const auto smem = std::get_if<SmemNode>(&*node)) {
-            return {fmt::format("smem[{} >> 2]", Visit(smem->GetAddress()).AsUint()), Type::Uint};
+            return {
+                fmt::format("{}[{} >> 2]", GetSharedMemory(), Visit(smem->GetAddress()).AsUint()),
+                Type::Uint};
         }
 
         if (const auto internal_flag = std::get_if<InternalFlagNode>(&*node)) {
@@ -1128,6 +1181,11 @@ private:
 
             --code.scope;
             code.AddLine("}}");
+            return {};
+        }
+
+        if (const auto func_call = std::get_if<FunctionCallNode>(&*node)) {
+            code.AddLine("func_{}();", func_call->GetFuncId());
             return {};
         }
 
@@ -1598,7 +1656,9 @@ private:
                 Type::Uint};
         } else if (const auto smem = std::get_if<SmemNode>(&*dest)) {
             ASSERT(stage == ShaderType::Compute);
-            target = {fmt::format("smem[{} >> 2]", Visit(smem->GetAddress()).AsUint()), Type::Uint};
+            target = {
+                fmt::format("{}[{} >> 2]", GetSharedMemory(), Visit(smem->GetAddress()).AsUint()),
+                Type::Uint};
         } else if (const auto gmem = std::get_if<GmemNode>(&*dest)) {
             const std::string real = Visit(gmem->GetRealAddress()).AsUint();
             const std::string base = Visit(gmem->GetBaseAddress()).AsUint();
@@ -2115,7 +2175,14 @@ private:
         UNIMPLEMENTED_IF(meta->sampler.is_array);
         const std::size_t count = operation.GetOperandsCount();
 
-        std::string expr = "texelFetch(";
+        std::string expr = "texelFetch";
+
+        if (!meta->aoffi.empty()) {
+            expr += "Offset";
+        }
+
+        expr += '(';
+
         expr += GetSampler(meta->sampler);
         expr += ", ";
 
@@ -2137,6 +2204,20 @@ private:
             expr += ", ";
             expr += Visit(meta->lod).AsInt();
         }
+
+        if (!meta->aoffi.empty()) {
+            expr += ", ";
+            expr += constructors.at(meta->aoffi.size() - 1);
+            expr += '(';
+            for (size_t i = 0; i < meta->aoffi.size(); ++i) {
+                if (i > 0) {
+                    expr += ", ";
+                }
+                expr += Visit(meta->aoffi[i]).AsInt();
+            }
+            expr += ')';
+        }
+
         expr += ')';
         expr += GetSwizzle(meta->element);
 
@@ -2183,8 +2264,11 @@ private:
     template <const std::string_view& opname, Type type>
     Expression Atomic(Operation operation) {
         if ((opname == Func::Min || opname == Func::Max) && type == Type::Int) {
-            UNIMPLEMENTED_MSG("Unimplemented Min & Max for atomic operations");
-            return {};
+            // Use a helper as a workaround due to memory being uint
+            SetHelperEnabled(HelperFunction::SignedAtomic, true);
+            return {fmt::format("Helpers_AtomicShared({}, {}, {})", Visit(operation[0]).AsInt(),
+                                Visit(operation[1]).AsInt(), opname == Func::Min),
+                    Type::Int};
         }
         return {fmt::format("atomic{}({}, {})", opname, Visit(operation[0]).GetCode(),
                             Visit(operation[1]).AsUint()),
@@ -2267,7 +2351,9 @@ private:
     }
 
     Expression Exit(Operation operation) {
-        PreExit();
+        if (context_func->IsMain()) {
+            PreExit();
+        }
         code.AddLine("return;");
         return {};
     }
@@ -2277,7 +2363,11 @@ private:
         // about unexecuted instructions that may follow this.
         code.AddLine("if (true) {{");
         ++code.scope;
-        code.AddLine("discard;");
+        if (stage != ShaderType::Fragment) {
+            code.AddLine("return;");
+        } else {
+            code.AddLine("discard;");
+        }
         --code.scope;
         code.AddLine("}}");
         return {};
@@ -2388,7 +2478,7 @@ private:
     }
 
     Expression Barrier(Operation) {
-        if (!ir.IsDecompiled()) {
+        if (!context_func->IsDecompiled()) {
             LOG_ERROR(Render_OpenGL, "barrier() used but shader is not decompiled");
             return {};
         }
@@ -2705,6 +2795,10 @@ private:
         }
     }
 
+    constexpr std::string_view GetSharedMemory() const {
+        return "shared_mem";
+    }
+
     std::string GetInternalFlag(InternalFlag flag) const {
         constexpr std::array InternalFlagNames = {"zero_flag", "sign_flag", "carry_flag",
                                                   "overflow_flag"};
@@ -2746,6 +2840,14 @@ private:
         return std::min<u32>(device.GetMaxVaryings(), Maxwell::NumVaryings);
     }
 
+    void SetHelperEnabled(HelperFunction hf, bool enabled) {
+        helper_functions_enabled[static_cast<size_t>(hf)] = enabled;
+    }
+
+    bool IsHelperEnabled(HelperFunction hf) const {
+        return helper_functions_enabled[static_cast<size_t>(hf)];
+    }
+
     const Device& device;
     const ShaderIR& ir;
     const Registry& registry;
@@ -2755,9 +2857,13 @@ private:
     const Header header;
     std::unordered_map<u8, VaryingTFB> transform_feedback;
 
+    std::shared_ptr<ShaderFunctionIR> context_func;
+
     ShaderWriter code;
 
     std::optional<u32> max_input_vertices;
+
+    std::array<bool, static_cast<size_t>(HelperFunction::Total)> helper_functions_enabled{};
 };
 
 std::string GetFlowVariable(u32 index) {
@@ -2902,9 +3008,15 @@ public:
             decomp.code.scope++;
         }
         if (ast.kills) {
-            decomp.code.AddLine("discard;");
+            if (decomp.stage != ShaderType::Fragment) {
+                decomp.code.AddLine("return;");
+            } else {
+                decomp.code.AddLine("discard;");
+            }
         } else {
-            decomp.PreExit();
+            if (decomp.context_func->IsMain()) {
+                decomp.PreExit();
+            }
             decomp.code.AddLine("return;");
         }
         if (!is_true) {
@@ -2937,13 +3049,13 @@ private:
 };
 
 void GLSLDecompiler::DecompileAST() {
-    const u32 num_flow_variables = ir.GetASTNumVariables();
+    const u32 num_flow_variables = context_func->GetASTNumVariables();
     for (u32 i = 0; i < num_flow_variables; i++) {
         code.AddLine("bool {} = false;", GetFlowVariable(i));
     }
 
     ASTDecompiler decompiler{*this};
-    decompiler.Visit(ir.GetASTProgram());
+    decompiler.Visit(context_func->GetASTProgram());
 }
 
 } // Anonymous namespace

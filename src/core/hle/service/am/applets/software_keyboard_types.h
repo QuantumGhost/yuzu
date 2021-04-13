@@ -176,7 +176,7 @@ struct SwkbdConfigNew {
     std::array<u64, 24> customized_dictionary_set_entries{};
     u8 total_customized_dictionary_set_entries{};
     bool disable_cancel_button{};
-    INSERT_PADDING_BYTES(15);
+    INSERT_PADDING_BYTES(18);
 };
 static_assert(sizeof(SwkbdConfigNew) == 0x4C8 - sizeof(SwkbdConfigCommon),
               "SwkbdConfigNew has incorrect size.");
