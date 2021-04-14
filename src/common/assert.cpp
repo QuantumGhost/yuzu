@@ -3,5 +3,12 @@
 // Refer to the license.txt file included.
 
 #include "common/assert.h"
+#include "common/common_funcs.h"
 
-void assert_handle_failure() {}
+#include "core/settings.h"
+
+void assert_handle_failure() {
+    if (Settings::values.use_debug_asserts) {
+        Crash();
+    }
+}
