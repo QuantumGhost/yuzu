@@ -347,7 +347,7 @@ public:
     explicit GameListSearchField(GameList* parent = nullptr);
 
     void setFilterResult(int visible, int total);
-    bool SearchFieldEmpty();
+    bool SearchFieldEmpty() const;
 
     void clear();
     void setFocus();

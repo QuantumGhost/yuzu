@@ -113,8 +113,8 @@ private:
     void RefreshGameDirectory();
 
     void ToggleFavorite(u64 program_id);
-    void AddFavorite(const u64& program_id);
-    void RemoveFavorite(const u64& program_id);
+    void AddFavorite(u64 program_id);
+    void RemoveFavorite(u64 program_id);
 
     void PopupContextMenu(const QPoint& menu_location);
     void AddGamePopup(QMenu& context_menu, u64 program_id, const std::string& path);

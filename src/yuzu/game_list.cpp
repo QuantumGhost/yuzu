@@ -85,7 +85,7 @@ void GameListSearchField::setFilterResult(int visible, int total) {
     label_filter_result->setText(tr("%1 of %n result(s)", "", total).arg(visible));
 }
 
-bool GameListSearchField::SearchFieldEmpty() {
+bool GameListSearchField::SearchFieldEmpty() const {
     return edit_filter->text().isEmpty();
 }
 
@@ -788,7 +788,7 @@ void GameList::ToggleFavorite(u64 program_id) {
     }
 }
 
-void GameList::AddFavorite(const u64& program_id) {
+void GameList::AddFavorite(u64 program_id) {
     const auto favorites_row = item_model->item(0);
 
     for (int i = 1; i < item_model->rowCount() - 1; i++) {
@@ -810,7 +810,7 @@ void GameList::AddFavorite(const u64& program_id) {
     }
 }
 
-void GameList::RemoveFavorite(const u64& program_id) {
+void GameList::RemoveFavorite(u64 program_id) {
     const auto favorites_row = item_model->item(0);
 
     for (int i = 0; i < favorites_row->rowCount(); i++) {

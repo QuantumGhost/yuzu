@@ -622,8 +622,6 @@ add_library(core STATIC
     perf_stats.h
     reporter.cpp
     reporter.h
-    settings.cpp
-    settings.h
     telemetry_session.cpp
     telemetry_session.h
     tools/freezer.cpp

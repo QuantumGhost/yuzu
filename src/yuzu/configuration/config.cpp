@@ -1616,7 +1616,7 @@ void Config::Reload() {
     ReadValues();
     // To apply default value changes
     SaveValues();
-    Settings::Apply(Core::System::GetInstance());
+    Core::System::GetInstance().ApplySettings();
 }
 
 void Config::Save() {

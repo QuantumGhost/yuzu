@@ -7,10 +7,10 @@
 #include <QScreen>
 
 #include "common/logging/log.h"
+#include "common/settings.h"
 #include "common/string_util.h"
 #include "core/core.h"
 #include "core/frontend/input_interpreter.h"
-#include "core/settings.h"
 #include "ui_software_keyboard.h"
 #include "yuzu/applets/software_keyboard.h"
 #include "yuzu/main.h"
