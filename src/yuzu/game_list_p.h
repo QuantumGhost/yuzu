@@ -30,7 +30,7 @@ enum class GameListItemType {
     UserNandDir = QStandardItem::UserType + 4,
     SysNandDir = QStandardItem::UserType + 5,
     AddDir = QStandardItem::UserType + 6,
-    Favorites = QStandardItem::UserType + 7
+    Favorites = QStandardItem::UserType + 7,
 };
 
 Q_DECLARE_METATYPE(GameListItemType);
@@ -347,7 +347,7 @@ public:
     explicit GameListSearchField(GameList* parent = nullptr);
 
     void setFilterResult(int visible, int total);
-    bool SearchFieldEmpty() const;
+    bool isEmpty() const;
 
     void clear();
     void setFocus();

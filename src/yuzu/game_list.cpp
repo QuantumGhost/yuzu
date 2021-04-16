@@ -85,7 +85,7 @@ void GameListSearchField::setFilterResult(int visible, int total) {
     label_filter_result->setText(tr("%1 of %n result(s)", "", total).arg(visible));
 }
 
-bool GameListSearchField::SearchFieldEmpty() const {
+bool GameListSearchField::isEmpty() const {
     return edit_filter->text().isEmpty();
 }
 
@@ -446,7 +446,7 @@ void GameList::DonePopulating(const QStringList& watch_list) {
     tree_view->setRowHidden(0, item_model->invisibleRootItem()->index(),
                             UISettings::values.favorited_ids.size() == 0);
     tree_view->expand(item_model->invisibleRootItem()->child(0)->index());
-    for (u64 id : UISettings::values.favorited_ids) {
+    for (const auto id : UISettings::values.favorited_ids) {
         AddFavorite(id);
     }
 
@@ -649,7 +649,7 @@ void GameList::AddFavoritesPopup(QMenu& context_menu) {
     QAction* clear_all = context_menu.addAction(tr("Clear"));
 
     connect(clear_all, &QAction::triggered, [this] {
-        for (u64 id : UISettings::values.favorited_ids) {
+        for (const auto id : UISettings::values.favorited_ids) {
             RemoveFavorite(id);
         }
         UISettings::values.favorited_ids.clear();
@@ -774,7 +774,7 @@ void GameList::RefreshGameDirectory() {
 void GameList::ToggleFavorite(u64 program_id) {
     if (!UISettings::values.favorited_ids.contains(program_id)) {
         tree_view->setRowHidden(0, item_model->invisibleRootItem()->index(),
-                                !search_field->SearchFieldEmpty());
+                                !search_field->isEmpty());
         UISettings::values.favorited_ids.append(program_id);
         AddFavorite(program_id);
         item_model->sort(tree_view->header()->sortIndicatorSection(),
@@ -789,12 +789,13 @@ void GameList::ToggleFavorite(u64 program_id) {
 }
 
 void GameList::AddFavorite(u64 program_id) {
-    const auto favorites_row = item_model->item(0);
+    auto* favorites_row = item_model->item(0);
 
     for (int i = 1; i < item_model->rowCount() - 1; i++) {
-        const auto folder = item_model->item(i);
+        const auto* folder = item_model->item(i);
         for (int j = 0; j < folder->rowCount(); j++) {
-            if (folder->child(j)->data(GameListItemPath::ProgramIdRole) == program_id) {
+            if (folder->child(j)->data(GameListItemPath::ProgramIdRole).toULongLong() ==
+                program_id) {
                 QList<QStandardItem*> list;
                 for (int k = 0; k < item_model->columnCount(); k++) {
                     list.append(folder->child(j, k)->clone());
@@ -811,11 +812,11 @@ void GameList::AddFavorite(u64 program_id) {
 }
 
 void GameList::RemoveFavorite(u64 program_id) {
-    const auto favorites_row = item_model->item(0);
+    auto* favorites_row = item_model->item(0);
 
     for (int i = 0; i < favorites_row->rowCount(); i++) {
-        const auto game = favorites_row->child(i);
-        if (game->data(GameListItemPath::ProgramIdRole) == program_id) {
+        const auto* game = favorites_row->child(i);
+        if (game->data(GameListItemPath::ProgramIdRole).toULongLong() == program_id) {
             favorites_row->removeRow(i);
             return;
         }
