@@ -31,15 +31,8 @@ NvResult nvhost_nvdec::Ioctl1(DeviceFD fd, Ioctl command, const std::vector<u8>&
             return SetSubmitTimeout(input, output);
         case 0x9:
             return MapBuffer(input, output);
-        case 0xa: {
-            if (command.length == 0x1c) {
-                LOG_INFO(Service_NVDRV, "NVDEC video stream ended");
-                Tegra::ChCommandHeaderList cmdlist{{0xDEADB33F}};
-                system.GPU().PushCommandBuffer(cmdlist);
-                system.GPU().MemoryManager().InvalidateQueuedCaches();
-            }
+        case 0xa:
             return UnmapBuffer(input, output);
-        }
         default:
             break;
         }
@@ -71,6 +64,10 @@ NvResult nvhost_nvdec::Ioctl3(DeviceFD fd, Ioctl command, const std::vector<u8>&
 }
 
 void nvhost_nvdec::OnOpen(DeviceFD fd) {}
-void nvhost_nvdec::OnClose(DeviceFD fd) {}
+
+void nvhost_nvdec::OnClose(DeviceFD fd) {
+    system.GPU().ClearCommandBuffer();
+    system.GPU().MemoryManager().InvalidateQueuedCaches();
+}
 
 } // namespace Service::Nvidia::Devices
