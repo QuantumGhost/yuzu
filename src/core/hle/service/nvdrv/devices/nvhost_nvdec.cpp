@@ -66,7 +66,8 @@ NvResult nvhost_nvdec::Ioctl3(DeviceFD fd, Ioctl command, const std::vector<u8>&
 void nvhost_nvdec::OnOpen(DeviceFD fd) {}
 
 void nvhost_nvdec::OnClose(DeviceFD fd) {
-    system.GPU().ClearCommandBuffer();
+    LOG_INFO(Service_NVDRV, "NVDEC video stream ended");
+    system.GPU().ClearCdmaInstance();
     system.GPU().MemoryManager().InvalidateQueuedCaches();
 }
 
