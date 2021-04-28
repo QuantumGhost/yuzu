@@ -155,18 +155,15 @@ void Adapter::UpdateStateAxes(std::size_t port, const AdapterPayload& adapter_pa
     for (const PadAxes axis : axes) {
         const auto index = static_cast<std::size_t>(axis);
         const u8 axis_value = adapter_payload[offset + 3 + index];
-        if (pads[port].reset_origin_counter <= 3) {
+        if (pads[port].reset_origin_counter <= 18) {
             if (pads[port].axis_origin[index] != axis_value) {
                 pads[port].reset_origin_counter = 0;
             }
             pads[port].axis_origin[index] = axis_value;
+            pads[port].reset_origin_counter++;
         }
         pads[port].axis_values[index] =
             static_cast<s16>(axis_value - pads[port].axis_origin[index]);
-    }
-
-    if (pads[port].reset_origin_counter <= 3) {
-        pads[port].reset_origin_counter++;
     }
 }
 
