@@ -1,4 +1,4 @@
-// Copyright 2018 yuzu emulator team
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -7,14 +7,13 @@
 #include <array>
 #include "common/bit_field.h"
 #include "common/common_types.h"
-#include "common/swap.h"
 #include "core/frontend/input.h"
 #include "core/hle/service/hid/controllers/controller_base.h"
 
 namespace Service::HID {
 class Controller_Gesture final : public ControllerBase {
 public:
-    explicit Controller_Gesture(Core::System& system);
+    explicit Controller_Gesture(Core::System& system_);
     ~Controller_Gesture() override;
 
     // Called when the controller is initialized
@@ -73,7 +72,6 @@ private:
     struct GestureState {
         s64_le sampling_number;
         s64_le sampling_number2;
-
         s64_le detection_count;
         TouchType type;
         Direction direction;
@@ -84,8 +82,8 @@ private:
         f32 vel_x;
         f32 vel_y;
         Attribute attributes;
-        u32 scale;
-        u32 rotation_angle;
+        f32 scale;
+        f32 rotation_angle;
         s32_le point_count;
         std::array<Points, 4> points;
     };
@@ -109,19 +107,29 @@ private:
         Points mid_point{};
         s64_le detection_count{};
         u64_le delta_time{};
-        float average_distance{};
-        float angle{};
+        f32 average_distance{};
+        f32 angle{};
     };
 
     // Reads input from all available input engines
     void ReadTouchInput();
 
     // Returns true if gesture state needs to be updated
-    bool ShouldUpdateGesture(const GestureProperties& gesture, float time_difference);
+    bool ShouldUpdateGesture(const GestureProperties& gesture, f32 time_difference);
 
     // Updates the shared memory to the next state
     void UpdateGestureSharedMemory(u8* data, std::size_t size, GestureProperties& gesture,
-                                   float time_difference);
+                                   f32 time_difference);
+
+    // Initializes new gesture
+    void NewGesture(GestureProperties& gesture, TouchType& type, Attribute& attributes);
+
+    // Updates existing gesture state
+    void UpdateExistingGesture(GestureProperties& gesture, TouchType& type, f32 time_difference);
+
+    // Terminates exiting gesture
+    void EndGesture(GestureProperties& gesture, GestureProperties& last_gesture, TouchType& type,
+                    Attribute& attributes, f32 time_difference);
 
     // Set current event to a tap event
     void SetTapEvent(GestureProperties& gesture, GestureProperties& last_gesture, TouchType& type,
@@ -129,11 +137,11 @@ private:
 
     // Calculates and set the extra parameters related to a pan event
     void UpdatePanEvent(GestureProperties& gesture, GestureProperties& last_gesture,
-                        TouchType& type, float time_difference);
+                        TouchType& type, f32 time_difference);
 
     // Terminates the pan event
     void EndPanEvent(GestureProperties& gesture, GestureProperties& last_gesture, TouchType& type,
-                     float time_difference);
+                     f32 time_difference);
 
     // Set current event to a swipe event
     void SetSwipeEvent(GestureProperties& gesture, GestureProperties& last_gesture,
@@ -163,7 +171,8 @@ private:
     GestureProperties last_gesture{};
     s64_le last_update_timestamp{};
     s64_le last_tap_timestamp{};
-    float last_pan_time_difference{};
+    f32 last_pan_time_difference{};
     bool force_update{false};
+    bool enable_press_and_tap{false};
 };
 } // namespace Service::HID

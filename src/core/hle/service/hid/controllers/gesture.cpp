@@ -1,26 +1,31 @@
-// Copyright 2018 yuzu emulator team
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
-#include <cstring>
-#include "common/common_types.h"
 #include "common/logging/log.h"
+#include "common/math_util.h"
 #include "common/settings.h"
 #include "core/core_timing.h"
 #include "core/frontend/emu_window.h"
 #include "core/hle/service/hid/controllers/gesture.h"
 
+namespace {
+constexpr inline f32 Square(s32 num) {
+    return static_cast<f32>(num * num);
+}
+} // Anonymous namespace
+
 namespace Service::HID {
 constexpr std::size_t SHARED_MEMORY_OFFSET = 0x3BA00;
 
-constexpr f32 angle_threshold = 0.02f;
-constexpr f32 pinch_threshold = 100.0f;
 // HW is around 700, value is set to 400 to make it easier to trigger with mouse
-constexpr float swipe_threshold = 400.0f;
-constexpr float press_delay = 0.500f;      // Time in seconds
-constexpr float double_tap_delay = 0.350f; // Time in seconds
+constexpr f32 swipe_threshold = 400.0f; // Threshold in pixels/s
+constexpr f32 angle_threshold = 0.015f; // Threshold in radians
+constexpr f32 pinch_threshold = 0.5f;   // Threshold in pixels
+constexpr f32 press_delay = 0.5f;       // Time in seconds
+constexpr f32 double_tap_delay = 0.35f; // Time in seconds
 
-Controller_Gesture::Controller_Gesture(Core::System& system) : ControllerBase(system) {}
+Controller_Gesture::Controller_Gesture(Core::System& system_) : ControllerBase{system_} {}
 Controller_Gesture::~Controller_Gesture() = default;
 
 void Controller_Gesture::OnInit() {
@@ -49,9 +54,8 @@ void Controller_Gesture::OnUpdate(const Core::Timing::CoreTiming& core_timing, u
     ReadTouchInput();
 
     GestureProperties gesture = GetGestureProperties();
-    float time_difference =
-        static_cast<float>(shared_memory.header.timestamp - last_update_timestamp) /
-        (1000 * 1000 * 1000);
+    f32 time_difference = static_cast<f32>(shared_memory.header.timestamp - last_update_timestamp) /
+                          (1000 * 1000 * 1000);
 
     // Only update if necesary
     if (!ShouldUpdateGesture(gesture, time_difference)) {
@@ -80,7 +84,7 @@ void Controller_Gesture::ReadTouchInput() {
 }
 
 bool Controller_Gesture::ShouldUpdateGesture(const GestureProperties& gesture,
-                                             float time_difference) {
+                                             f32 time_difference) {
     const auto& last_entry = shared_memory.gesture_states[shared_memory.header.last_entry_index];
     if (force_update) {
         force_update = false;
@@ -98,7 +102,7 @@ bool Controller_Gesture::ShouldUpdateGesture(const GestureProperties& gesture,
     // Update on press and hold event after 0.5 seconds
     if (last_entry.type == TouchType::Touch && last_entry.point_count == 1 &&
         time_difference > press_delay) {
-        return true;
+        return enable_press_and_tap;
     }
 
     return false;
@@ -106,7 +110,7 @@ bool Controller_Gesture::ShouldUpdateGesture(const GestureProperties& gesture,
 
 void Controller_Gesture::UpdateGestureSharedMemory(u8* data, std::size_t size,
                                                    GestureProperties& gesture,
-                                                   float time_difference) {
+                                                   f32 time_difference) {
     TouchType type = TouchType::Idle;
     Attribute attributes{};
 
@@ -117,6 +121,7 @@ void Controller_Gesture::UpdateGestureSharedMemory(u8* data, std::size_t size,
     if (shared_memory.header.entry_count < 16) {
         shared_memory.header.entry_count++;
     }
+
     cur_entry.sampling_number = last_entry.sampling_number + 1;
     cur_entry.sampling_number2 = cur_entry.sampling_number;
 
@@ -131,71 +136,15 @@ void Controller_Gesture::UpdateGestureSharedMemory(u8* data, std::size_t size,
 
     if (gesture.active_points > 0) {
         if (last_gesture.active_points == 0) {
-            // New touch
-            gesture.detection_count++;
-            type = TouchType::Touch;
-            if (last_entry.type != TouchType::Cancel) {
-                attributes.is_new_touch.Assign(1);
-            }
+            NewGesture(gesture, type, attributes);
         } else {
-            // Promote to pan type if touch moved
-            for (size_t id = 0; id < MAX_POINTS; id++) {
-                if (gesture.points[id].x != last_gesture.points[id].x ||
-                    gesture.points[id].y != last_gesture.points[id].y) {
-                    type = TouchType::Pan;
-                    break;
-                }
-            }
-            // Number of fingers changed cancel the last event
-            if (gesture.active_points != last_gesture.active_points) {
-                type = TouchType::Cancel;
-                gesture.active_points = 0;
-                gesture.mid_point = {};
-                for (size_t id = 0; id < MAX_POINTS; id++) {
-                    gesture.points[id].x = 0;
-                    gesture.points[id].y = 0;
-                }
-            }
+            UpdateExistingGesture(gesture, type, time_difference);
         }
-
-        // Calculate extra parameters of panning
-        if (type == TouchType::Pan) {
-            UpdatePanEvent(gesture, last_gesture, type, time_difference);
-        }
-
-        // Promote to press type
-        if (type == TouchType::Idle && last_entry.type == TouchType::Touch) {
-            type = TouchType::Press;
-        }
-
     } else {
-        // Touch end
-        if (last_gesture.active_points != 0) {
-            switch (last_entry.type) {
-            case TouchType::Touch:
-                SetTapEvent(gesture, last_gesture, type, attributes);
-                break;
-            case TouchType::Press:
-            case TouchType::Tap:
-            case TouchType::Swipe:
-            case TouchType::Pinch:
-            case TouchType::Rotate:
-                type = TouchType::Complete;
-                force_update = true;
-                break;
-            case TouchType::Pan:
-                EndPanEvent(gesture, last_gesture, type, time_difference);
-                break;
-            default:
-                break;
-            }
-        } else {
-            if (last_entry.type == TouchType::Complete || last_entry.type == TouchType::Cancel) {
-                gesture.detection_count++;
-            }
-        }
+        EndGesture(gesture, last_gesture, type, attributes, time_difference);
     }
 
+    // Apply attributes
     cur_entry.detection_count = gesture.detection_count;
     cur_entry.type = type;
     cur_entry.attributes = attributes;
@@ -211,13 +160,101 @@ void Controller_Gesture::UpdateGestureSharedMemory(u8* data, std::size_t size,
     std::memcpy(data + SHARED_MEMORY_OFFSET, &shared_memory, sizeof(SharedMemory));
 }
 
+void Controller_Gesture::NewGesture(GestureProperties& gesture, TouchType& type,
+                                    Attribute& attributes) {
+    const auto& last_entry =
+        shared_memory.gesture_states[(shared_memory.header.last_entry_index + 16) % 17];
+    gesture.detection_count++;
+    type = TouchType::Touch;
+
+    // New touch after cancel is not considered new
+    if (last_entry.type != TouchType::Cancel) {
+        attributes.is_new_touch.Assign(1);
+        enable_press_and_tap = true;
+    }
+}
+
+void Controller_Gesture::UpdateExistingGesture(GestureProperties& gesture, TouchType& type,
+                                               f32 time_difference) {
+    const auto& last_entry =
+        shared_memory.gesture_states[(shared_memory.header.last_entry_index + 16) % 17];
+
+    // Promote to pan type if touch moved
+    for (size_t id = 0; id < MAX_POINTS; id++) {
+        if (gesture.points[id].x != last_gesture.points[id].x ||
+            gesture.points[id].y != last_gesture.points[id].y) {
+            type = TouchType::Pan;
+            break;
+        }
+    }
+
+    // Number of fingers changed cancel the last event and clear data
+    if (gesture.active_points != last_gesture.active_points) {
+        type = TouchType::Cancel;
+        enable_press_and_tap = false;
+        gesture.active_points = 0;
+        gesture.mid_point = {};
+        for (size_t id = 0; id < MAX_POINTS; id++) {
+            gesture.points[id].x = 0;
+            gesture.points[id].y = 0;
+        }
+        return;
+    }
+
+    // Calculate extra parameters of panning
+    if (type == TouchType::Pan) {
+        UpdatePanEvent(gesture, last_gesture, type, time_difference);
+        return;
+    }
+
+    // Promote to press type
+    if (last_entry.type == TouchType::Touch) {
+        type = TouchType::Press;
+    }
+}
+
+void Controller_Gesture::EndGesture(GestureProperties& gesture, GestureProperties& last_gesture,
+                                    TouchType& type, Attribute& attributes, f32 time_difference) {
+    const auto& last_entry =
+        shared_memory.gesture_states[(shared_memory.header.last_entry_index + 16) % 17];
+    if (last_gesture.active_points != 0) {
+        switch (last_entry.type) {
+        case TouchType::Touch:
+            if (enable_press_and_tap) {
+                SetTapEvent(gesture, last_gesture, type, attributes);
+                return;
+            }
+            type = TouchType::Cancel;
+            force_update = true;
+            break;
+        case TouchType::Press:
+        case TouchType::Tap:
+        case TouchType::Swipe:
+        case TouchType::Pinch:
+        case TouchType::Rotate:
+            type = TouchType::Complete;
+            force_update = true;
+            break;
+        case TouchType::Pan:
+            EndPanEvent(gesture, last_gesture, type, time_difference);
+            break;
+        default:
+            break;
+        }
+        return;
+    }
+    if (last_entry.type == TouchType::Complete || last_entry.type == TouchType::Cancel) {
+        gesture.detection_count++;
+    }
+}
+
 void Controller_Gesture::SetTapEvent(GestureProperties& gesture, GestureProperties& last_gesture,
                                      TouchType& type, Attribute& attributes) {
     type = TouchType::Tap;
     gesture = last_gesture;
     force_update = true;
-    float tap_time_difference =
-        static_cast<float>(last_update_timestamp - last_tap_timestamp) / (1000 * 1000 * 1000);
+    f32 tap_time_difference =
+        static_cast<f32>(last_update_timestamp - last_tap_timestamp) / (1000 * 1000 * 1000);
     last_tap_timestamp = last_update_timestamp;
     if (tap_time_difference < double_tap_delay) {
         attributes.is_double_tap.Assign(1);
@@ -225,40 +262,43 @@ void Controller_Gesture::SetTapEvent(GestureProperties& gesture, GestureProperti
 }
 
 void Controller_Gesture::UpdatePanEvent(GestureProperties& gesture, GestureProperties& last_gesture,
-                                        TouchType& type, float time_difference) {
+                                        TouchType& type, f32 time_difference) {
     auto& cur_entry = shared_memory.gesture_states[shared_memory.header.last_entry_index];
-    auto& last_entry =
+    const auto& last_entry =
         shared_memory.gesture_states[(shared_memory.header.last_entry_index + 16) % 17];
     cur_entry.delta_x = gesture.mid_point.x - last_entry.x;
     cur_entry.delta_y = gesture.mid_point.y - last_entry.y;
 
-    cur_entry.vel_x = static_cast<float>(cur_entry.delta_x) / time_difference;
-    cur_entry.vel_y = static_cast<float>(cur_entry.delta_y) / time_difference;
+    cur_entry.vel_x = static_cast<f32>(cur_entry.delta_x) / time_difference;
+    cur_entry.vel_y = static_cast<f32>(cur_entry.delta_y) / time_difference;
     last_pan_time_difference = time_difference;
 
     // Promote to pinch type
     if (std::abs(gesture.average_distance - last_gesture.average_distance) > pinch_threshold) {
         type = TouchType::Pinch;
-        cur_entry.scale = 1;
+        cur_entry.scale = gesture.average_distance / last_gesture.average_distance;
     }
 
+    const f32 angle_between_two_lines = std::atan((gesture.angle - last_gesture.angle) /
+                                                  (1 + (gesture.angle * last_gesture.angle)));
     // Promote to rotate type
-    if (std::abs(gesture.angle - last_gesture.angle) > angle_threshold) {
+    if (std::abs(angle_between_two_lines) > angle_threshold) {
         type = TouchType::Rotate;
-        cur_entry.rotation_angle = 1;
+        cur_entry.scale = 0;
+        cur_entry.rotation_angle = angle_between_two_lines * 180.0f / Common::PI;
     }
 }
 
 void Controller_Gesture::EndPanEvent(GestureProperties& gesture, GestureProperties& last_gesture,
-                                     TouchType& type, float time_difference) {
+                                     TouchType& type, f32 time_difference) {
     auto& cur_entry = shared_memory.gesture_states[shared_memory.header.last_entry_index];
-    auto& last_entry =
+    const auto& last_entry =
         shared_memory.gesture_states[(shared_memory.header.last_entry_index + 16) % 17];
     cur_entry.vel_x =
-        static_cast<float>(last_entry.delta_x) / (last_pan_time_difference + time_difference);
+        static_cast<f32>(last_entry.delta_x) / (last_pan_time_difference + time_difference);
     cur_entry.vel_y =
-        static_cast<float>(last_entry.delta_y) / (last_pan_time_difference + time_difference);
-    const float curr_vel =
+        static_cast<f32>(last_entry.delta_y) / (last_pan_time_difference + time_difference);
+    const f32 curr_vel =
         std::sqrt((cur_entry.vel_x * cur_entry.vel_x) + (cur_entry.vel_y * cur_entry.vel_y));
 
     // Set swipe event with parameters
@@ -277,7 +317,7 @@ void Controller_Gesture::EndPanEvent(GestureProperties& gesture, GestureProperti
 void Controller_Gesture::SetSwipeEvent(GestureProperties& gesture, GestureProperties& last_gesture,
                                        TouchType& type) {
     auto& cur_entry = shared_memory.gesture_states[shared_memory.header.last_entry_index];
-    auto& last_entry =
+    const auto& last_entry =
         shared_memory.gesture_states[(shared_memory.header.last_entry_index + 16) % 17];
     type = TouchType::Swipe;
     gesture = last_gesture;
@@ -360,32 +400,30 @@ Controller_Gesture::GestureProperties Controller_Gesture::GetGestureProperties()
 
     for (size_t id = 0; id < gesture.active_points; ++id) {
         gesture.points[id].x =
-            static_cast<int>(active_fingers[id].x * Layout::ScreenUndocked::Width);
+            static_cast<s32>(active_fingers[id].x * Layout::ScreenUndocked::Width);
         gesture.points[id].y =
-            static_cast<int>(active_fingers[id].y * Layout::ScreenUndocked::Height);
+            static_cast<s32>(active_fingers[id].y * Layout::ScreenUndocked::Height);
 
         // Hack: There is no touch in docked but games still allow it
         if (Settings::values.use_docked_mode.GetValue()) {
             gesture.points[id].x =
-                static_cast<int>(active_fingers[id].x * Layout::ScreenDocked::Width);
+                static_cast<s32>(active_fingers[id].x * Layout::ScreenDocked::Width);
             gesture.points[id].y =
-                static_cast<int>(active_fingers[id].y * Layout::ScreenDocked::Height);
+                static_cast<s32>(active_fingers[id].y * Layout::ScreenDocked::Height);
         }
 
-        gesture.mid_point.x += static_cast<int>(gesture.points[id].x / gesture.active_points);
-        gesture.mid_point.y += static_cast<int>(gesture.points[id].y / gesture.active_points);
+        gesture.mid_point.x += static_cast<s32>(gesture.points[id].x / gesture.active_points);
+        gesture.mid_point.y += static_cast<s32>(gesture.points[id].y / gesture.active_points);
     }
 
     for (size_t id = 0; id < gesture.active_points; ++id) {
-        const double distance =
-            std::pow(static_cast<float>(gesture.mid_point.x - gesture.points[id].x), 2) +
-            std::pow(static_cast<float>(gesture.mid_point.y - gesture.points[id].y), 2);
-        gesture.average_distance +=
-            static_cast<float>(distance) / static_cast<float>(gesture.active_points);
+        const f32 distance = std::sqrt(Square(gesture.mid_point.x - gesture.points[id].x) +
+                                       Square(gesture.mid_point.y - gesture.points[id].y));
+        gesture.average_distance += distance / static_cast<f32>(gesture.active_points);
     }
 
-    gesture.angle = std::atan2(static_cast<float>(gesture.mid_point.y - gesture.points[0].y),
-                               static_cast<float>(gesture.mid_point.x - gesture.points[0].x));
+    gesture.angle = std::atan2(static_cast<f32>(gesture.mid_point.y - gesture.points[0].y),
+                               static_cast<f32>(gesture.mid_point.x - gesture.points[0].x));
 
     gesture.detection_count = last_gesture.detection_count;
 
