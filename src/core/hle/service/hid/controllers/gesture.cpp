@@ -9,12 +9,6 @@
 #include "core/frontend/emu_window.h"
 #include "core/hle/service/hid/controllers/gesture.h"
 
-namespace {
-constexpr inline f32 Square(s32 num) {
-    return static_cast<f32>(num * num);
-}
-} // Anonymous namespace
-
 namespace Service::HID {
 constexpr std::size_t SHARED_MEMORY_OFFSET = 0x3BA00;
 
@@ -25,7 +19,11 @@ constexpr f32 pinch_threshold = 0.5f;   // Threshold in pixels
 constexpr f32 press_delay = 0.5f;       // Time in seconds
 constexpr f32 double_tap_delay = 0.35f; // Time in seconds
 
-Controller_Gesture::Controller_Gesture(Core::System& system_) : ControllerBase{system_} {}
+constexpr f32 Square(s32 num) {
+    return static_cast<f32>(num * num);
+}
+
+Controller_Gesture::Controller_Gesture(Core::System& system) : ControllerBase(system) {}
 Controller_Gesture::~Controller_Gesture() = default;
 
 void Controller_Gesture::OnInit() {
