@@ -18,7 +18,7 @@ find . -name "CMakeLists.txt" -exec sed -i 's/-Werror/-W/g' {} +
 mkdir build && cd build 
 
 cmake ..                                    \
-  -DCMAKE_BUILD_TYPE=MinSizeRel             \
+  -DCMAKE_BUILD_TYPE=Release                \
   -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc    \
   -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++  \
   -DTITLE_BAR_FORMAT_IDLE="$title"          \
