@@ -4,10 +4,15 @@
 
 #pragma once
 
+#include "core/hle/kernel/object.h"
 #include "core/hle/service/service.h"
 
 namespace Core {
 class System;
+}
+
+namespace Kernel {
+class KSharedMemory;
 }
 
 namespace Service::HID {
@@ -37,6 +42,7 @@ private:
     void StopImageProcessorAsync(Kernel::HLERequestContext& ctx);
     void ActivateIrsensorWithFunctionLevel(Kernel::HLERequestContext& ctx);
 
+    std::shared_ptr<Kernel::KSharedMemory> shared_mem;
     const u32 device_handle{0xABCD};
 };
 

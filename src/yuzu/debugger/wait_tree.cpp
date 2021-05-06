@@ -12,13 +12,12 @@
 #include "common/assert.h"
 #include "core/arm/arm_interface.h"
 #include "core/core.h"
-#include "core/hle/kernel/k_class_token.h"
-#include "core/hle/kernel/k_handle_table.h"
-#include "core/hle/kernel/k_process.h"
+#include "core/hle/kernel/handle_table.h"
 #include "core/hle/kernel/k_readable_event.h"
 #include "core/hle/kernel/k_scheduler.h"
 #include "core/hle/kernel/k_synchronization_object.h"
 #include "core/hle/kernel/k_thread.h"
+#include "core/hle/kernel/process.h"
 #include "core/hle/kernel/svc_common.h"
 #include "core/hle/kernel/svc_types.h"
 #include "core/memory.h"
@@ -92,7 +91,7 @@ std::size_t WaitTreeItem::Row() const {
 std::vector<std::unique_ptr<WaitTreeThread>> WaitTreeItem::MakeThreadItemList() {
     std::vector<std::unique_ptr<WaitTreeThread>> item_list;
     std::size_t row = 0;
-    auto add_threads = [&](const std::vector<Kernel::KThread*>& threads) {
+    auto add_threads = [&](const std::vector<std::shared_ptr<Kernel::KThread>>& threads) {
         for (std::size_t i = 0; i < threads.size(); ++i) {
             if (threads[i]->GetThreadTypeForDebugging() == Kernel::ThreadType::User) {
                 item_list.push_back(std::make_unique<WaitTreeThread>(*threads[i]));
@@ -115,11 +114,11 @@ QString WaitTreeText::GetText() const {
     return text;
 }
 
-WaitTreeMutexInfo::WaitTreeMutexInfo(VAddr mutex_address, const Kernel::KHandleTable& handle_table)
+WaitTreeMutexInfo::WaitTreeMutexInfo(VAddr mutex_address, const Kernel::HandleTable& handle_table)
     : mutex_address(mutex_address) {
     mutex_value = Core::System::GetInstance().Memory().Read32(mutex_address);
     owner_handle = static_cast<Kernel::Handle>(mutex_value & Kernel::Svc::HandleWaitMask);
-    owner = handle_table.GetObject<Kernel::KThread>(owner_handle).GetPointerUnsafe();
+    owner = handle_table.Get<Kernel::KThread>(owner_handle);
 }
 
 WaitTreeMutexInfo::~WaitTreeMutexInfo() = default;
@@ -184,20 +183,18 @@ bool WaitTreeExpandableItem::IsExpandable() const {
 }
 
 QString WaitTreeSynchronizationObject::GetText() const {
-    return tr("[%1] %2 %3")
-        .arg(object.GetId())
-        .arg(QString::fromStdString(object.GetTypeObj().GetName()),
+    return tr("[%1]%2 %3")
+        .arg(object.GetObjectId())
+        .arg(QString::fromStdString(object.GetTypeName()),
              QString::fromStdString(object.GetName()));
 }
 
 std::unique_ptr<WaitTreeSynchronizationObject> WaitTreeSynchronizationObject::make(
     const Kernel::KSynchronizationObject& object) {
-    const auto type =
-        static_cast<Kernel::KClassTokenGenerator::ObjectType>(object.GetTypeObj().GetClassToken());
-    switch (type) {
-    case Kernel::KClassTokenGenerator::ObjectType::KReadableEvent:
+    switch (object.GetHandleType()) {
+    case Kernel::HandleType::ReadableEvent:
         return std::make_unique<WaitTreeEvent>(static_cast<const Kernel::KReadableEvent&>(object));
-    case Kernel::KClassTokenGenerator::ObjectType::KThread:
+    case Kernel::HandleType::Thread:
         return std::make_unique<WaitTreeThread>(static_cast<const Kernel::KThread&>(object));
     default:
         return std::make_unique<WaitTreeSynchronizationObject>(object);
@@ -207,13 +204,12 @@ std::unique_ptr<WaitTreeSynchronizationObject> WaitTreeSynchronizationObject::ma
 std::vector<std::unique_ptr<WaitTreeItem>> WaitTreeSynchronizationObject::GetChildren() const {
     std::vector<std::unique_ptr<WaitTreeItem>> list;
 
-    auto threads = object.GetWaitingThreadsForDebugging();
+    const auto& threads = object.GetWaitingThreadsForDebugging();
     if (threads.empty()) {
         list.push_back(std::make_unique<WaitTreeText>(tr("waited by no thread")));
     } else {
-        list.push_back(std::make_unique<WaitTreeThreadList>(std::move(threads)));
+        list.push_back(std::make_unique<WaitTreeThreadList>(threads));
     }
-
     return list;
 }
 
@@ -381,8 +377,8 @@ WaitTreeEvent::WaitTreeEvent(const Kernel::KReadableEvent& object)
     : WaitTreeSynchronizationObject(object) {}
 WaitTreeEvent::~WaitTreeEvent() = default;
 
-WaitTreeThreadList::WaitTreeThreadList(std::vector<Kernel::KThread*>&& list)
-    : thread_list(std::move(list)) {}
+WaitTreeThreadList::WaitTreeThreadList(const std::vector<Kernel::KThread*>& list)
+    : thread_list(list) {}
 WaitTreeThreadList::~WaitTreeThreadList() = default;
 
 QString WaitTreeThreadList::GetText() const {

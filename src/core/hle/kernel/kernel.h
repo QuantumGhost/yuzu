@@ -11,10 +11,8 @@
 #include <vector>
 #include "core/arm/cpu_interrupt_handler.h"
 #include "core/hardware_properties.h"
-#include "core/hle/kernel/k_auto_object.h"
-#include "core/hle/kernel/k_slab_heap.h"
 #include "core/hle/kernel/memory_types.h"
-#include "core/hle/kernel/svc_common.h"
+#include "core/hle/kernel/object.h"
 
 namespace Core {
 class CPUInterruptHandler;
@@ -29,31 +27,19 @@ struct EventType;
 
 namespace Kernel {
 
-class KClientPort;
+class ClientPort;
 class GlobalSchedulerContext;
-class KAutoObjectWithListContainer;
-class KClientSession;
-class KEvent;
-class KHandleTable;
-class KLinkedListNode;
+class HandleTable;
 class KMemoryManager;
-class KPort;
-class KProcess;
 class KResourceLimit;
 class KScheduler;
-class KSession;
 class KSharedMemory;
 class KThread;
-class KTransferMemory;
-class KWritableEvent;
 class PhysicalCore;
+class Process;
 class ServiceThread;
 class Synchronization;
 class TimeManager;
-
-namespace Init {
-struct KSlabResourceCounts;
-}
 
 template <typename T>
 class KSlabHeap;
@@ -65,7 +51,7 @@ constexpr EmuThreadHandle EmuThreadHandleReserved{1ULL << 63};
 /// Represents a single instance of the kernel.
 class KernelCore {
 private:
-    using NamedPortTable = std::unordered_map<std::string, KClientPort*>;
+    using NamedPortTable = std::unordered_map<std::string, std::shared_ptr<ClientPort>>;
 
 public:
     /// Constructs an instance of the kernel using the given System
@@ -97,28 +83,25 @@ public:
     void Shutdown();
 
     /// Retrieves a shared pointer to the system resource limit instance.
-    const KResourceLimit* GetSystemResourceLimit() const;
-
-    /// Retrieves a shared pointer to the system resource limit instance.
-    KResourceLimit* GetSystemResourceLimit();
+    std::shared_ptr<KResourceLimit> GetSystemResourceLimit() const;
 
     /// Retrieves a shared pointer to a Thread instance within the thread wakeup handle table.
-    KScopedAutoObject<KThread> RetrieveThreadFromGlobalHandleTable(Handle handle) const;
+    std::shared_ptr<KThread> RetrieveThreadFromGlobalHandleTable(Handle handle) const;
 
     /// Adds the given shared pointer to an internal list of active processes.
-    void AppendNewProcess(KProcess* process);
+    void AppendNewProcess(std::shared_ptr<Process> process);
 
     /// Makes the given process the new current process.
-    void MakeCurrentProcess(KProcess* process);
+    void MakeCurrentProcess(Process* process);
 
     /// Retrieves a pointer to the current process.
-    KProcess* CurrentProcess();
+    Process* CurrentProcess();
 
     /// Retrieves a const pointer to the current process.
-    const KProcess* CurrentProcess() const;
+    const Process* CurrentProcess() const;
 
     /// Retrieves the list of processes.
-    const std::vector<KProcess*>& GetProcessList() const;
+    const std::vector<std::shared_ptr<Process>>& GetProcessList() const;
 
     /// Gets the sole instance of the global scheduler
     Kernel::GlobalSchedulerContext& GlobalSchedulerContext();
@@ -160,10 +143,6 @@ public:
 
     const Core::ExclusiveMonitor& GetExclusiveMonitor() const;
 
-    KAutoObjectWithListContainer& ObjectListContainer();
-
-    const KAutoObjectWithListContainer& ObjectListContainer() const;
-
     std::array<Core::CPUInterruptHandler, Core::Hardware::NUM_CPU_CORES>& Interrupts();
 
     const std::array<Core::CPUInterruptHandler, Core::Hardware::NUM_CPU_CORES>& Interrupts() const;
@@ -173,7 +152,7 @@ public:
     void InvalidateCpuInstructionCacheRange(VAddr addr, std::size_t size);
 
     /// Adds a port to the named port table
-    void AddNamedPort(std::string name, KClientPort* port);
+    void AddNamedPort(std::string name, std::shared_ptr<ClientPort> port);
 
     /// Finds a port within the named port table with the given name.
     NamedPortTable::iterator FindNamedPort(const std::string& name);
@@ -246,10 +225,9 @@ public:
 
     /**
      * Creates an HLE service thread, which are used to execute service routines asynchronously.
-     * While these are allocated per ServerSession, these need to be owned and managed outside
-     * of ServerSession to avoid a circular dependency.
-     * @param name String name for the ServerSession creating this thread, used for debug
-     * purposes.
+     * While these are allocated per ServerSession, these need to be owned and managed outside of
+     * ServerSession to avoid a circular dependency.
+     * @param name String name for the ServerSession creating this thread, used for debug purposes.
      * @returns The a weak pointer newly created service thread.
      */
     std::weak_ptr<Kernel::ServiceThread> CreateServiceThread(const std::string& name);
@@ -265,42 +243,9 @@ public:
     bool IsPhantomModeForSingleCore() const;
     void SetIsPhantomModeForSingleCore(bool value);
 
-    /// Gets the slab heap for the specified kernel object type.
-    template <typename T>
-    KSlabHeap<T>& SlabHeap() {
-        if constexpr (std::is_same_v<T, KClientSession>) {
-            return slab_heap_container->client_session;
-        } else if constexpr (std::is_same_v<T, KEvent>) {
-            return slab_heap_container->event;
-        } else if constexpr (std::is_same_v<T, KLinkedListNode>) {
-            return slab_heap_container->linked_list_node;
-        } else if constexpr (std::is_same_v<T, KPort>) {
-            return slab_heap_container->port;
-        } else if constexpr (std::is_same_v<T, KProcess>) {
-            return slab_heap_container->process;
-        } else if constexpr (std::is_same_v<T, KResourceLimit>) {
-            return slab_heap_container->resource_limit;
-        } else if constexpr (std::is_same_v<T, KSession>) {
-            return slab_heap_container->session;
-        } else if constexpr (std::is_same_v<T, KSharedMemory>) {
-            return slab_heap_container->shared_memory;
-        } else if constexpr (std::is_same_v<T, KThread>) {
-            return slab_heap_container->thread;
-        } else if constexpr (std::is_same_v<T, KTransferMemory>) {
-            return slab_heap_container->transfer_memory;
-        } else if constexpr (std::is_same_v<T, KWritableEvent>) {
-            return slab_heap_container->writeable_event;
-        }
-    }
-
-    /// Gets the current slab resource counts.
-    Init::KSlabResourceCounts& SlabResourceCounts();
-
-    /// Gets the current slab resource counts.
-    const Init::KSlabResourceCounts& SlabResourceCounts() const;
-
 private:
-    friend class KProcess;
+    friend class Object;
+    friend class Process;
     friend class KThread;
 
     /// Creates a new object ID, incrementing the internal object ID counter.
@@ -316,33 +261,14 @@ private:
     u64 CreateNewThreadID();
 
     /// Provides a reference to the global handle table.
-    KHandleTable& GlobalHandleTable();
+    Kernel::HandleTable& GlobalHandleTable();
 
     /// Provides a const reference to the global handle table.
-    const KHandleTable& GlobalHandleTable() const;
+    const Kernel::HandleTable& GlobalHandleTable() const;
 
     struct Impl;
     std::unique_ptr<Impl> impl;
-
     bool exception_exited{};
-
-private:
-    /// Helper to encapsulate all slab heaps in a single heap allocated container
-    struct SlabHeapContainer {
-        KSlabHeap<KClientSession> client_session;
-        KSlabHeap<KEvent> event;
-        KSlabHeap<KLinkedListNode> linked_list_node;
-        KSlabHeap<KPort> port;
-        KSlabHeap<KProcess> process;
-        KSlabHeap<KResourceLimit> resource_limit;
-        KSlabHeap<KSession> session;
-        KSlabHeap<KSharedMemory> shared_memory;
-        KSlabHeap<KThread> thread;
-        KSlabHeap<KTransferMemory> transfer_memory;
-        KSlabHeap<KWritableEvent> writeable_event;
-    };
-
-    std::unique_ptr<SlabHeapContainer> slab_heap_container;
 };
 
 } // namespace Kernel

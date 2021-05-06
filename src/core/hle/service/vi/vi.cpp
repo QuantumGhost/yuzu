@@ -669,10 +669,12 @@ private:
 
         LOG_WARNING(Service_VI, "(STUBBED) called id={}, unknown={:08X}", id, unknown);
 
+        const auto& buffer_queue = *nv_flinger.FindBufferQueue(id);
+
         // TODO(Subv): Find out what this actually is.
         IPC::ResponseBuilder rb{ctx, 2, 1};
         rb.Push(RESULT_SUCCESS);
-        rb.PushCopyObjects(nv_flinger.FindBufferQueue(id)->GetBufferWaitEvent());
+        rb.PushCopyObjects(buffer_queue.GetBufferWaitEvent());
     }
 
     NVFlinger::NVFlinger& nv_flinger;

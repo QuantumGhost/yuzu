@@ -8,7 +8,7 @@
 #include <queue>
 
 #include "common/swap.h"
-#include "core/hle/kernel/k_event.h"
+#include "core/hle/kernel/object.h"
 
 union ResultCode;
 
@@ -95,11 +95,11 @@ public:
     void PushInteractiveDataFromGame(std::shared_ptr<IStorage>&& storage);
     void PushInteractiveDataFromApplet(std::shared_ptr<IStorage>&& storage);
 
-    void SignalStateChanged();
+    void SignalStateChanged() const;
 
-    Kernel::KReadableEvent& GetNormalDataEvent();
-    Kernel::KReadableEvent& GetInteractiveDataEvent();
-    Kernel::KReadableEvent& GetStateChangedEvent();
+    std::shared_ptr<Kernel::KReadableEvent> GetNormalDataEvent() const;
+    std::shared_ptr<Kernel::KReadableEvent> GetInteractiveDataEvent() const;
+    std::shared_ptr<Kernel::KReadableEvent> GetStateChangedEvent() const;
 
 private:
     Core::System& system;
@@ -119,13 +119,13 @@ private:
     // PopInteractiveDataToGame and PushInteractiveDataFromApplet
     std::deque<std::shared_ptr<IStorage>> out_interactive_channel;
 
-    Kernel::KEvent state_changed_event;
+    std::shared_ptr<Kernel::KEvent> state_changed_event;
 
     // Signaled on PushNormalDataFromApplet
-    Kernel::KEvent pop_out_data_event;
+    std::shared_ptr<Kernel::KEvent> pop_out_data_event;
 
     // Signaled on PushInteractiveDataFromApplet
-    Kernel::KEvent pop_interactive_out_data_event;
+    std::shared_ptr<Kernel::KEvent> pop_interactive_out_data_event;
 };
 
 class Applet {

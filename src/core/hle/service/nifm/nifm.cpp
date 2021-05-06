@@ -127,8 +127,7 @@ public:
 
 class IRequest final : public ServiceFramework<IRequest> {
 public:
-    explicit IRequest(Core::System& system_)
-        : ServiceFramework{system_, "IRequest"}, event1{system.Kernel()}, event2{system.Kernel()} {
+    explicit IRequest(Core::System& system_) : ServiceFramework{system_, "IRequest"} {
         static const FunctionInfo functions[] = {
             {0, &IRequest::GetRequestState, "GetRequestState"},
             {1, &IRequest::GetResult, "GetResult"},
@@ -158,11 +157,12 @@ public:
         };
         RegisterHandlers(functions);
 
-        Kernel::KAutoObject::Create(std::addressof(event1));
-        Kernel::KAutoObject::Create(std::addressof(event2));
+        auto& kernel = system.Kernel();
 
-        event1.Initialize("IRequest:Event1");
-        event2.Initialize("IRequest:Event2");
+        event1 = Kernel::KEvent::Create(kernel, "IRequest:Event1");
+        event1->Initialize();
+        event2 = Kernel::KEvent::Create(kernel, "IRequest:Event2");
+        event2->Initialize();
     }
 
 private:
@@ -198,7 +198,7 @@ private:
 
         IPC::ResponseBuilder rb{ctx, 2, 2};
         rb.Push(RESULT_SUCCESS);
-        rb.PushCopyObjects(event1.GetReadableEvent(), event2.GetReadableEvent());
+        rb.PushCopyObjects(event1->GetReadableEvent(), event2->GetReadableEvent());
     }
 
     void Cancel(Kernel::HLERequestContext& ctx) {
@@ -229,7 +229,7 @@ private:
         rb.Push<u32>(0);
     }
 
-    Kernel::KEvent event1, event2;
+    std::shared_ptr<Kernel::KEvent> event1, event2;
 };
 
 class INetworkProfile final : public ServiceFramework<INetworkProfile> {

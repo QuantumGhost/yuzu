@@ -4,8 +4,7 @@
 
 #pragma once
 
-#include "core/hle/kernel/k_auto_object.h"
-#include "core/hle/kernel/slab_helpers.h"
+#include "core/hle/kernel/object.h"
 #include "core/hle/result.h"
 
 namespace Kernel {
@@ -13,19 +12,24 @@ namespace Kernel {
 class KernelCore;
 class KEvent;
 
-class KWritableEvent final
-    : public KAutoObjectWithSlabHeapAndContainer<KWritableEvent, KAutoObjectWithList> {
-    KERNEL_AUTOOBJECT_TRAITS(KWritableEvent, KAutoObject);
-
+class KWritableEvent final : public Object {
 public:
-    explicit KWritableEvent(KernelCore& kernel);
+    explicit KWritableEvent(KernelCore& kernel, std::string&& name);
     ~KWritableEvent() override;
 
-    virtual void Destroy() override;
+    std::string GetTypeName() const override {
+        return "KWritableEvent";
+    }
 
-    static void PostDestroy([[maybe_unused]] uintptr_t arg) {}
+    static constexpr HandleType HANDLE_TYPE = HandleType::WritableEvent;
+    HandleType GetHandleType() const override {
+        return HANDLE_TYPE;
+    }
 
-    void Initialize(KEvent* parent_, std::string&& name_);
+    void Initialize(KEvent* parent_);
+
+    void Finalize() override {}
+
     ResultCode Signal();
     ResultCode Clear();
 

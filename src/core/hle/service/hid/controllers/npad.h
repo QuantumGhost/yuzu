@@ -11,6 +11,7 @@
 #include "common/quaternion.h"
 #include "common/settings.h"
 #include "core/frontend/input.h"
+#include "core/hle/kernel/object.h"
 #include "core/hle/service/hid/controllers/controller_base.h"
 
 namespace Kernel {
@@ -198,7 +199,7 @@ public:
 
     bool IsVibrationDeviceMounted(const DeviceHandle& vibration_device_handle) const;
 
-    Kernel::KReadableEvent& GetStyleSetChangedEvent(u32 npad_id);
+    std::shared_ptr<Kernel::KReadableEvent> GetStyleSetChangedEvent(u32 npad_id) const;
     void SignalStyleSetChangedEvent(u32 npad_id) const;
 
     // Adds a new controller at an index.
@@ -572,9 +573,8 @@ private:
     NpadHandheldActivationMode handheld_activation_mode{NpadHandheldActivationMode::Dual};
     NpadCommunicationMode communication_mode{NpadCommunicationMode::Default};
     // Each controller should have their own styleset changed event
-    std::array<Kernel::KEvent*, 10> styleset_changed_events{};
-    std::array<std::array<std::chrono::steady_clock::time_point, 2>, 10>
-        last_vibration_timepoints{};
+    std::array<std::shared_ptr<Kernel::KEvent>, 10> styleset_changed_events;
+    std::array<std::array<std::chrono::steady_clock::time_point, 2>, 10> last_vibration_timepoints;
     std::array<std::array<VibrationValue, 2>, 10> latest_vibration_values{};
     bool permit_vibration_session_enabled{false};
     std::array<std::array<bool, 2>, 10> vibration_devices_mounted{};

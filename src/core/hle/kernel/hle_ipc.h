@@ -16,8 +16,7 @@
 #include "common/concepts.h"
 #include "common/swap.h"
 #include "core/hle/ipc.h"
-#include "core/hle/kernel/k_auto_object.h"
-#include "core/hle/kernel/svc_common.h"
+#include "core/hle/kernel/object.h"
 
 union ResultCode;
 
@@ -36,14 +35,13 @@ class ServiceFrameworkBase;
 namespace Kernel {
 
 class Domain;
+class HandleTable;
 class HLERequestContext;
 class KernelCore;
-class KHandleTable;
-class KProcess;
-class KServerSession;
+class Process;
+class ServerSession;
 class KThread;
 class KReadableEvent;
-class KSession;
 class KWritableEvent;
 
 enum class ThreadWakeupReason;
@@ -73,14 +71,20 @@ public:
      * associated ServerSession alive for the duration of the connection.
      * @param server_session Owning pointer to the ServerSession associated with the connection.
      */
-    void ClientConnected(KServerSession* session);
+    void ClientConnected(std::shared_ptr<ServerSession> server_session);
 
     /**
      * Signals that a client has just disconnected from this HLE handler and releases the
      * associated ServerSession.
      * @param server_session ServerSession associated with the connection.
      */
-    void ClientDisconnected(KServerSession* session);
+    void ClientDisconnected(const std::shared_ptr<ServerSession>& server_session);
+
+protected:
+    /// List of sessions that are connected to this handler.
+    /// A ServerSession whose server endpoint is an HLE implementation is kept alive by this list
+    /// for the duration of the connection.
+    std::vector<std::shared_ptr<ServerSession>> connected_sessions;
 };
 
 /**
@@ -105,7 +109,8 @@ public:
 class HLERequestContext {
 public:
     explicit HLERequestContext(KernelCore& kernel, Core::Memory::Memory& memory,
-                               KServerSession* session, KThread* thread);
+                               std::shared_ptr<ServerSession> session,
+                               std::shared_ptr<KThread> thread);
     ~HLERequestContext();
 
     /// Returns a pointer to the IPC command buffer for this request.
@@ -117,12 +122,12 @@ public:
      * Returns the session through which this request was made. This can be used as a map key to
      * access per-client data on services.
      */
-    Kernel::KServerSession* Session() {
+    const std::shared_ptr<Kernel::ServerSession>& Session() const {
         return server_session;
     }
 
     /// Populates this context with data from the requesting process/thread.
-    ResultCode PopulateFromIncomingCommandBuffer(const KHandleTable& handle_table,
+    ResultCode PopulateFromIncomingCommandBuffer(const HandleTable& handle_table,
                                                  u32_le* src_cmdbuf);
 
     /// Writes data from this context back to the requesting process/thread.
@@ -213,12 +218,22 @@ public:
         return move_handles.at(index);
     }
 
-    void AddMoveObject(KAutoObject* object) {
-        move_objects.emplace_back(object);
+    template <typename T>
+    std::shared_ptr<T> GetCopyObject(std::size_t index) {
+        return DynamicObjectCast<T>(copy_objects.at(index));
     }
 
-    void AddCopyObject(KAutoObject* object) {
-        copy_objects.emplace_back(object);
+    template <typename T>
+    std::shared_ptr<T> GetMoveObject(std::size_t index) {
+        return DynamicObjectCast<T>(move_objects.at(index));
+    }
+
+    void AddMoveObject(std::shared_ptr<Object> object) {
+        move_objects.emplace_back(std::move(object));
+    }
+
+    void AddCopyObject(std::shared_ptr<Object> object) {
+        copy_objects.emplace_back(std::move(object));
     }
 
     void AddDomainObject(std::shared_ptr<SessionRequestHandler> object) {
@@ -261,6 +276,10 @@ public:
         return *thread;
     }
 
+    const KThread& GetThread() const {
+        return *thread;
+    }
+
     bool IsThreadWaiting() const {
         return is_thread_waiting;
     }
@@ -268,17 +287,16 @@ public:
 private:
     friend class IPC::ResponseBuilder;
 
-    void ParseCommandBuffer(const KHandleTable& handle_table, u32_le* src_cmdbuf, bool incoming);
+    void ParseCommandBuffer(const HandleTable& handle_table, u32_le* src_cmdbuf, bool incoming);
 
     std::array<u32, IPC::COMMAND_BUFFER_LENGTH> cmd_buf;
-    Kernel::KServerSession* server_session{};
-    KThread* thread;
-
+    std::shared_ptr<Kernel::ServerSession> server_session;
+    std::shared_ptr<KThread> thread;
     // TODO(yuriks): Check common usage of this and optimize size accordingly
     boost::container::small_vector<Handle, 8> move_handles;
     boost::container::small_vector<Handle, 8> copy_handles;
-    boost::container::small_vector<KAutoObject*, 8> move_objects;
-    boost::container::small_vector<KAutoObject*, 8> copy_objects;
+    boost::container::small_vector<std::shared_ptr<Object>, 8> move_objects;
+    boost::container::small_vector<std::shared_ptr<Object>, 8> copy_objects;
     boost::container::small_vector<std::shared_ptr<SessionRequestHandler>, 8> domain_objects;
 
     std::optional<IPC::CommandHeader> command_header;

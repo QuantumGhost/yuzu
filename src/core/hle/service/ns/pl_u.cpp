@@ -130,6 +130,9 @@ struct PL_U::Impl {
         }
     }
 
+    /// Handle to shared memory region designated for a shared font
+    std::shared_ptr<Kernel::KSharedMemory> shared_font_mem;
+
     /// Backing memory for the shared font data
     std::shared_ptr<Kernel::PhysicalMemory> shared_font;
 
@@ -257,13 +260,14 @@ void PL_U::GetSharedMemoryNativeHandle(Kernel::HLERequestContext& ctx) {
 
     // Create shared font memory object
     auto& kernel = system.Kernel();
+    impl->shared_font_mem = SharedFrom(&kernel.GetFontSharedMem());
 
-    std::memcpy(kernel.GetFontSharedMem().GetPointer(), impl->shared_font->data(),
+    std::memcpy(impl->shared_font_mem->GetPointer(), impl->shared_font->data(),
                 impl->shared_font->size());
 
     IPC::ResponseBuilder rb{ctx, 2, 1};
     rb.Push(RESULT_SUCCESS);
-    rb.PushCopyObjects(&kernel.GetFontSharedMem());
+    rb.PushCopyObjects(impl->shared_font_mem);
 }
 
 void PL_U::GetSharedFontInOrderOfPriority(Kernel::HLERequestContext& ctx) {

@@ -6,7 +6,7 @@
 
 #include "common/bit_util.h"
 #include "common/logging/log.h"
-#include "core/hle/kernel/k_handle_table.h"
+#include "core/hle/kernel/handle_table.h"
 #include "core/hle/kernel/k_page_table.h"
 #include "core/hle/kernel/process_capability.h"
 #include "core/hle/kernel/svc_results.h"
@@ -99,7 +99,7 @@ void ProcessCapabilities::InitializeForMetadatalessProcess() {
     interrupt_capabilities.set();
 
     // Allow using the maximum possible amount of handles
-    handle_table_size = static_cast<s32>(KHandleTable::MaxTableSize);
+    handle_table_size = static_cast<s32>(HandleTable::MAX_COUNT);
 
     // Allow all debugging capabilities.
     is_debuggable = true;
@@ -159,7 +159,7 @@ ResultCode ProcessCapabilities::ParseSingleFlagCapability(u32& set_flags, u32& s
     const auto type = GetCapabilityType(flag);
 
     if (type == CapabilityType::Unset) {
-        return ResultInvalidArgument;
+        return ResultInvalidCapabilityDescriptor;
     }
 
     // Bail early on ignorable entries, as one would expect,
@@ -202,7 +202,7 @@ ResultCode ProcessCapabilities::ParseSingleFlagCapability(u32& set_flags, u32& s
     }
 
     LOG_ERROR(Kernel, "Invalid capability type! type={}", type);
-    return ResultInvalidArgument;
+    return ResultInvalidCapabilityDescriptor;
 }
 
 void ProcessCapabilities::Clear() {
@@ -225,7 +225,7 @@ ResultCode ProcessCapabilities::HandlePriorityCoreNumFlags(u32 flags) {
     if (priority_mask != 0 || core_mask != 0) {
         LOG_ERROR(Kernel, "Core or priority mask are not zero! priority_mask={}, core_mask={}",
                   priority_mask, core_mask);
-        return ResultInvalidArgument;
+        return ResultInvalidCapabilityDescriptor;
     }
 
     const u32 core_num_min = (flags >> 16) & 0xFF;
@@ -329,7 +329,7 @@ ResultCode ProcessCapabilities::HandleProgramTypeFlags(u32 flags) {
     const u32 reserved = flags >> 17;
     if (reserved != 0) {
         LOG_ERROR(Kernel, "Reserved value is non-zero! reserved={}", reserved);
-        return ResultReservedUsed;
+        return ResultReservedValue;
     }
 
     program_type = static_cast<ProgramType>((flags >> 14) & 0b111);
@@ -349,7 +349,7 @@ ResultCode ProcessCapabilities::HandleKernelVersionFlags(u32 flags) {
         LOG_ERROR(Kernel,
                   "Kernel version is non zero or flags are too small! major_version={}, flags={}",
                   major_version, flags);
-        return ResultInvalidArgument;
+        return ResultInvalidCapabilityDescriptor;
     }
 
     kernel_version = flags;
@@ -360,7 +360,7 @@ ResultCode ProcessCapabilities::HandleHandleTableFlags(u32 flags) {
     const u32 reserved = flags >> 26;
     if (reserved != 0) {
         LOG_ERROR(Kernel, "Reserved value is non-zero! reserved={}", reserved);
-        return ResultReservedUsed;
+        return ResultReservedValue;
     }
 
     handle_table_size = static_cast<s32>((flags >> 16) & 0x3FF);
@@ -371,7 +371,7 @@ ResultCode ProcessCapabilities::HandleDebugFlags(u32 flags) {
     const u32 reserved = flags >> 19;
     if (reserved != 0) {
         LOG_ERROR(Kernel, "Reserved value is non-zero! reserved={}", reserved);
-        return ResultReservedUsed;
+        return ResultReservedValue;
     }
 
     is_debuggable = (flags & 0x20000) != 0;

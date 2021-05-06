@@ -6,12 +6,9 @@
 #include "common/assert.h"
 #include "core/core.h"
 #include "core/hle/ipc_helpers.h"
-#include "core/hle/kernel/k_client_port.h"
-#include "core/hle/kernel/k_client_session.h"
-#include "core/hle/kernel/k_port.h"
-#include "core/hle/kernel/k_server_port.h"
-#include "core/hle/kernel/k_server_session.h"
-#include "core/hle/kernel/k_session.h"
+#include "core/hle/kernel/client_port.h"
+#include "core/hle/kernel/client_session.h"
+#include "core/hle/kernel/server_port.h"
 #include "core/hle/result.h"
 #include "core/hle/service/sm/controller.h"
 #include "core/hle/service/sm/sm.h"
@@ -50,8 +47,8 @@ void ServiceManager::InstallInterfaces(std::shared_ptr<ServiceManager> self, Cor
     self->controller_interface = std::make_unique<Controller>(system);
 }
 
-ResultVal<Kernel::KServerPort*> ServiceManager::RegisterService(std::string name,
-                                                                u32 max_sessions) {
+ResultVal<std::shared_ptr<Kernel::ServerPort>> ServiceManager::RegisterService(std::string name,
+                                                                               u32 max_sessions) {
 
     CASCADE_CODE(ValidateServiceName(name));
 
@@ -60,12 +57,11 @@ ResultVal<Kernel::KServerPort*> ServiceManager::RegisterService(std::string name
         return ERR_ALREADY_REGISTERED;
     }
 
-    auto* port = Kernel::KPort::Create(kernel);
-    port->Initialize(max_sessions, false, name);
+    auto [server_port, client_port] =
+        Kernel::ServerPort::CreatePortPair(kernel, max_sessions, name);
 
-    registered_services.emplace(std::move(name), port);
-
-    return MakeResult(&port->GetServerPort());
+    registered_services.emplace(std::move(name), std::move(client_port));
+    return MakeResult(std::move(server_port));
 }
 
 ResultCode ServiceManager::UnregisterService(const std::string& name) {
@@ -76,14 +72,12 @@ ResultCode ServiceManager::UnregisterService(const std::string& name) {
         LOG_ERROR(Service_SM, "Server is not registered! service={}", name);
         return ERR_SERVICE_NOT_REGISTERED;
     }
-
-    iter->second->Close();
-
     registered_services.erase(iter);
     return RESULT_SUCCESS;
 }
 
-ResultVal<Kernel::KPort*> ServiceManager::GetServicePort(const std::string& name) {
+ResultVal<std::shared_ptr<Kernel::ClientPort>> ServiceManager::GetServicePort(
+    const std::string& name) {
 
     CASCADE_CODE(ValidateServiceName(name));
     auto it = registered_services.find(name);
@@ -93,6 +87,13 @@ ResultVal<Kernel::KPort*> ServiceManager::GetServicePort(const std::string& name
     }
 
     return MakeResult(it->second);
+}
+
+ResultVal<std::shared_ptr<Kernel::ClientSession>> ServiceManager::ConnectToService(
+    const std::string& name) {
+
+    CASCADE_RESULT(auto client_port, GetServicePort(name));
+    return client_port->Connect();
 }
 
 SM::~SM() = default;
@@ -118,32 +119,30 @@ void SM::GetService(Kernel::HLERequestContext& ctx) {
 
     std::string name(name_buf.begin(), end);
 
-    auto result = service_manager->GetServicePort(name);
-    if (result.Failed()) {
+    auto client_port = service_manager->GetServicePort(name);
+    if (client_port.Failed()) {
         IPC::ResponseBuilder rb{ctx, 2};
-        rb.Push(result.Code());
-        LOG_ERROR(Service_SM, "called service={} -> error 0x{:08X}", name, result.Code().raw);
+        rb.Push(client_port.Code());
+        LOG_ERROR(Service_SM, "called service={} -> error 0x{:08X}", name, client_port.Code().raw);
         if (name.length() == 0)
             return; // LibNX Fix
         UNIMPLEMENTED();
         return;
     }
 
-    auto* port = result.Unwrap();
+    auto [client, server] = Kernel::Session::Create(kernel, name);
 
-    auto* session = Kernel::KSession::Create(kernel);
-    session->Initialize(&port->GetClientPort(), std::move(name));
-
-    if (port->GetServerPort().GetHLEHandler()) {
-        port->GetServerPort().GetHLEHandler()->ClientConnected(&session->GetServerSession());
+    const auto& server_port = client_port.Unwrap()->GetServerPort();
+    if (server_port->GetHLEHandler()) {
+        server_port->GetHLEHandler()->ClientConnected(server);
     } else {
-        port->EnqueueSession(&session->GetServerSession());
+        server_port->AppendPendingSession(server);
     }
 
-    LOG_DEBUG(Service_SM, "called service={} -> session={}", name, session->GetId());
+    LOG_DEBUG(Service_SM, "called service={} -> session={}", name, client->GetObjectId());
     IPC::ResponseBuilder rb{ctx, 2, 0, 1, IPC::ResponseBuilder::Flags::AlwaysMoveHandles};
     rb.Push(RESULT_SUCCESS);
-    rb.PushMoveObjects(session->GetClientSession());
+    rb.PushMoveObjects(std::move(client));
 }
 
 void SM::RegisterService(Kernel::HLERequestContext& ctx) {
@@ -171,9 +170,7 @@ void SM::RegisterService(Kernel::HLERequestContext& ctx) {
 
     IPC::ResponseBuilder rb{ctx, 2, 0, 1, IPC::ResponseBuilder::Flags::AlwaysMoveHandles};
     rb.Push(handle.Code());
-
-    auto server_port = handle.Unwrap();
-    rb.PushMoveObjects(server_port);
+    rb.PushMoveObjects(std::move(handle).Unwrap());
 }
 
 void SM::UnregisterService(Kernel::HLERequestContext& ctx) {

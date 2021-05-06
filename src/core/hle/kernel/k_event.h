@@ -4,54 +4,53 @@
 
 #pragma once
 
-#include "core/hle/kernel/k_readable_event.h"
-#include "core/hle/kernel/k_writable_event.h"
-#include "core/hle/kernel/slab_helpers.h"
+#include "core/hle/kernel/object.h"
 
 namespace Kernel {
 
 class KernelCore;
 class KReadableEvent;
 class KWritableEvent;
-class KProcess;
 
-class KEvent final : public KAutoObjectWithSlabHeapAndContainer<KEvent, KAutoObjectWithList> {
-    KERNEL_AUTOOBJECT_TRAITS(KEvent, KAutoObject);
-
+class KEvent final : public Object {
 public:
-    explicit KEvent(KernelCore& kernel);
-    virtual ~KEvent();
+    explicit KEvent(KernelCore& kernel, std::string&& name);
+    ~KEvent() override;
 
-    void Initialize(std::string&& name);
+    static std::shared_ptr<KEvent> Create(KernelCore& kernel, std::string&& name);
 
-    virtual void Finalize() override;
+    void Initialize();
 
-    virtual bool IsInitialized() const override {
-        return initialized;
+    void Finalize() override {}
+
+    std::string GetTypeName() const override {
+        return "KEvent";
     }
 
-    virtual uintptr_t GetPostDestroyArgument() const override {
-        return reinterpret_cast<uintptr_t>(owner);
+    static constexpr HandleType HANDLE_TYPE = HandleType::Event;
+    HandleType GetHandleType() const override {
+        return HANDLE_TYPE;
     }
 
-    static void PostDestroy(uintptr_t arg);
-
-    virtual KProcess* GetOwner() const override {
-        return owner;
-    }
-
-    KReadableEvent& GetReadableEvent() {
+    std::shared_ptr<KReadableEvent>& GetReadableEvent() {
         return readable_event;
     }
 
-    KWritableEvent& GetWritableEvent() {
+    std::shared_ptr<KWritableEvent>& GetWritableEvent() {
+        return writable_event;
+    }
+
+    const std::shared_ptr<KReadableEvent>& GetReadableEvent() const {
+        return readable_event;
+    }
+
+    const std::shared_ptr<KWritableEvent>& GetWritableEvent() const {
         return writable_event;
     }
 
 private:
-    KReadableEvent readable_event;
-    KWritableEvent writable_event;
-    KProcess* owner{};
+    std::shared_ptr<KReadableEvent> readable_event;
+    std::shared_ptr<KWritableEvent> writable_event;
     bool initialized{};
 };
 

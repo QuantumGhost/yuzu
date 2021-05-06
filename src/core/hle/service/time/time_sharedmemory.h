@@ -17,6 +17,9 @@ public:
     explicit SharedMemory(Core::System& system);
     ~SharedMemory();
 
+    // Return the shared memory handle
+    std::shared_ptr<Kernel::KSharedMemory> GetSharedMemoryHolder() const;
+
     // TODO(ogniK): We have to properly simulate memory barriers, how are we going to do this?
     template <typename T, std::size_t Offset>
     struct MemoryBarrier {
@@ -60,6 +63,7 @@ public:
     void SetAutomaticCorrectionEnabled(bool is_enabled);
 
 private:
+    std::shared_ptr<Kernel::KSharedMemory> shared_memory_holder;
     Core::System& system;
     Format shared_memory_format{};
 };

@@ -5,7 +5,6 @@
 #pragma once
 
 #include <atomic>
-#include <list>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -15,6 +14,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "core/hle/kernel/object.h"
 
 namespace Common {
 class Event;
@@ -72,7 +72,7 @@ public:
     /// Gets the vsync event for the specified display.
     ///
     /// If an invalid display ID is provided, then nullptr is returned.
-    [[nodiscard]] Kernel::KReadableEvent* FindVsyncEvent(u64 display_id);
+    [[nodiscard]] std::shared_ptr<Kernel::KReadableEvent> FindVsyncEvent(u64 display_id) const;
 
     /// Obtains a buffer queue identified by the ID.
     [[nodiscard]] BufferQueue* FindBufferQueue(u32 id);
@@ -106,7 +106,7 @@ private:
 
     std::shared_ptr<Nvidia::Module> nvdrv;
 
-    std::list<VI::Display> displays;
+    std::vector<VI::Display> displays;
     std::vector<std::unique_ptr<BufferQueue>> buffer_queues;
 
     /// Id to use for the next layer that is created, this counter is shared among all displays.

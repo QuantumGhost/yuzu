@@ -8,74 +8,50 @@
 #include "core/hle/kernel/k_scoped_resource_reservation.h"
 #include "core/hle/kernel/k_shared_memory.h"
 #include "core/hle/kernel/kernel.h"
-#include "core/hle/kernel/svc_results.h"
 
 namespace Kernel {
 
-KSharedMemory::KSharedMemory(KernelCore& kernel) : KAutoObjectWithSlabHeapAndContainer{kernel} {}
+KSharedMemory::KSharedMemory(KernelCore& kernel, Core::DeviceMemory& device_memory)
+    : Object{kernel}, device_memory{device_memory} {}
 
 KSharedMemory::~KSharedMemory() {
     kernel.GetSystemResourceLimit()->Release(LimitableResource::PhysicalMemory, size);
 }
 
-ResultCode KSharedMemory::Initialize(KernelCore& kernel_, Core::DeviceMemory& device_memory_,
-                                     KProcess* owner_process_, KPageLinkedList&& page_list_,
-                                     Svc::MemoryPermission owner_permission_,
-                                     Svc::MemoryPermission user_permission_,
-                                     PAddr physical_address_, std::size_t size_,
-                                     std::string name_) {
-    // Set members.
-    owner_process = owner_process_;
-    device_memory = &device_memory_;
-    page_list = std::move(page_list_);
-    owner_permission = owner_permission_;
-    user_permission = user_permission_;
-    physical_address = physical_address_;
-    size = size_;
-    name = name_;
+std::shared_ptr<KSharedMemory> KSharedMemory::Create(
+    KernelCore& kernel, Core::DeviceMemory& device_memory, Process* owner_process,
+    KPageLinkedList&& page_list, KMemoryPermission owner_permission,
+    KMemoryPermission user_permission, PAddr physical_address, std::size_t size, std::string name) {
 
-    // Get the resource limit.
-    KResourceLimit* reslimit = kernel.GetSystemResourceLimit();
+    const auto resource_limit = kernel.GetSystemResourceLimit();
+    KScopedResourceReservation memory_reservation(resource_limit, LimitableResource::PhysicalMemory,
+                                                  size);
+    ASSERT(memory_reservation.Succeeded());
 
-    // Reserve memory for ourselves.
-    KScopedResourceReservation memory_reservation(reslimit, LimitableResource::PhysicalMemory,
-                                                  size_);
-    R_UNLESS(memory_reservation.Succeeded(), ResultLimitReached);
+    std::shared_ptr<KSharedMemory> shared_memory{
+        std::make_shared<KSharedMemory>(kernel, device_memory)};
 
-    // Commit our reservation.
+    shared_memory->owner_process = owner_process;
+    shared_memory->page_list = std::move(page_list);
+    shared_memory->owner_permission = owner_permission;
+    shared_memory->user_permission = user_permission;
+    shared_memory->physical_address = physical_address;
+    shared_memory->size = size;
+    shared_memory->name = name;
+
     memory_reservation.Commit();
-
-    // Set our resource limit.
-    resource_limit = reslimit;
-    resource_limit->Open();
-
-    // Mark initialized.
-    is_initialized = true;
-
-    // Clear all pages in the memory.
-    std::memset(device_memory_.GetPointer(physical_address_), 0, size_);
-
-    return RESULT_SUCCESS;
+    return shared_memory;
 }
 
-void KSharedMemory::Finalize() {
-    // Release the memory reservation.
-    resource_limit->Release(LimitableResource::PhysicalMemory, size);
-    resource_limit->Close();
-
-    // Perform inherited finalization.
-    KAutoObjectWithSlabHeapAndContainer<KSharedMemory, KAutoObjectWithList>::Finalize();
-}
-
-ResultCode KSharedMemory::Map(KProcess& target_process, VAddr address, std::size_t size,
-                              Svc::MemoryPermission permissions) {
+ResultCode KSharedMemory::Map(Process& target_process, VAddr address, std::size_t size,
+                              KMemoryPermission permissions) {
     const u64 page_count{(size + PageSize - 1) / PageSize};
 
     if (page_list.GetNumPages() != page_count) {
         UNIMPLEMENTED_MSG("Page count does not match");
     }
 
-    const Svc::MemoryPermission expected =
+    const KMemoryPermission expected =
         &target_process == owner_process ? owner_permission : user_permission;
 
     if (permissions != expected) {
@@ -83,17 +59,7 @@ ResultCode KSharedMemory::Map(KProcess& target_process, VAddr address, std::size
     }
 
     return target_process.PageTable().MapPages(address, page_list, KMemoryState::Shared,
-                                               ConvertToKMemoryPermission(permissions));
-}
-
-ResultCode KSharedMemory::Unmap(KProcess& target_process, VAddr address, std::size_t size) {
-    const u64 page_count{(size + PageSize - 1) / PageSize};
-
-    if (page_list.GetNumPages() != page_count) {
-        UNIMPLEMENTED_MSG("Page count does not match");
-    }
-
-    return target_process.PageTable().UnmapPages(address, page_list, KMemoryState::Shared);
+                                               permissions);
 }
 
 } // namespace Kernel

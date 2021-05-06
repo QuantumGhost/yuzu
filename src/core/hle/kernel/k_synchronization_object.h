@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "core/hle/kernel/k_auto_object.h"
+#include "core/hle/kernel/object.h"
 #include "core/hle/result.h"
 
 namespace Kernel {
@@ -16,9 +16,7 @@ class Synchronization;
 class KThread;
 
 /// Class that represents a Kernel object that a thread can be waiting on
-class KSynchronizationObject : public KAutoObjectWithList {
-    KERNEL_AUTOOBJECT_TRAITS(KSynchronizationObject, KAutoObject);
-
+class KSynchronizationObject : public Object {
 public:
     struct ThreadListNode {
         ThreadListNode* next{};
@@ -29,17 +27,14 @@ public:
                                          KSynchronizationObject** objects, const s32 num_objects,
                                          s64 timeout);
 
-    virtual void Finalize() override;
-
     [[nodiscard]] virtual bool IsSignaled() const = 0;
 
     [[nodiscard]] std::vector<KThread*> GetWaitingThreadsForDebugging() const;
 
 protected:
     explicit KSynchronizationObject(KernelCore& kernel);
+    explicit KSynchronizationObject(KernelCore& kernel, std::string&& name);
     virtual ~KSynchronizationObject();
-
-    virtual void OnFinalizeSynchronizationObject() {}
 
     void NotifyAvailable(ResultCode result);
     void NotifyAvailable() {
@@ -50,5 +45,15 @@ private:
     ThreadListNode* thread_list_head{};
     ThreadListNode* thread_list_tail{};
 };
+
+// Specialization of DynamicObjectCast for KSynchronizationObjects
+template <>
+inline std::shared_ptr<KSynchronizationObject> DynamicObjectCast<KSynchronizationObject>(
+    std::shared_ptr<Object> object) {
+    if (object != nullptr && object->IsWaitable()) {
+        return std::static_pointer_cast<KSynchronizationObject>(object);
+    }
+    return nullptr;
+}
 
 } // namespace Kernel

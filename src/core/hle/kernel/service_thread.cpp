@@ -13,8 +13,8 @@
 #include "common/scope_exit.h"
 #include "common/thread.h"
 #include "core/core.h"
-#include "core/hle/kernel/k_session.h"
 #include "core/hle/kernel/kernel.h"
+#include "core/hle/kernel/server_session.h"
 #include "core/hle/kernel/service_thread.h"
 #include "core/hle/lock.h"
 #include "video_core/renderer_base.h"
@@ -26,7 +26,7 @@ public:
     explicit Impl(KernelCore& kernel, std::size_t num_threads, const std::string& name);
     ~Impl();
 
-    void QueueSyncRequest(KSession& session, std::shared_ptr<HLERequestContext>&& context);
+    void QueueSyncRequest(ServerSession& session, std::shared_ptr<HLERequestContext>&& context);
 
 private:
     std::vector<std::thread> threads;
@@ -69,27 +69,18 @@ ServiceThread::Impl::Impl(KernelCore& kernel, std::size_t num_threads, const std
         });
 }
 
-void ServiceThread::Impl::QueueSyncRequest(KSession& session,
+void ServiceThread::Impl::QueueSyncRequest(ServerSession& session,
                                            std::shared_ptr<HLERequestContext>&& context) {
     {
         std::unique_lock lock{queue_mutex};
 
-        // Open a reference to the session to ensure it is not closes while the service request
-        // completes asynchronously.
-        session.Open();
-
-        requests.emplace([session_ptr{&session}, context{std::move(context)}]() {
-            // Close the reference.
-            SCOPE_EXIT({ session_ptr->Close(); });
-
-            // If the session has been closed, we are done.
-            if (session_ptr->IsServerClosed()) {
-                return;
+        // ServerSession owns the service thread, so we cannot caption a strong pointer here in the
+        // event that the ServerSession is terminated.
+        std::weak_ptr<ServerSession> weak_ptr{SharedFrom(&session)};
+        requests.emplace([weak_ptr, context{std::move(context)}]() {
+            if (auto strong_ptr = weak_ptr.lock()) {
+                strong_ptr->CompleteSyncRequest(*context);
             }
-
-            // Complete the service request.
-            KScopedAutoObject server_session{&session_ptr->GetServerSession()};
-            server_session->CompleteSyncRequest(*context);
         });
     }
     condition.notify_one();
@@ -111,7 +102,7 @@ ServiceThread::ServiceThread(KernelCore& kernel, std::size_t num_threads, const 
 
 ServiceThread::~ServiceThread() = default;
 
-void ServiceThread::QueueSyncRequest(KSession& session,
+void ServiceThread::QueueSyncRequest(ServerSession& session,
                                      std::shared_ptr<HLERequestContext>&& context) {
     impl->QueueSyncRequest(session, std::move(context));
 }

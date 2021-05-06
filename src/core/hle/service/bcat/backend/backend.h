@@ -11,7 +11,6 @@
 
 #include "common/common_types.h"
 #include "core/file_sys/vfs_types.h"
-#include "core/hle/kernel/k_event.h"
 #include "core/hle/result.h"
 
 namespace Core {
@@ -99,13 +98,13 @@ public:
 private:
     explicit ProgressServiceBackend(Kernel::KernelCore& kernel, std::string_view event_name);
 
-    Kernel::KReadableEvent& GetEvent();
+    std::shared_ptr<Kernel::KReadableEvent> GetEvent() const;
     DeliveryCacheProgressImpl& GetImpl();
 
-    void SignalUpdate();
+    void SignalUpdate() const;
 
     DeliveryCacheProgressImpl impl{};
-    Kernel::KEvent update_event;
+    std::shared_ptr<Kernel::KEvent> event;
     bool need_hle_lock = false;
 };
 

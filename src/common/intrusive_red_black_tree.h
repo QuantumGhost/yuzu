@@ -509,6 +509,7 @@ private:
 
 private:
     static constexpr TypedStorage<Derived> DerivedStorage = {};
+    static_assert(GetParent(GetNode(GetPointer(DerivedStorage))) == GetPointer(DerivedStorage));
 };
 
 template <auto T, class Derived = impl::GetParentType<T>>
