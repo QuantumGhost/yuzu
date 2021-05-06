@@ -477,6 +477,8 @@ private:
 
     KThread* exception_thread{};
 
+    Core::System* system{};
+
     KLightLock state_lock;
 };
 

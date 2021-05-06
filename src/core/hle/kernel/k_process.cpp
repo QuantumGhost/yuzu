@@ -127,6 +127,7 @@ ResultCode KProcess::Initialize(KProcess* process, Core::System& system, std::st
     process->resource_limit = kernel.GetSystemResourceLimit();
     process->status = ProcessStatus::Created;
     process->program_id = 0;
+    process->system = &system;
     process->process_id = type == ProcessType::KernelInternal ? kernel.CreateNewKernelProcessID()
                                                               : kernel.CreateNewUserProcessID();
     process->capabilities.InitializeForMetadatalessProcess();
@@ -367,7 +368,7 @@ void KProcess::Run(s32 main_thread_priority, u64 stack_size) {
 
     ChangeStatus(ProcessStatus::Running);
 
-    SetupMainThread(kernel.System(), *this, main_thread_priority, main_thread_stack_top);
+    SetupMainThread(*system, *this, main_thread_priority, main_thread_stack_top);
 }
 
 void KProcess::PrepareForTermination() {
@@ -389,7 +390,7 @@ void KProcess::PrepareForTermination() {
         }
     };
 
-    stop_threads(kernel.System().GlobalSchedulerContext().GetThreadList());
+    stop_threads(system->GlobalSchedulerContext().GetThreadList());
 
     FreeTLSRegion(tls_region_address);
     tls_region_address = 0;
@@ -437,7 +438,7 @@ VAddr KProcess::CreateTLSRegion() {
 
     const VAddr start{page_table->GetKernelMapRegionStart()};
     const VAddr size{page_table->GetKernelMapRegionEnd() - start};
-    const PAddr tls_map_addr{kernel.System().DeviceMemory().GetPhysicalAddr(tls_page_ptr)};
+    const PAddr tls_map_addr{system->DeviceMemory().GetPhysicalAddr(tls_page_ptr)};
     const VAddr tls_page_addr{page_table
                                   ->AllocateAndMapMemory(1, PageSize, true, start, size / PageSize,
                                                          KMemoryState::ThreadLocal,
@@ -478,8 +479,7 @@ void KProcess::LoadModule(CodeSet code_set, VAddr base_addr) {
         page_table->SetCodeMemoryPermission(segment.addr + base_addr, segment.size, permission);
     };
 
-    kernel.System().Memory().WriteBlock(*this, base_addr, code_set.memory.data(),
-                                        code_set.memory.size());
+    system->Memory().WriteBlock(*this, base_addr, code_set.memory.data(), code_set.memory.size());
 
     ReprotectSegment(code_set.CodeSegment(), KMemoryPermission::ReadAndExecute);
     ReprotectSegment(code_set.RODataSegment(), KMemoryPermission::Read);
@@ -492,9 +492,9 @@ bool KProcess::IsSignaled() const {
 }
 
 KProcess::KProcess(KernelCore& kernel)
-    : KAutoObjectWithSlabHeapAndContainer{kernel},
-      page_table{std::make_unique<KPageTable>(kernel.System())}, handle_table{kernel},
-      address_arbiter{kernel.System()}, condition_var{kernel.System()}, state_lock{kernel} {}
+    : KAutoObjectWithSlabHeapAndContainer{kernel}, page_table{std::make_unique<KPageTable>(
+                                                       *system)},
+      handle_table{kernel}, address_arbiter{*system}, condition_var{*system}, state_lock{kernel} {}
 
 KProcess::~KProcess() = default;
 

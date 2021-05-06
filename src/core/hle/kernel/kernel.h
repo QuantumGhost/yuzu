@@ -265,9 +265,6 @@ public:
     bool IsPhantomModeForSingleCore() const;
     void SetIsPhantomModeForSingleCore(bool value);
 
-    Core::System& System();
-    const Core::System& System() const;
-
     /// Gets the slab heap for the specified kernel object type.
     template <typename T>
     KSlabHeap<T>& SlabHeap() {

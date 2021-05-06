@@ -1013,12 +1013,4 @@ void KernelCore::SetIsPhantomModeForSingleCore(bool value) {
     impl->SetIsPhantomModeForSingleCore(value);
 }
 
-Core::System& KernelCore::System() {
-    return impl->system;
-}
-
-const Core::System& KernelCore::System() const {
-    return impl->system;
-}
-
 } // namespace Kernel
