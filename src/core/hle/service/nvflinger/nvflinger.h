@@ -61,9 +61,6 @@ public:
     /// If an invalid display ID is specified, then an empty optional is returned.
     [[nodiscard]] std::optional<u64> CreateLayer(u64 display_id);
 
-    /// Creates a layer with the specified layer ID in the desired display.
-    void CreateLayerAtId(VI::Display* display, u64 layer_id);
-
     /// Closes a layer on all displays for the given layer ID.
     void CloseLayer(u64 layer_id);
 
@@ -107,6 +104,9 @@ private:
     /// or creates the layer if it is not found.
     /// To be used when the system expects the specified ID to already exist.
     [[nodiscard]] VI::Layer* FindOrCreateLayer(u64 display_id, u64 layer_id);
+
+    /// Creates a layer with the specified layer ID in the desired display.
+    void CreateLayerAtId(VI::Display& display, u64 layer_id);
 
     static void VSyncThread(NVFlinger& nv_flinger);
 
