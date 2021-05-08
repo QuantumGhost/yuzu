@@ -69,14 +69,18 @@ public:
                 SDL_GameController* game_controller)
         : guid{std::move(guid_)}, port{port_}, sdl_joystick{joystick, &SDL_JoystickClose},
           sdl_controller{game_controller, &SDL_GameControllerClose} {
+        EnableMotion();
+    }
 
-        if (game_controller) {
-            if (SDL_GameControllerHasSensor(game_controller, SDL_SENSOR_ACCEL)) {
-                SDL_GameControllerSetSensorEnabled(game_controller, SDL_SENSOR_ACCEL, SDL_TRUE);
+    void EnableMotion() {
+        if (sdl_controller) {
+            SDL_GameController* controller = sdl_controller.get();
+            if (SDL_GameControllerHasSensor(controller, SDL_SENSOR_ACCEL) && !has_accel) {
+                SDL_GameControllerSetSensorEnabled(controller, SDL_SENSOR_ACCEL, SDL_TRUE);
                 has_accel = true;
             }
-            if (SDL_GameControllerHasSensor(game_controller, SDL_SENSOR_GYRO)) {
-                SDL_GameControllerSetSensorEnabled(game_controller, SDL_SENSOR_GYRO, SDL_TRUE);
+            if (SDL_GameControllerHasSensor(controller, SDL_SENSOR_GYRO) && !has_gyro) {
+                SDL_GameControllerSetSensorEnabled(controller, SDL_SENSOR_GYRO, SDL_TRUE);
                 has_gyro = true;
             }
         }
@@ -93,13 +97,11 @@ public:
         last_motion_update = event.timestamp;
         switch (event.sensor) {
         case SDL_SENSOR_ACCEL: {
-
             const Common::Vec3f acceleration = {-event.data[0], event.data[2], -event.data[1]};
             motion.SetAcceleration(acceleration / 9.8f);
             break;
         }
         case SDL_SENSOR_GYRO: {
-
             const Common::Vec3f gyroscope = {event.data[0], -event.data[2], event.data[1]};
             motion.SetGyroscope(gyroscope / (6.283f * 1.05f));
             break;
@@ -791,6 +793,10 @@ SDLState::SDLState() {
     RegisterFactory<VibrationDevice>("sdl", vibration_factory);
     RegisterFactory<MotionDevice>("sdl", motion_factory);
 
+    // Tell SDL2 to use the hidapi driver. This will allow joycons to be detected as a
+    // GameController and not a generic one
+    SDL_SetHint("SDL_JOYSTICK_HIDAPI_JOY_CONS", "1");
+
     // If the frontend is going to manage the event loop, then we don't start one here
     start_thread = SDL_WasInit(SDL_INIT_JOYSTICK) == 0;
     if (start_thread && SDL_Init(SDL_INIT_JOYSTICK) < 0) {
@@ -1155,6 +1161,8 @@ MotionMapping SDLState::GetMotionMappingForDevice(const Common::ParamPackage& pa
     if (controller == nullptr) {
         return {};
     }
+
+    joystick->EnableMotion();
 
     if (!joystick->HasGyro() && !joystick->HasAccel()) {
         return {};
