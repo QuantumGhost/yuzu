@@ -4,6 +4,8 @@
 
 #include <string>
 #include <zip.h>
+
+#include "common/fs/path_util.h"
 #include "common/logging/backend.h"
 #include "core/file_sys/vfs.h"
 #include "core/file_sys/vfs_libzip.h"
