@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -94,9 +94,11 @@ static VideoBootStrap *bootstrap[] = {
 #if SDL_VIDEO_DRIVER_PSP
     &PSP_bootstrap,
 #endif
+#if SDL_VIDEO_DRIVER_VITA
+    &VITA_bootstrap,
+#endif
 #if SDL_VIDEO_DRIVER_KMSDRM
     &KMSDRM_bootstrap,
-    &KMSDRM_LEGACY_bootstrap,
 #endif
 #if SDL_VIDEO_DRIVER_RPI
     &RPI_bootstrap,
@@ -1434,8 +1436,16 @@ SDL_FinishWindowCreation(SDL_Window *window, Uint32 flags)
     if (flags & SDL_WINDOW_FULLSCREEN) {
         SDL_SetWindowFullscreen(window, flags);
     }
-    if (flags & SDL_WINDOW_INPUT_GRABBED) {
+    if (flags & SDL_WINDOW_MOUSE_GRABBED) {
+        /* We must specifically call SDL_SetWindowGrab() and not
+           SDL_SetWindowMouseGrab() here because older applications may use
+           this flag plus SDL_HINT_GRAB_KEYBOARD to indicate that they want
+           the keyboard grabbed too and SDL_SetWindowMouseGrab() won't do that.
+        */
         SDL_SetWindowGrab(window, SDL_TRUE);
+    }
+    if (flags & SDL_WINDOW_KEYBOARD_GRABBED) {
+        SDL_SetWindowKeyboardGrab(window, SDL_TRUE);
     }
     if (!(flags & SDL_WINDOW_HIDDEN)) {
         SDL_ShowWindow(window);
@@ -1446,6 +1456,7 @@ SDL_Window *
 SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
 {
     SDL_Window *window;
+    Uint32 graphics_flags = flags & (SDL_WINDOW_OPENGL | SDL_WINDOW_METAL | SDL_WINDOW_VULKAN);
 
     if (!_this) {
         /* Initialize the video system if needed */
@@ -1473,12 +1484,16 @@ SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
         return NULL;
     }
 
-    /* Some platforms have OpenGL enabled by default */
-#if (SDL_VIDEO_OPENGL && __MACOSX__) || __IPHONEOS__ || __ANDROID__ || __NACL__
-    if (!_this->is_dummy && !(flags & SDL_WINDOW_VULKAN) && !(flags & SDL_WINDOW_METAL) && !SDL_IsVideoContextExternal()) {
+    /* Some platforms have certain graphics backends enabled by default */
+    if (!_this->is_dummy && !graphics_flags && !SDL_IsVideoContextExternal()) {
+#if (SDL_VIDEO_OPENGL && __MACOSX__) || (__IPHONEOS__ && !TARGET_OS_MACCATALYST) || __ANDROID__ || __NACL__
         flags |= SDL_WINDOW_OPENGL;
-    }
 #endif
+#if SDL_VIDEO_METAL && (TARGET_OS_MACCATALYST || __MACOSX__ || __IPHONEOS__)
+        flags |= SDL_WINDOW_METAL;
+#endif
+    }
+
     if (flags & SDL_WINDOW_OPENGL) {
         if (!_this->GL_CreateContext) {
             SDL_SetError("OpenGL support is either not configured in SDL "
@@ -1498,7 +1513,7 @@ SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
                          "(%s) or platform", _this->name);
             return NULL;
         }
-        if (flags & SDL_WINDOW_OPENGL) {
+        if (graphics_flags & SDL_WINDOW_OPENGL) {
             SDL_SetError("Vulkan and OpenGL not supported on same window");
             return NULL;
         }
@@ -1514,11 +1529,12 @@ SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
                          "(%s) or platform", _this->name);
             return NULL;
         }
-        if (flags & SDL_WINDOW_OPENGL) {
+        /* 'flags' may have default flags appended, don't check against that. */
+        if (graphics_flags & SDL_WINDOW_OPENGL) {
             SDL_SetError("Metal and OpenGL not supported on same window");
             return NULL;
         }
-        if (flags & SDL_WINDOW_VULKAN) {
+        if (graphics_flags & SDL_WINDOW_VULKAN) {
             SDL_SetError("Metal and Vulkan not supported on same window. "
                          "To use MoltenVK, set SDL_WINDOW_VULKAN only.");
             return NULL;
@@ -2094,6 +2110,25 @@ SDL_SetWindowResizable(SDL_Window * window, SDL_bool resizable)
 }
 
 void
+SDL_SetWindowAlwaysOnTop(SDL_Window * window, SDL_bool on_top)
+{
+    CHECK_WINDOW_MAGIC(window,);
+    if (!(window->flags & SDL_WINDOW_FULLSCREEN)) {
+        const int want = (on_top != SDL_FALSE);  /* normalize the flag. */
+        const int have = ((window->flags & SDL_WINDOW_ALWAYS_ON_TOP) != 0);
+        if ((want != have) && (_this->SetWindowAlwaysOnTop)) {
+            if (want) {
+                window->flags |= SDL_WINDOW_ALWAYS_ON_TOP;
+            } else {
+                window->flags &= ~SDL_WINDOW_ALWAYS_ON_TOP;
+            }
+            
+            _this->SetWindowAlwaysOnTop(_this, window, (SDL_bool) want);
+        }
+    }
+}
+
+void
 SDL_SetWindowSize(SDL_Window * window, int w, int h)
 {
     CHECK_WINDOW_MAGIC(window,);
@@ -2635,31 +2670,46 @@ SDL_GetWindowGammaRamp(SDL_Window * window, Uint16 * red,
 void
 SDL_UpdateWindowGrab(SDL_Window * window)
 {
-    SDL_Window *grabbed_window;
-    SDL_bool grabbed;
-    if ((SDL_GetMouse()->relative_mode || (window->flags & SDL_WINDOW_INPUT_GRABBED)) &&
-         (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
-        grabbed = SDL_TRUE;
+    SDL_bool keyboard_grabbed, mouse_grabbed;
+
+    if (window->flags & SDL_WINDOW_INPUT_FOCUS) {
+        if (SDL_GetMouse()->relative_mode || (window->flags & SDL_WINDOW_MOUSE_GRABBED)) {
+            mouse_grabbed = SDL_TRUE;
+        } else {
+            mouse_grabbed = SDL_FALSE;
+        }
+
+        if (window->flags & SDL_WINDOW_KEYBOARD_GRABBED) {
+            keyboard_grabbed = SDL_TRUE;
+        } else {
+            keyboard_grabbed = SDL_FALSE;
+        }
     } else {
-        grabbed = SDL_FALSE;
+        mouse_grabbed = SDL_FALSE;
+        keyboard_grabbed = SDL_FALSE;
     }
 
-    grabbed_window = _this->grabbed_window;
-    if (grabbed) {
-        if (grabbed_window && (grabbed_window != window)) {
+    if (mouse_grabbed || keyboard_grabbed) {
+        if (_this->grabbed_window && (_this->grabbed_window != window)) {
             /* stealing a grab from another window! */
-            grabbed_window->flags &= ~SDL_WINDOW_INPUT_GRABBED;
-            if (_this->SetWindowGrab) {
-                _this->SetWindowGrab(_this, grabbed_window, SDL_FALSE);
+            _this->grabbed_window->flags &= ~(SDL_WINDOW_MOUSE_GRABBED | SDL_WINDOW_KEYBOARD_GRABBED);
+            if (_this->SetWindowMouseGrab) {
+                _this->SetWindowMouseGrab(_this, _this->grabbed_window, SDL_FALSE);
+            }
+            if (_this->SetWindowKeyboardGrab) {
+                _this->SetWindowKeyboardGrab(_this, _this->grabbed_window, SDL_FALSE);
             }
         }
         _this->grabbed_window = window;
-    } else if (grabbed_window == window) {
-        _this->grabbed_window = NULL;  /* ungrabbing. */
+    } else if (_this->grabbed_window == window) {
+        _this->grabbed_window = NULL;  /* ungrabbing input. */
     }
 
-    if (_this->SetWindowGrab) {
-        _this->SetWindowGrab(_this, window, grabbed);
+    if (_this->SetWindowMouseGrab) {
+        _this->SetWindowMouseGrab(_this, window, mouse_grabbed);
+    }
+    if (_this->SetWindowKeyboardGrab) {
+        _this->SetWindowKeyboardGrab(_this, window, keyboard_grabbed);
     }
 }
 
@@ -2668,13 +2718,41 @@ SDL_SetWindowGrab(SDL_Window * window, SDL_bool grabbed)
 {
     CHECK_WINDOW_MAGIC(window,);
 
-    if (!!grabbed == !!(window->flags & SDL_WINDOW_INPUT_GRABBED)) {
+    SDL_SetWindowMouseGrab(window, grabbed);
+
+    if (SDL_GetHintBoolean(SDL_HINT_GRAB_KEYBOARD, SDL_FALSE)) {
+        SDL_SetWindowKeyboardGrab(window, grabbed);
+    }
+}
+
+void
+SDL_SetWindowKeyboardGrab(SDL_Window * window, SDL_bool grabbed)
+{
+    CHECK_WINDOW_MAGIC(window,);
+
+    if (!!grabbed == !!(window->flags & SDL_WINDOW_KEYBOARD_GRABBED)) {
         return;
     }
     if (grabbed) {
-        window->flags |= SDL_WINDOW_INPUT_GRABBED;
+        window->flags |= SDL_WINDOW_KEYBOARD_GRABBED;
     } else {
-        window->flags &= ~SDL_WINDOW_INPUT_GRABBED;
+        window->flags &= ~SDL_WINDOW_KEYBOARD_GRABBED;
+    }
+    SDL_UpdateWindowGrab(window);
+}
+
+void
+SDL_SetWindowMouseGrab(SDL_Window * window, SDL_bool grabbed)
+{
+    CHECK_WINDOW_MAGIC(window,);
+
+    if (!!grabbed == !!(window->flags & SDL_WINDOW_MOUSE_GRABBED)) {
+        return;
+    }
+    if (grabbed) {
+        window->flags |= SDL_WINDOW_MOUSE_GRABBED;
+    } else {
+        window->flags &= ~SDL_WINDOW_MOUSE_GRABBED;
     }
     SDL_UpdateWindowGrab(window);
 }
@@ -2683,14 +2761,34 @@ SDL_bool
 SDL_GetWindowGrab(SDL_Window * window)
 {
     CHECK_WINDOW_MAGIC(window, SDL_FALSE);
-    SDL_assert(!_this->grabbed_window || ((_this->grabbed_window->flags & SDL_WINDOW_INPUT_GRABBED) != 0));
+    SDL_assert(!_this->grabbed_window ||
+               ((_this->grabbed_window->flags & SDL_WINDOW_MOUSE_GRABBED) != 0) ||
+               ((_this->grabbed_window->flags & SDL_WINDOW_KEYBOARD_GRABBED) != 0));
     return window == _this->grabbed_window;
+}
+
+SDL_bool
+SDL_GetWindowKeyboardGrab(SDL_Window * window)
+{
+    CHECK_WINDOW_MAGIC(window, SDL_FALSE);
+    return window == _this->grabbed_window &&
+           ((_this->grabbed_window->flags & SDL_WINDOW_KEYBOARD_GRABBED) != 0);
+}
+
+SDL_bool
+SDL_GetWindowMouseGrab(SDL_Window * window)
+{
+    CHECK_WINDOW_MAGIC(window, SDL_FALSE);
+    return window == _this->grabbed_window &&
+           ((_this->grabbed_window->flags & SDL_WINDOW_MOUSE_GRABBED) != 0);
 }
 
 SDL_Window *
 SDL_GetGrabbedWindow(void)
 {
-    SDL_assert(!_this->grabbed_window || ((_this->grabbed_window->flags & SDL_WINDOW_INPUT_GRABBED) != 0));
+    SDL_assert(!_this->grabbed_window ||
+               ((_this->grabbed_window->flags & SDL_WINDOW_MOUSE_GRABBED) != 0) ||
+               ((_this->grabbed_window->flags & SDL_WINDOW_KEYBOARD_GRABBED) != 0));
     return _this->grabbed_window;
 }
 
@@ -3963,14 +4061,20 @@ SDL_IsScreenKeyboardShown(SDL_Window *window)
 #if SDL_VIDEO_DRIVER_X11
 #include "x11/SDL_x11messagebox.h"
 #endif
+#if SDL_VIDEO_DRIVER_WAYLAND
+#include "wayland/SDL_waylandmessagebox.h"
+#endif
 #if SDL_VIDEO_DRIVER_HAIKU
 #include "haiku/SDL_bmessagebox.h"
 #endif
 #if SDL_VIDEO_DRIVER_OS2
 #include "os2/SDL_os2messagebox.h"
 #endif
+#if SDL_VIDEO_DRIVER_VITA
+#include "vita/SDL_vitamessagebox.h"
+#endif
 
-#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
+#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_WAYLAND || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
 static SDL_bool SDL_MessageboxValidForDriver(const SDL_MessageBoxData *messageboxdata, SDL_SYSWM_TYPE drivertype)
 {
     SDL_SysWMinfo info;
@@ -4069,6 +4173,13 @@ SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
         retval = 0;
     }
 #endif
+#if SDL_VIDEO_DRIVER_WAYLAND
+    if (retval == -1 &&
+        SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_WAYLAND) &&
+        Wayland_ShowMessageBox(messageboxdata, buttonid) == 0) {
+        retval = 0;
+    }
+#endif
 #if SDL_VIDEO_DRIVER_HAIKU
     if (retval == -1 &&
         SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_HAIKU) &&
@@ -4080,6 +4191,12 @@ SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     if (retval == -1 &&
         SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_OS2) &&
         OS2_ShowMessageBox(messageboxdata, buttonid) == 0) {
+        retval = 0;
+    }
+#endif
+#if SDL_VIDEO_DRIVER_VITA
+    if (retval == -1 &&
+        VITA_ShowMessageBox(messageboxdata, buttonid) == 0) {
         retval = 0;
     }
 #endif

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -325,7 +325,7 @@ SetupWindowData(_THIS, SDL_Window * window, Window w, BOOL created)
             SDL_SetKeyboardFocus(data->window);
         }
 
-        if (window->flags & SDL_WINDOW_INPUT_GRABBED) {
+        if (window->flags & SDL_WINDOW_MOUSE_GRABBED) {
             /* Tell x11 to clip mouse */
         }
     }
@@ -445,6 +445,7 @@ X11_CreateWindow(_THIS, SDL_Window * window)
     }
 
     xattr.override_redirect = ((window->flags & SDL_WINDOW_TOOLTIP) || (window->flags & SDL_WINDOW_POPUP_MENU)) ? True : False;
+    xattr.backing_store = NotUseful;
     xattr.background_pixmap = None;
     xattr.border_pixel = 0;
 
@@ -531,7 +532,7 @@ X11_CreateWindow(_THIS, SDL_Window * window)
                       window->x, window->y, window->w, window->h,
                       0, depth, InputOutput, visual,
                       (CWOverrideRedirect | CWBackPixmap | CWBorderPixel |
-                       CWColormap), &xattr);
+                       CWBackingStore | CWColormap), &xattr);
     if (!w) {
         return SDL_SetError("Couldn't create window");
     }
@@ -667,6 +668,8 @@ X11_CreateWindow(_THIS, SDL_Window * window)
                  PointerMotionMask | KeyPressMask | KeyReleaseMask |
                  PropertyChangeMask | StructureNotifyMask |
                  KeymapStateMask | fevent));
+
+    X11_XkbSelectEvents(display, XkbUseCoreKbd, XkbStateNotifyMask, XkbStateNotifyMask);
 
     X11_XFlush(display);
 
@@ -1108,6 +1111,36 @@ X11_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable)
 }
 
 void
+X11_SetWindowAlwaysOnTop(_THIS, SDL_Window * window, SDL_bool on_top)
+{
+    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+    SDL_DisplayData *displaydata = (SDL_DisplayData *) SDL_GetDisplayForWindow(window)->driverdata;
+    Display *display = data->videodata->display;
+    Atom _NET_WM_STATE = data->videodata->_NET_WM_STATE;
+    Atom _NET_WM_STATE_ABOVE = data->videodata->_NET_WM_STATE_ABOVE;
+
+    if (X11_IsWindowMapped(_this, window)) {
+        XEvent e;
+
+        SDL_zero(e);
+        e.xany.type = ClientMessage;
+        e.xclient.message_type = _NET_WM_STATE;
+        e.xclient.format = 32;
+        e.xclient.window = data->xwindow;
+        e.xclient.data.l[0] =
+            on_top ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE;
+        e.xclient.data.l[1] = _NET_WM_STATE_ABOVE;
+        e.xclient.data.l[3] = 0l;
+
+        X11_XSendEvent(display, RootWindow(display, displaydata->screen), 0,
+                   SubstructureNotifyMask | SubstructureRedirectMask, &e);
+    } else {
+        X11_SetNetWMState(_this, data->xwindow, window->flags);
+    }
+    X11_XFlush(display);
+}
+
+void
 X11_ShowWindow(_THIS, SDL_Window * window)
 {
     SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
@@ -1126,6 +1159,7 @@ X11_ShowWindow(_THIS, SDL_Window * window)
 
     if (!data->videodata->net_wm) {
         /* no WM means no FocusIn event, which confuses us. Force it. */
+        X11_XSync(display, False);
         X11_XSetInputFocus(display, data->xwindow, RevertToNone, CurrentTime);
         X11_XFlush(display);
     }
@@ -1561,12 +1595,11 @@ X11_SetWindowGammaRamp(_THIS, SDL_Window * window, const Uint16 * ramp)
 }
 
 void
-X11_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
+X11_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
 {
     SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
     Display *display = data->videodata->display;
     SDL_bool oldstyle_fullscreen;
-    SDL_bool grab_keyboard;
 
     /* ICCCM2.0-compliant window managers can handle fullscreen windows
        If we're using XVidMode to change resolution we need to confine
@@ -1607,21 +1640,33 @@ X11_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
         /* Raise the window if we grab the mouse */
         X11_XRaiseWindow(display, data->xwindow);
 
-        /* Now grab the keyboard */
-        if (SDL_GetHintBoolean(SDL_HINT_GRAB_KEYBOARD, SDL_FALSE)) {
-            grab_keyboard = SDL_TRUE;
-        } else {
-            /* We need to do this with the old style override_redirect
-               fullscreen window otherwise we won't get keyboard focus.
-            */
-            grab_keyboard = oldstyle_fullscreen;
-        }
-        if (grab_keyboard) {
-            X11_XGrabKeyboard(display, data->xwindow, True, GrabModeAsync,
-                          GrabModeAsync, CurrentTime);
+        /* Now grab the keyboard on old-style fullscreen */
+        if (oldstyle_fullscreen) {
+            X11_SetWindowKeyboardGrab(_this, window, SDL_TRUE);
         }
     } else {
         X11_XUngrabPointer(display, CurrentTime);
+    }
+    X11_XSync(display, False);
+}
+
+void
+X11_SetWindowKeyboardGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
+{
+    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+    Display *display = data->videodata->display;
+
+    if (grabbed) {
+        /* If the window is unmapped, XGrab calls return GrabNotViewable,
+           so when we get a MapNotify later, we'll try to update the grab as
+           appropriate. */
+        if (window->flags & SDL_WINDOW_HIDDEN) {
+            return;
+        }
+
+        X11_XGrabKeyboard(display, data->xwindow, True, GrabModeAsync,
+                          GrabModeAsync, CurrentTime);
+    } else {
         X11_XUngrabKeyboard(display, CurrentTime);
     }
     X11_XSync(display, False);

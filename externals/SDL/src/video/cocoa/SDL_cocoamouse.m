@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,6 @@
 
 #include "SDL_events.h"
 #include "SDL_cocoamouse.h"
-#include "SDL_cocoamousetap.h"
 #include "SDL_cocoavideo.h"
 
 #include "../../events/SDL_mouse_c.h"
@@ -348,8 +347,6 @@ Cocoa_InitMouse(_THIS)
 
     SDL_SetDefaultCursor(Cocoa_CreateDefaultCursor());
 
-    Cocoa_InitMouseEventTap(driverdata);
-
     const NSPoint location =  [NSEvent mouseLocation];
     driverdata->lastMoveX = location.x;
     driverdata->lastMoveY = location.y;
@@ -467,8 +464,6 @@ Cocoa_QuitMouse(_THIS)
     SDL_Mouse *mouse = SDL_GetMouse();
     if (mouse) {
         if (mouse->driverdata) {
-            Cocoa_QuitMouseEventTap(((SDL_MouseData*)mouse->driverdata));
-
             SDL_free(mouse->driverdata);
             mouse->driverdata = NULL;
         }

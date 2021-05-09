@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -676,6 +676,7 @@ X11_DispatchEvent(_THIS)
     Display *display;
     SDL_WindowData *data;
     XEvent xevent;
+    XkbEvent* xkbEvent;
     int orig_event_type;
     KeyCode orig_keycode;
     XClientMessageEvent m;
@@ -688,6 +689,7 @@ X11_DispatchEvent(_THIS)
 
     SDL_zero(xevent);           /* valgrind fix. --ryan. */
     X11_XNextEvent(display, &xevent);
+    xkbEvent = (XkbEvent*) &xevent;
 
     /* Save the original keycode for dead keys, which are filtered out by
        the XFilterEvent() call below.
@@ -768,7 +770,7 @@ X11_DispatchEvent(_THIS)
             if (SDL_GetKeyboardFocus() != NULL) {
                 X11_ReconcileKeyboardState(_this);
             }
-        } else if (xevent.type == MappingNotify) {
+        } else if (xevent.type == MappingNotify || xkbEvent->any.xkb_type == XkbStateNotify) {
             /* Has the keyboard layout changed? */
             const int request = xevent.xmapping.request;
 
@@ -808,6 +810,9 @@ X11_DispatchEvent(_THIS)
             if (!mouse->relative_mode) {
                 SDL_SendMouseMotion(data->window, 0, 0, xevent.xcrossing.x, xevent.xcrossing.y);
             }
+
+            /* We ungrab in LeaveNotify, so we may need to grab again here */
+            SDL_UpdateWindowGrab(data->window);
         }
         break;
         /* Losing mouse coverage? */
@@ -829,6 +834,13 @@ X11_DispatchEvent(_THIS)
             if (xevent.xcrossing.mode != NotifyGrab &&
                 xevent.xcrossing.mode != NotifyUngrab &&
                 xevent.xcrossing.detail != NotifyInferior) {
+                
+                /* In order for interaction with the window decorations and menu to work properly
+                   on Mutter, we need to ungrab the keyboard when the the mouse leaves. */
+                if (!(data->window->flags & SDL_WINDOW_FULLSCREEN)) {
+                    X11_SetWindowKeyboardGrab(_this, data->window, SDL_FALSE);
+                }
+
                 SDL_SetMouseFocus(NULL);
             }
         }

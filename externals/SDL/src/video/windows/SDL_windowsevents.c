@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -429,6 +429,68 @@ static SDL_MOUSE_EVENT_SOURCE GetMouseMessageSource()
 }
 
 LRESULT CALLBACK
+WIN_KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    KBDLLHOOKSTRUCT* hookData = (KBDLLHOOKSTRUCT*)lParam;
+    SDL_VideoData* data = SDL_GetVideoDevice()->driverdata;
+    SDL_Scancode scanCode;
+
+    if (nCode < 0 || nCode != HC_ACTION) {
+        return CallNextHookEx(NULL, nCode, wParam, lParam);
+    }
+
+    switch (hookData->vkCode) {
+    case VK_LWIN:
+        scanCode = SDL_SCANCODE_LGUI;
+        break;
+    case VK_RWIN:
+        scanCode = SDL_SCANCODE_RGUI;
+        break;
+    case VK_LMENU:
+        scanCode = SDL_SCANCODE_LALT;
+        break;
+    case VK_RMENU:
+        scanCode = SDL_SCANCODE_RALT;
+        break;
+    case VK_LCONTROL:
+        scanCode = SDL_SCANCODE_LCTRL;
+        break;
+    case VK_RCONTROL:
+        scanCode = SDL_SCANCODE_RCTRL;
+        break;
+
+    /* These are required to intercept Alt+Tab and Alt+Esc on Windows 7 */
+    case VK_TAB:
+        scanCode = SDL_SCANCODE_TAB;
+        break;
+    case VK_ESCAPE:
+        scanCode = SDL_SCANCODE_ESCAPE;
+        break;
+
+    default:
+        return CallNextHookEx(NULL, nCode, wParam, lParam);
+    }
+
+    if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+        SDL_SendKeyboardKey(SDL_PRESSED, scanCode);
+    } else {
+        SDL_SendKeyboardKey(SDL_RELEASED, scanCode);
+
+        /* If the key was down prior to our hook being installed, allow the
+           key up message to pass normally the first time. This ensures other
+           windows have a consistent view of the key state, and avoids keys
+           being stuck down in those windows if they are down when the grab
+           happens and raised while grabbed. */
+        if (hookData->vkCode <= 0xFF && data->pre_hook_key_state[hookData->vkCode]) {
+            data->pre_hook_key_state[hookData->vkCode] = 0;
+            return CallNextHookEx(NULL, nCode, wParam, lParam);
+        }
+    }
+
+    return 1;
+}
+
+LRESULT CALLBACK
 WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     SDL_WindowData *data;
@@ -721,8 +783,16 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     }
                }
             }
-            SDL_SetMouseFocus(NULL);
         }
+
+        /* When WM_MOUSELEAVE is fired we can be assured that the cursor has left the window.
+           Regardless of relative mode, it is important that mouse focus is reset as there is a potential
+           race condition when in the process of leaving/entering relative mode, resulting in focus never
+           being lost. This then causes a cascading failure where SDL_WINDOWEVENT_ENTER / SDL_WINDOWEVENT_LEAVE
+           can stop firing permanently, due to the focus being in the wrong state and TrackMouseEvent never
+           resubscribing. */
+        SDL_SetMouseFocus(NULL);
+
         returnCode = 0;
         break;
 #endif /* WM_MOUSELEAVE */
@@ -1250,7 +1320,7 @@ struct SDL_WIN_OSVERSIONINFOW {
 static SDL_bool
 IsWin10FCUorNewer(void)
 {
-    HMODULE handle = GetModuleHandleW(L"ntdll.dll");
+    HMODULE handle = GetModuleHandle(TEXT("ntdll.dll"));
     if (handle) {
         typedef LONG(WINAPI* RtlGetVersionPtr)(struct SDL_WIN_OSVERSIONINFOW*);
         RtlGetVersionPtr getVersionPtr = (RtlGetVersionPtr)GetProcAddress(handle, "RtlGetVersion");
