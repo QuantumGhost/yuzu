@@ -7,6 +7,15 @@ title="yuzu Early Access $ver"
 
 ln -s /home/yuzu/.conan /root
 
+#SDL-2.0.15-14858.tar.gz
+mkdir SDL2 && cd SDL2
+curl -sLO http://libsdl.org/tmp/SDL-2.0.15-14858.tar.gz
+tar -xzf SDL-2.0.15-14858.tar.gz
+cd SDL-2.0.15-14858
+./configure --prefix=/usr
+make && make install
+cd ../../
+
 yuzupatch=( $(ls -d patches/* ) )
 for i in "${yuzupatch[@]}"; do patch -p1 < "$i"; done
 
