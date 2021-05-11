@@ -22,7 +22,7 @@ void Controller::ConvertCurrentObjectToDomain(Kernel::HLERequestContext& ctx) {
     rb.Push<u32>(1); // Converted sessions start with 1 request handler
 }
 
-void Controller::DuplicateSession(Kernel::HLERequestContext& ctx) {
+void Controller::CloneCurrentObject(Kernel::HLERequestContext& ctx) {
     // TODO(bunnei): This is just creating a new handle to the same Session. I assume this is wrong
     // and that we probably want to actually make an entirely new Session, but we still need to
     // verify this on hardware.
@@ -41,10 +41,10 @@ void Controller::DuplicateSession(Kernel::HLERequestContext& ctx) {
     rb.PushMoveObjects(session->GetClientSession());
 }
 
-void Controller::DuplicateSessionEx(Kernel::HLERequestContext& ctx) {
+void Controller::CloneCurrentObjectEx(Kernel::HLERequestContext& ctx) {
     LOG_DEBUG(Service, "called");
 
-    DuplicateSession(ctx);
+    CloneCurrentObject(ctx);
 }
 
 void Controller::QueryPointerBufferSize(Kernel::HLERequestContext& ctx) {
@@ -60,9 +60,9 @@ Controller::Controller(Core::System& system_) : ServiceFramework{system_, "IpcCo
     static const FunctionInfo functions[] = {
         {0, &Controller::ConvertCurrentObjectToDomain, "ConvertCurrentObjectToDomain"},
         {1, nullptr, "CopyFromCurrentDomain"},
-        {2, &Controller::DuplicateSession, "DuplicateSession"},
+        {2, &Controller::CloneCurrentObject, "CloneCurrentObject"},
         {3, &Controller::QueryPointerBufferSize, "QueryPointerBufferSize"},
-        {4, &Controller::DuplicateSessionEx, "DuplicateSessionEx"},
+        {4, &Controller::CloneCurrentObjectEx, "CloneCurrentObjectEx"},
     };
     RegisterHandlers(functions);
 }
