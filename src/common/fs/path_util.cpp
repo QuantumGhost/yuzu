@@ -37,9 +37,25 @@
 #endif
 #endif
 
+#ifndef MAX_PATH
+#ifdef _WIN32
+// This is the maximum number of UTF-16 code units permissible in Windows file paths
+#define MAX_PATH 260
+#else
+// This is the maximum number of UTF-8 code units permissible in all other OSes' file paths
+#define MAX_PATH 1024
+#endif
+#endif
+
 namespace Common::FS {
 
 namespace fs = std::filesystem;
+
+namespace {
+
+constexpr std::array<char8_t, 7> INVALID_CHARS{u':', u'*', u'?', u'"', u'<', u'>', u'|'};
+
+}
 
 /**
  * The PathManagerImpl is a singleton allowing to manage the mapping of
@@ -127,6 +143,41 @@ std::string PathToUTF8String(const fs::path& path) {
     const auto utf8_string = path.u8string();
 
     return std::string{utf8_string.begin(), utf8_string.end()};
+}
+
+bool ValidatePath(const fs::path& path) {
+    if (path.empty()) {
+        LOG_ERROR(Common_Filesystem, "Input path is empty, path={}", PathToUTF8String(path));
+        return false;
+    }
+
+#ifdef _WIN32
+
+    if (path.u16string().size() >= MAX_PATH) {
+        LOG_ERROR(Common_Filesystem, "Input path is too long, path={}", PathToUTF8String(path));
+        return false;
+    }
+
+#else
+
+    if (path.u8string().size() >= MAX_PATH) {
+        LOG_ERROR(Common_Filesystem, "Input path is too long, path={}", PathToUTF8String(path));
+        return false;
+    }
+
+#endif
+
+    for (const auto path_char : path.relative_path().u8string()) {
+        for (const auto invalid_char : INVALID_CHARS) {
+            if (path_char == invalid_char) {
+                LOG_ERROR(Common_Filesystem, "Input path contains invalid characters, path={}",
+                          PathToUTF8String(path));
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 fs::path ConcatPath(const fs::path& first, const fs::path& second) {

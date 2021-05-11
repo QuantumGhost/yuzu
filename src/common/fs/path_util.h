@@ -1,4 +1,4 @@
-// Copyright 2020 yuzu Emulator Project
+// Copyright 2021 yuzu Emulator Project
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
@@ -44,6 +44,35 @@ enum class YuzuPath {
  * @returns UTF-8 encoded std::string.
  */
 [[nodiscard]] std::string PathToUTF8String(const std::filesystem::path& path);
+
+/**
+ * Validates a given path.
+ *
+ * A given path is valid if it meets these conditions:
+ * - The path is not empty
+ * - The path is not too long
+ * - The path relative to the platform-specific root path does not contain
+ *   any of the following characters: ':', '*', '?', '"', '<', '>', '|'
+ *
+ * @param path Filesystem path
+ *
+ * @returns True if the path is valid, false otherwise.
+ */
+[[nodiscard]] bool ValidatePath(const std::filesystem::path& path);
+
+#ifdef _WIN32
+
+template <typename Path>
+[[nodiscard]] bool ValidatePath(const Path& path) {
+    using ValueType = typename Path::value_type;
+    if constexpr (IsChar<ValueType>) {
+        return ValidatePath(ToU8String(path));
+    } else {
+        return ValidatePath(std::filesystem::path{path});
+    }
+}
+
+#endif
 
 /**
  * Concatenates two filesystem paths together.

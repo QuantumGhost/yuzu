@@ -80,11 +80,12 @@ VirtualFile RealVfsFilesystem::OpenFile(std::string_view path_, Mode perms) {
         }
     }
 
-    if (!FS::Exists(path)) {
+    auto backing = FS::FileOpen(path, ModeFlagsToFileAccessMode(perms), FS::FileType::BinaryFile);
+
+    if (!backing) {
         return nullptr;
     }
 
-    auto backing = FS::FileOpen(path, ModeFlagsToFileAccessMode(perms), FS::FileType::BinaryFile);
     cache.insert_or_assign(path, backing);
 
     // Cannot use make_shared as RealVfsFile constructor is private
