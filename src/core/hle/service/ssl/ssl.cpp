@@ -59,7 +59,7 @@ public:
             {2, &ISslContext::CreateConnection, "CreateConnection"},
             {3, nullptr, "GetConnectionCount"},
             {4, nullptr, "ImportServerPki"},
-            {5, nullptr, "ImportClientPki"},
+            {5, &ISslContext::ImportClientPki, "ImportClientPki"},
             {6, nullptr, "RemoveServerPki"},
             {7, nullptr, "RemoveClientPki"},
             {8, nullptr, "RegisterInternalPki"},
@@ -93,6 +93,25 @@ private:
         IPC::ResponseBuilder rb{ctx, 2, 0, 1};
         rb.Push(RESULT_SUCCESS);
         rb.PushIpcInterface<ISslConnection>(system);
+    }
+
+    void ImportClientPki(Kernel::HLERequestContext& ctx) {
+        const auto pkcs_12_certificate = ctx.ReadBuffer(0);
+        const auto ascii_password = [&ctx] {
+            if (ctx.CanReadBuffer(1)) {
+                return ctx.ReadBuffer(1);
+            }
+
+            return std::vector<u8>{};
+        }();
+
+        constexpr u64 client_id = 0;
+        ctx.WriteBuffer(client_id);
+
+        LOG_WARNING(Service_SSL, "(STUBBED) called");
+
+        IPC::ResponseBuilder rb{ctx, 2};
+        rb.Push(RESULT_SUCCESS);
     }
 };
 
