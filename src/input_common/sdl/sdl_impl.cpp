@@ -793,9 +793,16 @@ SDLState::SDLState() {
     RegisterFactory<VibrationDevice>("sdl", vibration_factory);
     RegisterFactory<MotionDevice>("sdl", motion_factory);
 
+    // Enable HIDAPI rumble. This prevents SDL from disabling motion on PS4 and PS5 controllers
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
+
     // Tell SDL2 to use the hidapi driver. This will allow joycons to be detected as a
     // GameController and not a generic one
     SDL_SetHint("SDL_JOYSTICK_HIDAPI_JOY_CONS", "1");
+
+    // Turn off Pro controller home led
+    SDL_SetHint("SDL_JOYSTICK_HIDAPI_SWITCH_HOME_LED", "0");
 
     // If the frontend is going to manage the event loop, then we don't start one here
     start_thread = SDL_WasInit(SDL_INIT_JOYSTICK) == 0;
