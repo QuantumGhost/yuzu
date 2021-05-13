@@ -120,16 +120,11 @@ static int cbs_av1_write_uvlc(CodedBitstreamContext *ctx, PutBitContext *pbc,
     if (ctx->trace_enable)
         position = put_bits_count(pbc);
 
-    if (value == 0) {
-        zeroes = 0;
-        put_bits(pbc, 1, 1);
-    } else {
-        zeroes = av_log2(value + 1);
-        v = value - (1U << zeroes) + 1;
-        put_bits(pbc, zeroes, 0);
-        put_bits(pbc, 1, 1);
-        put_bits(pbc, zeroes, v);
-    }
+    zeroes = av_log2(value + 1);
+    v = value - (1U << zeroes) + 1;
+    put_bits(pbc, zeroes, 0);
+    put_bits(pbc, 1, 1);
+    put_bits(pbc, zeroes, v);
 
     if (ctx->trace_enable) {
         char bits[65];
@@ -799,7 +794,7 @@ static int cbs_av1_split_fragment(CodedBitstreamContext *ctx,
             goto fail;
         }
 
-        err = ff_cbs_insert_unit_data(ctx, frag, -1, header.obu_type,
+        err = ff_cbs_insert_unit_data(frag, -1, header.obu_type,
                                       data, obu_length, frag->data_ref);
         if (err < 0)
             goto fail;
@@ -892,7 +887,7 @@ static int cbs_av1_read_unit(CodedBitstreamContext *ctx,
     GetBitContext gbc;
     int err, start_pos, end_pos;
 
-    err = ff_cbs_alloc_unit_content(ctx, unit, sizeof(*obu),
+    err = ff_cbs_alloc_unit_content(unit, sizeof(*obu),
                                     &cbs_av1_free_obu);
     if (err < 0)
         return err;

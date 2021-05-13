@@ -365,11 +365,11 @@ fail:
 static int replace_str_data_in_filename(char **s, const char *filename, char placeholder, const char *datastring)
 {
     const char *p;
-    char *new_filename;
     char c;
     int addchar_count;
     int found_count = 0;
     AVBPrint buf;
+    int ret;
 
     av_bprint_init(&buf, 0, AV_BPRINT_SIZE_UNLIMITED);
 
@@ -395,22 +395,21 @@ static int replace_str_data_in_filename(char **s, const char *filename, char pla
     }
     if (!av_bprint_is_complete(&buf)) {
         av_bprint_finalize(&buf, NULL);
-        return -1;
+        return AVERROR(ENOMEM);
     }
-    if (av_bprint_finalize(&buf, &new_filename) < 0 || !new_filename)
-        return -1;
-    *s = new_filename;
+    if ((ret = av_bprint_finalize(&buf, s)) < 0)
+        return ret;
     return found_count;
 }
 
 static int replace_int_data_in_filename(char **s, const char *filename, char placeholder, int64_t number)
 {
     const char *p;
-    char *new_filename;
     char c;
     int nd, addchar_count;
     int found_count = 0;
     AVBPrint buf;
+    int ret;
 
     av_bprint_init(&buf, 0, AV_BPRINT_SIZE_UNLIMITED);
 
@@ -444,11 +443,10 @@ static int replace_int_data_in_filename(char **s, const char *filename, char pla
     }
     if (!av_bprint_is_complete(&buf)) {
         av_bprint_finalize(&buf, NULL);
-        return -1;
+        return AVERROR(ENOMEM);
     }
-    if (av_bprint_finalize(&buf, &new_filename) < 0 || !new_filename)
-        return -1;
-    *s = new_filename;
+    if ((ret = av_bprint_finalize(&buf, s)) < 0)
+        return ret;
     return found_count;
 }
 
@@ -2392,7 +2390,7 @@ static int hls_write_packet(AVFormatContext *s, AVPacket *pkt)
                                       && (hls->flags & HLS_TEMP_FILE);
             }
 
-            if ((hls->max_seg_size > 0 && (vs->size >= hls->max_seg_size)) || !byterange_mode) {
+            if ((hls->max_seg_size > 0 && (vs->size + vs->start_pos >= hls->max_seg_size)) || !byterange_mode) {
                 AVDictionary *options = NULL;
                 char *filename = NULL;
                 if (hls->key_info_file || hls->encrypt) {
@@ -2487,14 +2485,15 @@ static int hls_write_packet(AVFormatContext *s, AVPacket *pkt)
         if (hls->flags & HLS_SINGLE_FILE) {
             vs->start_pos += vs->size;
         } else if (hls->max_seg_size > 0) {
-            vs->start_pos = new_start_pos;
-            if (vs->size >= hls->max_seg_size) {
+            if (vs->size + vs->start_pos >= hls->max_seg_size) {
                 vs->sequence++;
                 sls_flag_file_rename(hls, vs, old_filename);
                 ret = hls_start(s, vs);
                 vs->start_pos = 0;
                 /* When split segment by byte, the duration is short than hls_time,
                  * so it is not enough one segment duration as hls_time, */
+            } else {
+                vs->start_pos = new_start_pos;
             }
         } else {
             vs->start_pos = new_start_pos;
@@ -2631,7 +2630,6 @@ static int hls_write_trailer(struct AVFormatContext *s)
             goto failed;
 
         vs->size = range_length;
-        hlsenc_io_close(s, &vs->out, filename);
         ret = hlsenc_io_close(s, &vs->out, filename);
         if (ret < 0) {
             av_log(s, AV_LOG_WARNING, "upload segment failed, will retry with a new http session.\n");
