@@ -18,16 +18,13 @@
 namespace Common::FS {
 
 enum class SeekOrigin {
-    /// Seeks from the start of the file.
-    SetOrigin,
-    /// Seeks from the current file pointer position.
-    CurrentPosition,
-    /// Seeks from the end of the file.
-    End,
+    SetOrigin,       // Seeks from the start of the file.
+    CurrentPosition, // Seeks from the current file pointer position.
+    End,             // Seeks from the end of the file.
 };
 
 /**
- * Opens a file stream at path with a specified open mode.
+ * Opens a file stream at path with the specified open mode.
  *
  * @param file_stream Reference to file stream
  * @param path Filesystem path
@@ -43,8 +40,7 @@ void OpenFileStream(FileStream& file_stream, const std::filesystem::path& path,
 
 template <typename FileStream, typename Path>
 void OpenFileStream(FileStream& file_stream, const Path& path, std::ios_base::openmode open_mode) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         file_stream.open(ToU8String(path), open_mode);
     } else {
         file_stream.open(std::filesystem::path{path}, open_mode);
@@ -68,8 +64,7 @@ void OpenFileStream(FileStream& file_stream, const Path& path, std::ios_base::op
 
 template <typename Path>
 [[nodiscard]] std::string ReadStringFromFile(const Path& path, FileType type) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return ReadStringFromFile(ToU8String(path), type);
     } else {
         return ReadStringFromFile(std::filesystem::path{path}, type);
@@ -88,16 +83,14 @@ template <typename Path>
  *
  * @returns Number of characters successfully written.
  */
-[[nodiscard]] std::size_t WriteStringToFile(const std::filesystem::path& path, FileType type,
-                                            std::string_view string);
+[[nodiscard]] size_t WriteStringToFile(const std::filesystem::path& path, FileType type,
+                                       std::string_view string);
 
 #ifdef _WIN32
 
 template <typename Path>
-[[nodiscard]] std::size_t WriteStringToFile(const Path& path, FileType type,
-                                            std::string_view string) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+[[nodiscard]] size_t WriteStringToFile(const Path& path, FileType type, std::string_view string) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return WriteStringToFile(ToU8String(path), type, string);
     } else {
         return WriteStringToFile(std::filesystem::path{path}, type, string);
@@ -116,16 +109,14 @@ template <typename Path>
  *
  * @returns Number of characters successfully written.
  */
-[[nodiscard]] std::size_t AppendStringToFile(const std::filesystem::path& path, FileType type,
-                                             std::string_view string);
+[[nodiscard]] size_t AppendStringToFile(const std::filesystem::path& path, FileType type,
+                                        std::string_view string);
 
 #ifdef _WIN32
 
 template <typename Path>
-[[nodiscard]] std::size_t AppendStringToFile(const Path& path, FileType type,
-                                             std::string_view string) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+[[nodiscard]] size_t AppendStringToFile(const Path& path, FileType type, std::string_view string) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return AppendStringToFile(ToU8String(path), type, string);
     } else {
         return AppendStringToFile(std::filesystem::path{path}, type, string);
@@ -186,7 +177,7 @@ public:
     [[nodiscard]] FileType GetType() const;
 
     /**
-     * Opens a file at path with a specified file access mode.
+     * Opens a file at path with the specified file access mode.
      * This function behaves differently depending on the FileAccessMode.
      * These behaviors are documented in each enum value of FileAccessMode.
      *
@@ -215,11 +206,11 @@ public:
 
 #endif
 
-    /// Closes a file if it is opened.
+    /// Closes the file if it is opened.
     void Close();
 
     /**
-     * Returns whether the file is open.
+     * Checks whether the file is open.
      * Use this to check whether the calls to Open() or Close() succeeded.
      *
      * @returns True if the file is open, false otherwise.
@@ -241,7 +232,7 @@ public:
      * @returns Count of T::value_type data or objects successfully read.
      */
     template <typename T>
-    [[nodiscard]] std::size_t Read(T& data) const {
+    [[nodiscard]] size_t Read(T& data) const {
         if constexpr (IsSTLContainer<T>) {
             using ContiguousType = typename T::value_type;
             static_assert(std::is_trivially_copyable_v<ContiguousType>,
@@ -267,7 +258,7 @@ public:
      * @returns Count of T::value_type data or objects successfully written.
      */
     template <typename T>
-    [[nodiscard]] std::size_t Write(const T& data) const {
+    [[nodiscard]] size_t Write(const T& data) const {
         if constexpr (IsSTLContainer<T>) {
             using ContiguousType = typename T::value_type;
             static_assert(std::is_trivially_copyable_v<ContiguousType>,
@@ -296,7 +287,7 @@ public:
      * @returns Count of T data successfully read.
      */
     template <typename T>
-    [[nodiscard]] std::size_t ReadSpan(std::span<T> data) const {
+    [[nodiscard]] size_t ReadSpan(std::span<T> data) const {
         static_assert(std::is_trivially_copyable_v<T>, "Data type must be trivially copyable.");
 
         if (!IsOpen()) {
@@ -322,7 +313,7 @@ public:
      * @returns Count of T data successfully written.
      */
     template <typename T>
-    [[nodiscard]] std::size_t WriteSpan(std::span<const T> data) const {
+    [[nodiscard]] size_t WriteSpan(std::span<const T> data) const {
         static_assert(std::is_trivially_copyable_v<T>, "Data type must be trivially copyable.");
 
         if (!IsOpen()) {
@@ -397,7 +388,7 @@ public:
      *
      * @returns A string read from the file.
      */
-    [[nodiscard]] std::string ReadString(std::size_t length) const;
+    [[nodiscard]] std::string ReadString(size_t length) const;
 
     /**
      * Specialized function to write a string to a file sequentially.
@@ -408,7 +399,7 @@ public:
      *
      * @returns Number of characters successfully written.
      */
-    [[nodiscard]] std::size_t WriteString(std::span<const char> string) const;
+    [[nodiscard]] size_t WriteString(std::span<const char> string) const;
 
     /**
      * Flushes any unwritten buffered data into the file.
@@ -442,7 +433,7 @@ public:
     [[nodiscard]] u64 GetSize() const;
 
     /**
-     * Moves the current position of the file pointer with a specified offset and seek origin.
+     * Moves the current position of the file pointer with the specified offset and seek origin.
      *
      * @param offset Offset from seek origin
      * @param origin Seek origin
@@ -460,9 +451,7 @@ public:
 
 private:
     std::filesystem::path file_path;
-
     FileAccessMode file_access_mode;
-
     FileType file_type;
 
     std::FILE* file = nullptr;

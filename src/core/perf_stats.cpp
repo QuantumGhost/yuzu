@@ -43,11 +43,11 @@ PerfStats::~PerfStats() {
 
     const auto path = Common::FS::GetYuzuPath(Common::FS::YuzuPath::LogDir);
     // %F Date format expanded is "%Y-%m-%d"
-    const auto filename =
-        path / fmt::format("{:%F-%H-%M}_{:016X}.csv", *std::localtime(&t), title_id);
+    const auto filename = fmt::format("{:%F-%H-%M}_{:016X}.csv", *std::localtime(&t), title_id);
+    const auto filepath = path / filename;
 
-    if (Common::FS::CreateParentDir(path)) {
-        Common::FS::IOFile file(filename, Common::FS::FileAccessMode::Write,
+    if (Common::FS::CreateParentDir(filepath)) {
+        Common::FS::IOFile file(filepath, Common::FS::FileAccessMode::Write,
                                 Common::FS::FileType::TextFile);
         void(file.WriteString(stream.str()));
     }

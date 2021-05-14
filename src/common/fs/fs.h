@@ -17,7 +17,7 @@ class IOFile;
 // File Operations
 
 /**
- * Creates a new file at path with a specified size.
+ * Creates a new file at path with the specified size.
  *
  * Failures occur when:
  * - Input path is not valid
@@ -36,8 +36,7 @@ class IOFile;
 
 template <typename Path>
 [[nodiscard]] bool NewFile(const Path& path, u64 size = 0) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return NewFile(ToU8String(path), size);
     } else {
         return NewFile(std::filesystem::path{path}, size);
@@ -64,8 +63,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool RemoveFile(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return RemoveFile(ToU8String(path));
     } else {
         return RemoveFile(std::filesystem::path{path});
@@ -112,7 +110,7 @@ template <typename Path1, typename Path2>
 #endif
 
 /**
- * Opens a file at path with a specified file access mode.
+ * Opens a file at path with the specified file access mode.
  * This function behaves differently depending on the FileAccessMode.
  * These behaviors are documented in each enum value of FileAccessMode.
  *
@@ -139,8 +137,7 @@ template <typename Path>
 [[nodiscard]] std::shared_ptr<IOFile> FileOpen(const Path& path, FileAccessMode mode,
                                                FileType type = FileType::BinaryFile,
                                                FileShareFlag flag = FileShareFlag::ShareReadOnly) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return FileOpen(ToU8String(path), mode, type, flag);
     } else {
         return FileOpen(std::filesystem::path{path}, mode, type, flag);
@@ -172,8 +169,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool CreateDir(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return CreateDir(ToU8String(path));
     } else {
         return CreateDir(std::filesystem::path{path});
@@ -203,8 +199,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool CreateDirs(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return CreateDirs(ToU8String(path));
     } else {
         return CreateDirs(std::filesystem::path{path});
@@ -227,8 +222,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool CreateParentDir(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return CreateParentDir(ToU8String(path));
     } else {
         return CreateParentDir(std::filesystem::path{path});
@@ -251,8 +245,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool CreateParentDirs(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return CreateParentDirs(ToU8String(path));
     } else {
         return CreateParentDirs(std::filesystem::path{path});
@@ -280,8 +273,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool RemoveDir(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return RemoveDir(ToU8String(path));
     } else {
         return RemoveDir(std::filesystem::path{path});
@@ -308,8 +300,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool RemoveDirRecursively(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return RemoveDirRecursively(ToU8String(path));
     } else {
         return RemoveDirRecursively(std::filesystem::path{path});
@@ -336,8 +327,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool RemoveDirContentsRecursively(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return RemoveDirContentsRecursively(ToU8String(path));
     } else {
         return RemoveDirContentsRecursively(std::filesystem::path{path});
@@ -407,8 +397,7 @@ void IterateDirEntries(const std::filesystem::path& path, const DirEntryCallable
 template <typename Path>
 void IterateDirEntries(const Path& path, const DirEntryCallable& callback,
                        DirEntryFilter filter = DirEntryFilter::All) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         IterateDirEntries(ToU8String(path), callback, filter);
     } else {
         IterateDirEntries(std::filesystem::path{path}, callback, filter);
@@ -442,8 +431,7 @@ void IterateDirEntriesRecursively(const std::filesystem::path& path,
 template <typename Path>
 void IterateDirEntriesRecursively(const Path& path, const DirEntryCallable& callback,
                                   DirEntryFilter filter = DirEntryFilter::All) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         IterateDirEntriesRecursively(ToU8String(path), callback, filter);
     } else {
         IterateDirEntriesRecursively(std::filesystem::path{path}, callback, filter);
@@ -467,8 +455,7 @@ void IterateDirEntriesRecursively(const Path& path, const DirEntryCallable& call
 
 template <typename Path>
 [[nodiscard]] bool Exists(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return Exists(ToU8String(path));
     } else {
         return Exists(std::filesystem::path{path});
@@ -490,8 +477,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool IsFile(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return IsFile(ToU8String(path));
     } else {
         return IsFile(std::filesystem::path{path});
@@ -513,8 +499,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool IsDir(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return IsDir(ToU8String(path));
     } else {
         return IsDir(std::filesystem::path{path});
@@ -541,8 +526,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] bool SetCurrentDir(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return SetCurrentDir(ToU8String(path));
     } else {
         return SetCurrentDir(std::filesystem::path{path});
@@ -564,8 +548,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] std::filesystem::file_type GetEntryType(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return GetEntryType(ToU8String(path));
     } else {
         return GetEntryType(std::filesystem::path{path});
@@ -587,8 +570,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] u64 GetSize(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return GetSize(ToU8String(path));
     } else {
         return GetSize(std::filesystem::path{path});
@@ -610,8 +592,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] u64 GetFreeSpaceSize(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return GetFreeSpaceSize(ToU8String(path));
     } else {
         return GetFreeSpaceSize(std::filesystem::path{path});
@@ -633,8 +614,7 @@ template <typename Path>
 
 template <typename Path>
 [[nodiscard]] u64 GetTotalSpaceSize(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return GetTotalSpaceSize(ToU8String(path));
     } else {
         return GetTotalSpaceSize(std::filesystem::path{path});

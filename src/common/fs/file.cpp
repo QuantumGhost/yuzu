@@ -26,51 +26,6 @@ namespace fs = std::filesystem;
 
 namespace {
 
-/**
- * Converts the file access mode and file type enums to a file access mode string.
- *
- * @param mode File access mode
- * @param type File type
- *
- * @returns A pointer to a string representing the file access mode.
- */
-[[nodiscard]] constexpr const char* AccessModeToStr(FileAccessMode mode, FileType type) {
-    switch (type) {
-    case FileType::BinaryFile:
-        switch (mode) {
-        case FileAccessMode::Read:
-            return "rb";
-        case FileAccessMode::Write:
-            return "wb";
-        case FileAccessMode::Append:
-            return "ab";
-        case FileAccessMode::ReadWrite:
-            return "r+b";
-        case FileAccessMode::ReadAppend:
-            return "a+b";
-        default:
-            return "";
-        }
-    case FileType::TextFile:
-        switch (mode) {
-        case FileAccessMode::Read:
-            return "r";
-        case FileAccessMode::Write:
-            return "w";
-        case FileAccessMode::Append:
-            return "a";
-        case FileAccessMode::ReadWrite:
-            return "r+";
-        case FileAccessMode::ReadAppend:
-            return "a+";
-        default:
-            return "";
-        }
-    default:
-        return "";
-    }
-}
-
 #ifdef _WIN32
 
 /**
@@ -95,9 +50,8 @@ namespace {
             return L"r+b";
         case FileAccessMode::ReadAppend:
             return L"a+b";
-        default:
-            return L"";
         }
+        break;
     case FileType::TextFile:
         switch (mode) {
         case FileAccessMode::Read:
@@ -110,12 +64,11 @@ namespace {
             return L"r+";
         case FileAccessMode::ReadAppend:
             return L"a+";
-        default:
-            return L"";
         }
-    default:
-        return L"";
+        break;
     }
+
+    return L"";
 }
 
 /**
@@ -137,6 +90,51 @@ namespace {
     case FileShareFlag::ShareReadWrite:
         return _SH_DENYNO;
     }
+}
+
+#else
+
+/**
+ * Converts the file access mode and file type enums to a file access mode string.
+ *
+ * @param mode File access mode
+ * @param type File type
+ *
+ * @returns A pointer to a string representing the file access mode.
+ */
+[[nodiscard]] constexpr const char* AccessModeToStr(FileAccessMode mode, FileType type) {
+    switch (type) {
+    case FileType::BinaryFile:
+        switch (mode) {
+        case FileAccessMode::Read:
+            return "rb";
+        case FileAccessMode::Write:
+            return "wb";
+        case FileAccessMode::Append:
+            return "ab";
+        case FileAccessMode::ReadWrite:
+            return "r+b";
+        case FileAccessMode::ReadAppend:
+            return "a+b";
+        }
+        break;
+    case FileType::TextFile:
+        switch (mode) {
+        case FileAccessMode::Read:
+            return "r";
+        case FileAccessMode::Write:
+            return "w";
+        case FileAccessMode::Append:
+            return "a";
+        case FileAccessMode::ReadWrite:
+            return "r+";
+        case FileAccessMode::ReadAppend:
+            return "a+";
+        }
+        break;
+    }
+
+    return "";
 }
 
 #endif
@@ -172,8 +170,8 @@ std::string ReadStringFromFile(const std::filesystem::path& path, FileType type)
     return io_file.ReadString(io_file.GetSize());
 }
 
-std::size_t WriteStringToFile(const std::filesystem::path& path, FileType type,
-                              std::string_view string) {
+size_t WriteStringToFile(const std::filesystem::path& path, FileType type,
+                         std::string_view string) {
     if (!IsFile(path)) {
         return 0;
     }
@@ -183,8 +181,8 @@ std::size_t WriteStringToFile(const std::filesystem::path& path, FileType type,
     return io_file.WriteString(string);
 }
 
-std::size_t AppendStringToFile(const std::filesystem::path& path, FileType type,
-                               std::string_view string) {
+size_t AppendStringToFile(const std::filesystem::path& path, FileType type,
+                          std::string_view string) {
 
     if (!Exists(path)) {
         return WriteStringToFile(path, type, string);
@@ -297,19 +295,16 @@ bool IOFile::IsOpen() const {
     return file != nullptr;
 }
 
-std::string IOFile::ReadString(std::size_t length) const {
+std::string IOFile::ReadString(size_t length) const {
     std::vector<char> string_buffer(length);
 
     const auto chars_read = ReadSpan<char>(string_buffer);
+    const auto string_size = chars_read != length ? chars_read : length;
 
-    if (chars_read != length) {
-        return std::string{string_buffer.data(), chars_read};
-    }
-
-    return std::string{string_buffer.data(), string_buffer.size()};
+    return std::string{string_buffer.data(), string_size};
 }
 
-std::size_t IOFile::WriteString(std::span<const char> string) const {
+size_t IOFile::WriteString(std::span<const char> string) const {
     return WriteSpan(string);
 }
 

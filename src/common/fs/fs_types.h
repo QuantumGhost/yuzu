@@ -47,14 +47,10 @@ enum class FileType {
 };
 
 enum class FileShareFlag {
-    /// Provides exclusive access to the file.
-    ShareNone,
-    /// Provides read only shared access to the file.
-    ShareReadOnly,
-    /// Provides write only shared access to the file.
-    ShareWriteOnly,
-    /// Provides read and write shared access to the file.
-    ShareReadWrite,
+    ShareNone,      // Provides exclusive access to the file.
+    ShareReadOnly,  // Provides read only shared access to the file.
+    ShareWriteOnly, // Provides write only shared access to the file.
+    ShareReadWrite, // Provides read and write shared access to the file.
 };
 
 enum class DirEntryFilter {

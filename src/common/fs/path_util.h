@@ -12,28 +12,17 @@
 namespace Common::FS {
 
 enum class YuzuPath {
-    /// Where yuzu stores its data.
-    YuzuDir,
-    /// Where cached filesystem data is stored.
-    CacheDir,
-    /// Where config files are stored.
-    ConfigDir,
-    /// Where dumped data is stored.
-    DumpDir,
-    /// Where key files are stored.
-    KeysDir,
-    /// Where cheat/mod files are stored.
-    LoadDir,
-    /// Where log files are stored.
-    LogDir,
-    /// Where the emulated NAND is stored.
-    NANDDir,
-    /// Where yuzu screenshots are stored.
-    ScreenshotsDir,
-    /// Where the emulated SDMC is stored.
-    SDMCDir,
-    /// Where shaders are stored.
-    ShaderDir,
+    YuzuDir,        // Where yuzu stores its data.
+    CacheDir,       // Where cached filesystem data is stored.
+    ConfigDir,      // Where config files are stored.
+    DumpDir,        // Where dumped data is stored.
+    KeysDir,        // Where key files are stored.
+    LoadDir,        // Where cheat/mod files are stored.
+    LogDir,         // Where log files are stored.
+    NANDDir,        // Where the emulated NAND is stored.
+    ScreenshotsDir, // Where yuzu screenshots are stored.
+    SDMCDir,        // Where the emulated SDMC is stored.
+    ShaderDir,      // Where shaders are stored.
 };
 
 /**
@@ -51,8 +40,6 @@ enum class YuzuPath {
  * A given path is valid if it meets these conditions:
  * - The path is not empty
  * - The path is not too long
- * - The path relative to the platform-specific root path does not contain
- *   any of the following characters: ':', '*', '?', '"', '<', '>', '|'
  *
  * @param path Filesystem path
  *
@@ -64,8 +51,7 @@ enum class YuzuPath {
 
 template <typename Path>
 [[nodiscard]] bool ValidatePath(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return ValidatePath(ToU8String(path));
     } else {
         return ValidatePath(std::filesystem::path{path});
@@ -204,8 +190,7 @@ template <typename Path1, typename Path2>
 
 template <typename Path>
 [[nodiscard]] std::filesystem::path RemoveTrailingSeparators(const Path& path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         return RemoveTrailingSeparators(ToU8String(path));
     } else {
         return RemoveTrailingSeparators(std::filesystem::path{path});
@@ -245,8 +230,7 @@ void SetYuzuPath(YuzuPath yuzu_path, const std::filesystem::path& new_path);
 
 template <typename Path>
 [[nodiscard]] void SetYuzuPath(YuzuPath yuzu_path, const Path& new_path) {
-    using ValueType = typename Path::value_type;
-    if constexpr (IsChar<ValueType>) {
+    if constexpr (IsChar<typename Path::value_type>) {
         SetYuzuPath(yuzu_path, ToU8String(new_path));
     } else {
         SetYuzuPath(yuzu_path, std::filesystem::path{new_path});

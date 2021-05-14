@@ -51,12 +51,6 @@ namespace Common::FS {
 
 namespace fs = std::filesystem;
 
-namespace {
-
-constexpr std::array<char8_t, 7> INVALID_CHARS{u':', u'*', u'?', u'"', u'<', u'>', u'|'};
-
-}
-
 /**
  * The PathManagerImpl is a singleton allowing to manage the mapping of
  * YuzuPath enums to real filesystem paths.
@@ -167,31 +161,20 @@ bool ValidatePath(const fs::path& path) {
 
 #endif
 
-    for (const auto path_char : path.relative_path().u8string()) {
-        for (const auto invalid_char : INVALID_CHARS) {
-            if (path_char == invalid_char) {
-                LOG_ERROR(Common_Filesystem, "Input path contains invalid characters, path={}",
-                          PathToUTF8String(path));
-                return false;
-            }
-        }
-    }
-
     return true;
 }
 
 fs::path ConcatPath(const fs::path& first, const fs::path& second) {
     const bool second_has_dir_sep = IsDirSeparator(second.u8string().front());
 
-    if (second_has_dir_sep) {
-        fs::path concat_path = first;
-
-        concat_path += second;
-
-        return concat_path.lexically_normal();
+    if (!second_has_dir_sep) {
+        return (first / second).lexically_normal();
     }
 
-    return (first / second).lexically_normal();
+    fs::path concat_path = first;
+    concat_path += second;
+
+    return concat_path.lexically_normal();
 }
 
 fs::path ConcatPathSafe(const fs::path& base, const fs::path& offset) {
@@ -289,14 +272,10 @@ fs::path GetAppDataRoamingDirectory() {
 #else
 
 fs::path GetHomeDirectory() {
-    fs::path home_path;
-
     const char* home_env_var = getenv("HOME");
 
     if (home_env_var) {
-        home_path = fs::path{home_env_var};
-
-        return home_path;
+        return fs::path{home_env_var};
     }
 
     LOG_INFO(Common_Filesystem,
@@ -305,35 +284,30 @@ fs::path GetHomeDirectory() {
 
     const auto* pw = getpwuid(getuid());
 
-    if (pw) {
-        home_path = fs::path{pw->pw_dir};
-    } else {
+    if (!pw) {
         LOG_ERROR(Common_Filesystem, "Failed to get the home path of the current user");
+        return {};
     }
 
-    return home_path;
+    return fs::path{pw->pw_dir};
 }
 
 fs::path GetDataDirectory(const std::string& env_name) {
-    fs::path data_path;
-
     const char* data_env_var = getenv(env_name.c_str());
 
     if (data_env_var) {
-        data_path = fs::path{data_env_var};
-
-        return data_path;
+        return fs::path{data_env_var};
     }
 
     if (env_name == "XDG_DATA_HOME") {
-        data_path = GetHomeDirectory() / ".local/share";
+        return GetHomeDirectory() / ".local/share";
     } else if (env_name == "XDG_CACHE_HOME") {
-        data_path = GetHomeDirectory() / ".cache";
+        return GetHomeDirectory() / ".cache";
     } else if (env_name == "XDG_CONFIG_HOME") {
-        data_path = GetHomeDirectory() / ".config";
+        return GetHomeDirectory() / ".config";
     }
 
-    return data_path;
+    return {};
 }
 
 #endif

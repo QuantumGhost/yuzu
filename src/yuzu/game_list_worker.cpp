@@ -71,12 +71,13 @@ std::pair<std::vector<u8>, std::string> GetGameListCachedObject(
         return generator();
     }
 
-    const auto path1 =
-        Common::FS::PathToUTF8String(Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) /
-                                     "game_list" / fmt::format("{}.jpeg", filename));
-    const auto path2 =
-        Common::FS::PathToUTF8String(Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) /
-                                     "game_list" / fmt::format("{}.appname.txt", filename));
+    const auto game_list_dir =
+        Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) / "game_list";
+    const auto jpeg_name = fmt::format("{}.jpeg", filename);
+    const auto app_name = fmt::format("{}.appname.txt", filename);
+
+    const auto path1 = Common::FS::PathToUTF8String(game_list_dir / jpeg_name);
+    const auto path2 = Common::FS::PathToUTF8String(game_list_dir / app_name);
 
     void(Common::FS::CreateParentDirs(path1));
 

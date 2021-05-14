@@ -188,13 +188,11 @@ static void InitializeLogging() {
 }
 
 static void RemoveCachedContents() {
-    const auto offline_fonts = Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) / "fonts";
-    const auto offline_manual =
-        Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) / "offline_web_applet_manual";
-    const auto offline_legal_information = Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) /
-                                           "offline_web_applet_legal_information";
-    const auto offline_system_data =
-        Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir) / "offline_web_applet_system_data";
+    const auto cache_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::CacheDir);
+    const auto offline_fonts = cache_dir / "fonts";
+    const auto offline_manual = cache_dir / "offline_web_applet_manual";
+    const auto offline_legal_information = cache_dir / "offline_web_applet_legal_information";
+    const auto offline_system_data = cache_dir / "offline_web_applet_system_data";
 
     void(Common::FS::RemoveDirRecursively(offline_fonts));
     void(Common::FS::RemoveDirRecursively(offline_manual));
@@ -1572,16 +1570,19 @@ void GMainWindow::OnGameListOpenFolder(u64 program_id, GameListOpenTarget target
             Service::Account::ProfileManager manager;
             const auto user_id = manager.GetUser(static_cast<std::size_t>(index));
             ASSERT(user_id);
-            path = Common::FS::ConcatPathSafe(
-                nand_dir, FileSys::SaveDataFactory::GetFullPath(
-                              system, FileSys::SaveDataSpaceId::NandUser,
-                              FileSys::SaveDataType::SaveData, program_id, user_id->uuid, 0));
+
+            const auto user_save_data_path = FileSys::SaveDataFactory::GetFullPath(
+                system, FileSys::SaveDataSpaceId::NandUser, FileSys::SaveDataType::SaveData,
+                program_id, user_id->uuid, 0);
+
+            path = Common::FS::ConcatPathSafe(nand_dir, user_save_data_path);
         } else {
             // Device save data
-            path = Common::FS::ConcatPathSafe(
-                nand_dir, FileSys::SaveDataFactory::GetFullPath(
-                              system, FileSys::SaveDataSpaceId::NandUser,
-                              FileSys::SaveDataType::SaveData, program_id, {}, 0));
+            const auto device_save_data_path = FileSys::SaveDataFactory::GetFullPath(
+                system, FileSys::SaveDataSpaceId::NandUser, FileSys::SaveDataType::SaveData,
+                program_id, {}, 0);
+
+            path = Common::FS::ConcatPathSafe(nand_dir, device_save_data_path);
         }
 
         if (!Common::FS::CreateDirs(path)) {
@@ -1613,8 +1614,8 @@ void GMainWindow::OnGameListOpenFolder(u64 program_id, GameListOpenTarget target
 }
 
 void GMainWindow::OnTransferableShaderCacheOpenFile(u64 program_id) {
-    const auto transferable_shader_cache_folder_path =
-        Common::FS::GetYuzuPath(Common::FS::YuzuPath::ShaderDir) / "opengl" / "transferable";
+    const auto shader_cache_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::ShaderDir);
+    const auto transferable_shader_cache_folder_path = shader_cache_dir / "opengl" / "transferable";
     const auto transferable_shader_cache_file_path =
         transferable_shader_cache_folder_path / fmt::format("{:016X}.bin", program_id);
 
@@ -1809,9 +1810,9 @@ void GMainWindow::OnGameListRemoveFile(u64 program_id, GameListRemoveTarget targ
 }
 
 void GMainWindow::RemoveTransferableShaderCache(u64 program_id) {
+    const auto shader_cache_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::ShaderDir);
     const auto transferable_shader_cache_file_path =
-        Common::FS::GetYuzuPath(Common::FS::YuzuPath::ShaderDir) / "opengl" / "transferable" /
-        fmt::format("{:016X}.bin", program_id);
+        shader_cache_dir / "opengl" / "transferable" / fmt::format("{:016X}.bin", program_id);
 
     if (!Common::FS::Exists(transferable_shader_cache_file_path)) {
         QMessageBox::warning(this, tr("Error Removing Transferable Shader Cache"),
@@ -1875,9 +1876,10 @@ void GMainWindow::OnGameListDumpRomFS(u64 program_id, const std::string& game_pa
         return;
     }
 
-    const auto path =
-        Common::FS::PathToUTF8String(Common::FS::GetYuzuPath(Common::FS::YuzuPath::DumpDir) /
-                                     fmt::format("{:016X}", *romfs_title_id) / "romfs");
+    const auto dump_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::DumpDir);
+    const auto romfs_dir = fmt::format("{:016X}/romfs", *romfs_title_id);
+
+    const auto path = Common::FS::PathToUTF8String(dump_dir / romfs_dir);
 
     FileSys::VirtualFile romfs;
 
@@ -3263,9 +3265,8 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setApplicationName(QStringLiteral("yuzu"));
 
 #ifdef _WIN32
-
+    // Increases the maximum open file limit to 4096
     _setmaxstdio(4096);
-
 #endif
 
 #ifdef __APPLE__

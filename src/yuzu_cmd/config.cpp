@@ -49,8 +49,7 @@ bool Config::LoadINI(const std::string& default_contents, bool retry) {
             void(FS::CreateParentDir(sdl2_config_loc));
             void(FS::WriteStringToFile(sdl2_config_loc, FS::FileType::TextFile, default_contents));
 
-            sdl2_config =
-                std::make_unique<INIReader>(FS::PathToUTF8String(sdl2_config_loc)); // Reopen file
+            sdl2_config = std::make_unique<INIReader>(FS::PathToUTF8String(sdl2_config_loc));
 
             return LoadINI(default_contents, false);
         }

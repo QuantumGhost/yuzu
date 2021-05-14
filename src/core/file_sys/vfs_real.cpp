@@ -86,7 +86,7 @@ VirtualFile RealVfsFilesystem::OpenFile(std::string_view path_, Mode perms) {
         return nullptr;
     }
 
-    cache.insert_or_assign(path, backing);
+    cache.insert_or_assign(path, std::move(backing));
 
     // Cannot use make_shared as RealVfsFile constructor is private
     return std::shared_ptr<RealVfsFile>(new RealVfsFile(*this, backing, path, perms));
@@ -306,16 +306,16 @@ std::vector<VirtualFile> RealVfsDirectory::IterateEntries<RealVfsFile, VfsFile>(
     }
 
     std::vector<VirtualFile> out;
-    FS::IterateDirEntries(
-        path,
-        [this, &out](const std::filesystem::path& full_path) {
-            const auto full_path_string = FS::PathToUTF8String(full_path);
 
-            out.emplace_back(base.OpenFile(full_path_string, perms));
+    const FS::DirEntryCallable callback = [this, &out](const std::filesystem::path& full_path) {
+        const auto full_path_string = FS::PathToUTF8String(full_path);
 
-            return true;
-        },
-        FS::DirEntryFilter::File);
+        out.emplace_back(base.OpenFile(full_path_string, perms));
+
+        return true;
+    };
+
+    FS::IterateDirEntries(path, callback, FS::DirEntryFilter::File);
 
     return out;
 }
@@ -328,16 +328,15 @@ std::vector<VirtualDir> RealVfsDirectory::IterateEntries<RealVfsDirectory, VfsDi
 
     std::vector<VirtualDir> out;
 
-    FS::IterateDirEntries(
-        path,
-        [this, &out](const std::filesystem::path& full_path) {
-            const auto full_path_string = FS::PathToUTF8String(full_path);
+    const FS::DirEntryCallable callback = [this, &out](const std::filesystem::path& full_path) {
+        const auto full_path_string = FS::PathToUTF8String(full_path);
 
-            out.emplace_back(base.OpenDirectory(full_path_string, perms));
+        out.emplace_back(base.OpenDirectory(full_path_string, perms));
 
-            return true;
-        },
-        FS::DirEntryFilter::Directory);
+        return true;
+    };
+
+    FS::IterateDirEntries(path, callback, FS::DirEntryFilter::Directory);
 
     return out;
 }
@@ -459,18 +458,17 @@ std::map<std::string, VfsEntryType, std::less<>> RealVfsDirectory::GetEntries() 
     }
 
     std::map<std::string, VfsEntryType, std::less<>> out;
-    FS::IterateDirEntries(path,
-                          [&out](const std::filesystem::path& full_path) {
-                              const auto filename = FS::PathToUTF8String(full_path.filename());
 
-                              out.insert_or_assign(filename, FS::IsDir(full_path)
-                                                                 ? VfsEntryType::Directory
-                                                                 : VfsEntryType::File);
+    const FS::DirEntryCallable callback = [&out](const std::filesystem::path& full_path) {
+        const auto filename = FS::PathToUTF8String(full_path.filename());
 
-                              return true;
-                          }
+        out.insert_or_assign(filename,
+                             FS::IsDir(full_path) ? VfsEntryType::Directory : VfsEntryType::File);
 
-    );
+        return true;
+    };
+
+    FS::IterateDirEntries(path, callback);
 
     return out;
 }
