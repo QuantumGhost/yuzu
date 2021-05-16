@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "core/hle/kernel/k_event.h"
 #include "core/hle/service/service.h"
 
 namespace Core {
@@ -32,7 +31,6 @@ private:
     void OpenAudioRendererImpl(Kernel::HLERequestContext& ctx);
 
     std::size_t audren_instance_count = 0;
-    Kernel::KEvent buffer_event;
 };
 
 // Describes a particular audio feature that may be supported in a particular revision.
