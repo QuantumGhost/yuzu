@@ -29,6 +29,7 @@
 #endif
 
 #include "common/logging/log.h"
+#include "common/math_util.h"
 #include "common/param_package.h"
 #include "common/settings_input.h"
 #include "common/threadsafe_queue.h"
@@ -92,18 +93,19 @@ public:
     }
 
     void SetMotion(SDL_ControllerSensorEvent event) {
+        constexpr float gravity_constant = 9.80665f;
         std::lock_guard lock{mutex};
         u64 time_difference = event.timestamp - last_motion_update;
         last_motion_update = event.timestamp;
         switch (event.sensor) {
         case SDL_SENSOR_ACCEL: {
             const Common::Vec3f acceleration = {-event.data[0], event.data[2], -event.data[1]};
-            motion.SetAcceleration(acceleration / 9.8f);
+            motion.SetAcceleration(acceleration / gravity_constant);
             break;
         }
         case SDL_SENSOR_GYRO: {
             const Common::Vec3f gyroscope = {event.data[0], -event.data[2], event.data[1]};
-            motion.SetGyroscope(gyroscope / (6.283f * 1.05f));
+            motion.SetGyroscope(gyroscope / (Common::PI * 2));
             break;
         }
         }
@@ -321,7 +323,7 @@ void SDLState::CloseJoystick(SDL_Joystick* sdl_joystick) {
                                               return joystick->GetSDLJoystick() == sdl_joystick;
                                           });
 
-    if (joystick_it != std::end(joystick_guid_list)) {
+    if (joystick_it != joystick_guid_list.end()) {
         (*joystick_it)->SetSDLJoystick(nullptr, nullptr);
     }
 }
@@ -1005,8 +1007,8 @@ Common::ParamPackage SDLEventToMotionParamPackage(SDLState& state, const SDL_Eve
     }
     case SDL_CONTROLLERSENSORUPDATE: {
         bool is_motion_shaking = false;
-        constexpr float gyro_threshold = 2.0f;
-        constexpr float accel_threshold = 10.0f;
+        constexpr float gyro_threshold = 5.0f;
+        constexpr float accel_threshold = 11.0f;
         if (event.csensor.sensor == SDL_SENSOR_ACCEL) {
             const Common::Vec3f acceleration = {-event.csensor.data[0], event.csensor.data[2],
                                                 -event.csensor.data[1]};
