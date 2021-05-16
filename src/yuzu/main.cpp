@@ -1367,7 +1367,7 @@ void GMainWindow::BootGame(const QString& filename, std::size_t program_index) {
         game_list->hide();
         game_list_placeholder->hide();
     }
-    status_bar_update_timer.start(2000);
+    status_bar_update_timer.start(500);
     async_status_button->setDisabled(true);
     multicore_status_button->setDisabled(true);
     renderer_status_button->setDisabled(true);
@@ -2098,6 +2098,7 @@ void GMainWindow::OnMenuInstallToNAND() {
     QStringList new_files{};         // Newly installed files that do not yet exist in the NAND
     QStringList overwritten_files{}; // Files that overwrote those existing in the NAND
     QStringList failed_files{};      // Files that failed to install due to errors
+    bool detected_base_install{};    // Whether a base game was attempted to be installed
 
     ui.action_Install_File_NAND->setEnabled(false);
 
@@ -2123,6 +2124,7 @@ void GMainWindow::OnMenuInstallToNAND() {
 
             while (!future.isFinished()) {
                 QCoreApplication::processEvents();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
 
             result = future.result();
@@ -2143,12 +2145,23 @@ void GMainWindow::OnMenuInstallToNAND() {
         case InstallResult::Failure:
             failed_files.append(QFileInfo(file).fileName());
             break;
+        case InstallResult::BaseInstallAttempted:
+            failed_files.append(QFileInfo(file).fileName());
+            detected_base_install = true;
+            break;
         }
 
         --remaining;
     }
 
     install_progress->close();
+
+    if (detected_base_install) {
+        QMessageBox::warning(
+            this, tr("Install Results"),
+            tr("To avoid possible conflicts, we discourage users from installing base games to the "
+               "NAND.\nPlease, only use this feature to install updates and DLC."));
+    }
 
     const QString install_results =
         (new_files.isEmpty() ? QString{}
@@ -2211,11 +2224,14 @@ InstallResult GMainWindow::InstallNSPXCI(const QString& filename) {
     const auto res =
         Core::System::GetInstance().GetFileSystemController().GetUserNANDContents()->InstallEntry(
             *nsp, true, qt_raw_copy);
-    if (res == FileSys::InstallResult::Success) {
+    switch (res) {
+    case FileSys::InstallResult::Success:
         return InstallResult::Success;
-    } else if (res == FileSys::InstallResult::OverwriteExisting) {
+    case FileSys::InstallResult::OverwriteExisting:
         return InstallResult::Overwrite;
-    } else {
+    case FileSys::InstallResult::ErrorBaseInstall:
+        return InstallResult::BaseInstallAttempted;
+    default:
         return InstallResult::Failure;
     }
 }
@@ -2792,7 +2808,7 @@ void GMainWindow::UpdateStatusBar() {
     } else {
         emu_speed_label->setText(tr("Speed: %1%").arg(results.emulation_speed * 100.0, 0, 'f', 0));
     }
-    game_fps_label->setText(tr("Game: %1 FPS").arg(results.game_fps, 0, 'f', 0));
+    game_fps_label->setText(tr("Game: %1 FPS").arg(results.average_game_fps, 0, 'f', 0));
     emu_frametime_label->setText(tr("Frame: %1 ms").arg(results.frametime * 1000.0, 0, 'f', 2));
 
     emu_speed_label->setVisible(!Settings::values.use_multi_core.GetValue());
