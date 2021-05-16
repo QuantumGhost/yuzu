@@ -3,7 +3,15 @@
 // Refer to the license.txt file included.
 
 #include <string>
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
 #include <zip.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 #include "common/fs/path_util.h"
 #include "common/logging/backend.h"

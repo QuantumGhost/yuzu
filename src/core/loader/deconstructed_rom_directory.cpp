@@ -21,8 +21,8 @@
 namespace Loader {
 
 AppLoader_DeconstructedRomDirectory::AppLoader_DeconstructedRomDirectory(FileSys::VirtualFile file_,
-                                                                         bool override_update)
-    : AppLoader(std::move(file_)), override_update(override_update) {
+                                                                         bool override_update_)
+    : AppLoader(std::move(file_)), override_update(override_update_) {
     const auto file_dir = file->GetContainingDirectory();
 
     // Title ID
@@ -47,9 +47,9 @@ AppLoader_DeconstructedRomDirectory::AppLoader_DeconstructedRomDirectory(FileSys
         // Any png, jpeg, or bmp file
         const auto& files = file_dir->GetFiles();
         const auto icon_iter =
-            std::find_if(files.begin(), files.end(), [](const FileSys::VirtualFile& file) {
-                return file->GetExtension() == "png" || file->GetExtension() == "jpg" ||
-                       file->GetExtension() == "bmp" || file->GetExtension() == "jpeg";
+            std::find_if(files.begin(), files.end(), [](const FileSys::VirtualFile& f) {
+                return f->GetExtension() == "png" || f->GetExtension() == "jpg" ||
+                       f->GetExtension() == "bmp" || f->GetExtension() == "jpeg";
             });
         if (icon_iter != files.end())
             icon_data = (*icon_iter)->ReadAllBytes();
@@ -60,9 +60,8 @@ AppLoader_DeconstructedRomDirectory::AppLoader_DeconstructedRomDirectory(FileSys
     if (nacp_file == nullptr) {
         const auto& files = file_dir->GetFiles();
         const auto nacp_iter =
-            std::find_if(files.begin(), files.end(), [](const FileSys::VirtualFile& file) {
-                return file->GetExtension() == "nacp";
-            });
+            std::find_if(files.begin(), files.end(),
+                         [](const FileSys::VirtualFile& f) { return f->GetExtension() == "nacp"; });
         if (nacp_iter != files.end())
             nacp_file = *nacp_iter;
     }
@@ -74,9 +73,9 @@ AppLoader_DeconstructedRomDirectory::AppLoader_DeconstructedRomDirectory(FileSys
 }
 
 AppLoader_DeconstructedRomDirectory::AppLoader_DeconstructedRomDirectory(
-    FileSys::VirtualDir directory, bool override_update)
+    FileSys::VirtualDir directory, bool override_update_)
     : AppLoader(directory->GetFile("main")), dir(std::move(directory)),
-      override_update(override_update) {}
+      override_update(override_update_) {}
 
 FileType AppLoader_DeconstructedRomDirectory::IdentifyType(const FileSys::VirtualFile& dir_file) {
     if (FileSys::IsDirectoryExeFS(dir_file->GetContainingDirectory())) {
@@ -183,8 +182,8 @@ AppLoader_DeconstructedRomDirectory::LoadResult AppLoader_DeconstructedRomDirect
     // Find the RomFS by searching for a ".romfs" file in this directory
     const auto& files = dir->GetFiles();
     const auto romfs_iter =
-        std::find_if(files.begin(), files.end(), [](const FileSys::VirtualFile& file) {
-            return file->GetName().find(".romfs") != std::string::npos;
+        std::find_if(files.begin(), files.end(), [](const FileSys::VirtualFile& f) {
+            return f->GetName().find(".romfs") != std::string::npos;
         });
 
     // Register the RomFS if a ".romfs" file was found

@@ -36,7 +36,7 @@ public:
 
     /// Whether or not this server port has an HLE handler available.
     bool HasSessionRequestHandler() const {
-        return !!session_handler;
+        return session_handler != nullptr;
     }
 
     /// Gets the HLE handler for this port.

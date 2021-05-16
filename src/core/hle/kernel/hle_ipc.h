@@ -97,7 +97,7 @@ class SessionRequestManager final {
 public:
     SessionRequestManager() = default;
 
-    const bool IsDomain() {
+    bool IsDomain() const {
         return is_domain;
     }
 
@@ -106,12 +106,12 @@ public:
         is_domain = true;
     }
 
-    size_t DomainHandlerCount() const {
+    std::size_t DomainHandlerCount() const {
         return domain_handlers.size();
     }
 
     bool HasSessionHandler() const {
-        return !!session_handler;
+        return session_handler != nullptr;
     }
 
     SessionRequestHandler& SessionHandler() {
@@ -122,7 +122,7 @@ public:
         return *session_handler;
     }
 
-    void CloseDomainHandler(size_t index) {
+    void CloseDomainHandler(std::size_t index) {
         if (index < DomainHandlerCount()) {
             domain_handlers[index] = nullptr;
         } else {
@@ -309,8 +309,8 @@ public:
         return std::static_pointer_cast<T>(manager->DomainHandler(index));
     }
 
-    void SetSessionRequestManager(const std::shared_ptr<SessionRequestManager>& manager_) {
-        manager = manager_;
+    void SetSessionRequestManager(std::shared_ptr<SessionRequestManager> manager_) {
+        manager = std::move(manager_);
     }
 
     /// Clears the list of objects so that no lingering objects are written accidentally to the

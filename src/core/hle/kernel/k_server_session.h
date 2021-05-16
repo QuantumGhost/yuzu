@@ -110,8 +110,8 @@ public:
     }
 
     /// Sets the session request manager, which forwards requests to the underlying service
-    void SetSessionRequestManager(const std::shared_ptr<SessionRequestManager>& manager_) {
-        manager = manager_;
+    void SetSessionRequestManager(std::shared_ptr<SessionRequestManager> manager_) {
+        manager = std::move(manager_);
     }
 
 private:
