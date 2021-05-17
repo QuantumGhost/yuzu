@@ -146,7 +146,7 @@ public:
 
         ctx.data_payload_offset = index;
         ctx.write_size += index;
-        ctx.domain_offset = index + raw_data_size / sizeof(u32);
+        ctx.domain_offset = static_cast<u32>(index + raw_data_size / sizeof(u32));
     }
 
     template <class T>
