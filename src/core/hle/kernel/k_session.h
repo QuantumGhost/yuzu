@@ -66,10 +66,6 @@ public:
         return port;
     }
 
-    KClientPort* GetParent() {
-        return port;
-    }
-
 private:
     enum class State : u8 {
         Invalid = 0,

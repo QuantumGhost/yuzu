@@ -73,7 +73,7 @@ public:
         if (port == nullptr) {
             return nullptr;
         }
-        return std::static_pointer_cast<T>(port->GetServerPort().GetSessionRequestHandler());
+        return std::static_pointer_cast<T>(port->GetServerPort().GetHLEHandler());
     }
 
     void InvokeControlRequest(Kernel::HLERequestContext& context);
