@@ -105,6 +105,22 @@ void ConfigureSystem::ReadSystemSettings() {}
 void ConfigureSystem::ApplyConfiguration() {
     auto& system = Core::System::GetInstance();
 
+    // Allow setting custom RTC even if system is powered on,
+    // to allow in-game time to be fast forwarded
+    if (Settings::IsConfiguringGlobal()) {
+        if (ui->custom_rtc_checkbox->isChecked()) {
+            Settings::values.custom_rtc =
+                std::chrono::seconds(ui->custom_rtc_edit->dateTime().toSecsSinceEpoch());
+            if (system.IsPoweredOn()) {
+                const s64 posix_time{Settings::values.custom_rtc->count() +
+                                     Service::Time::TimeManager::GetExternalTimeZoneOffset()};
+                system.GetTimeManager().UpdateLocalSystemClockTime(posix_time);
+            }
+        } else {
+            Settings::values.custom_rtc = std::nullopt;
+        }
+    }
+
     if (!enabled) {
         return;
     }
@@ -124,20 +140,6 @@ void ConfigureSystem::ApplyConfiguration() {
             } else {
                 Settings::values.rng_seed.SetValue(std::nullopt);
             }
-        }
-
-        // Allow setting custom RTC even if system is powered on,
-        // to allow in-game time to be fast forwarded
-        if (ui->custom_rtc_checkbox->isChecked()) {
-            Settings::values.custom_rtc =
-                std::chrono::seconds(ui->custom_rtc_edit->dateTime().toSecsSinceEpoch());
-            if (system.IsPoweredOn()) {
-                const s64 posix_time{Settings::values.custom_rtc->count() +
-                                     Service::Time::TimeManager::GetExternalTimeZoneOffset()};
-                system.GetTimeManager().UpdateLocalSystemClockTime(posix_time);
-            }
-        } else {
-            Settings::values.custom_rtc = std::nullopt;
         }
     } else {
         switch (use_rng_seed) {
