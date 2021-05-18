@@ -252,18 +252,14 @@ void IOFile::Open(const fs::path& path, FileAccessMode mode, FileType type, File
     errno = 0;
 
 #ifdef _WIN32
-
     if (flag != FileShareFlag::ShareNone) {
         file = _wfsopen(path.wstring().c_str(), AccessModeToWStr(mode, type),
                         ToWindowsFileShareFlag(flag));
     } else {
         _wfopen_s(&file, path.wstring().c_str(), AccessModeToWStr(mode, type));
     }
-
 #else
-
     file = std::fopen(PathToUTF8String(path).c_str(), AccessModeToStr(mode, type));
-
 #endif
 
     if (!IsOpen()) {
@@ -334,13 +330,9 @@ bool IOFile::SetSize(u64 size) const {
     errno = 0;
 
 #ifdef _WIN32
-
     const auto set_size_result = _chsize_s(fileno(file), static_cast<s64>(size)) == 0;
-
 #else
-
     const auto set_size_result = ftruncate(fileno(file), static_cast<s64>(size)) == 0;
-
 #endif
 
     if (!set_size_result) {

@@ -83,7 +83,6 @@ public:
 private:
     PathManagerImpl() {
 #ifdef _WIN32
-
         auto yuzu_path = GetExeDirectory() / PORTABLE_DIR;
 
         if (!IsDir(yuzu_path)) {
@@ -93,9 +92,7 @@ private:
         GenerateYuzuPath(YuzuPath::YuzuDir, yuzu_path);
         GenerateYuzuPath(YuzuPath::CacheDir, yuzu_path / CACHE_DIR);
         GenerateYuzuPath(YuzuPath::ConfigDir, yuzu_path / CONFIG_DIR);
-
 #else
-
         auto yuzu_path = GetCurrentDir() / PORTABLE_DIR;
 
         if (Exists(yuzu_path) && IsDir(yuzu_path)) {
@@ -109,7 +106,6 @@ private:
             GenerateYuzuPath(YuzuPath::CacheDir, GetDataDirectory("XDG_CACHE_HOME") / YUZU_DIR);
             GenerateYuzuPath(YuzuPath::ConfigDir, GetDataDirectory("XDG_CONFIG_HOME") / YUZU_DIR);
         }
-
 #endif
 
         GenerateYuzuPath(YuzuPath::DumpDir, yuzu_path / DUMP_DIR);
@@ -146,19 +142,15 @@ bool ValidatePath(const fs::path& path) {
     }
 
 #ifdef _WIN32
-
     if (path.u16string().size() >= MAX_PATH) {
         LOG_ERROR(Common_Filesystem, "Input path is too long, path={}", PathToUTF8String(path));
         return false;
     }
-
 #else
-
     if (path.u8string().size() >= MAX_PATH) {
         LOG_ERROR(Common_Filesystem, "Input path is too long, path={}", PathToUTF8String(path));
         return false;
     }
-
 #endif
 
     return true;

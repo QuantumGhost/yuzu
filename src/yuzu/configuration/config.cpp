@@ -244,26 +244,25 @@ const std::array<UISettings::Shortcut, 17> Config::default_hotkeys{{
 
 void Config::Initialize(const std::string& config_name) {
     const auto fs_config_loc = FS::GetYuzuPath(FS::YuzuPath::ConfigDir);
+    const auto config_file = fmt::format("{}.ini", config_name);
 
     switch (type) {
     case ConfigType::GlobalConfig:
-        qt_config_loc = FS::PathToUTF8String(fs_config_loc / fmt::format("{}.ini", config_name));
+        qt_config_loc = FS::PathToUTF8String(fs_config_loc / config_file);
         void(FS::CreateParentDir(qt_config_loc));
         qt_config = std::make_unique<QSettings>(QString::fromStdString(qt_config_loc),
                                                 QSettings::IniFormat);
         Reload();
         break;
     case ConfigType::PerGameConfig:
-        qt_config_loc =
-            FS::PathToUTF8String(fs_config_loc / "custom" / fmt::format("{}.ini", config_name));
+        qt_config_loc = FS::PathToUTF8String(fs_config_loc / "custom" / config_file);
         void(FS::CreateParentDir(qt_config_loc));
         qt_config = std::make_unique<QSettings>(QString::fromStdString(qt_config_loc),
                                                 QSettings::IniFormat);
         Reload();
         break;
     case ConfigType::InputProfile:
-        qt_config_loc =
-            FS::PathToUTF8String(fs_config_loc / "input" / fmt::format("{}.ini", config_name));
+        qt_config_loc = FS::PathToUTF8String(fs_config_loc / "input" / config_file);
         void(FS::CreateParentDir(qt_config_loc));
         qt_config = std::make_unique<QSettings>(QString::fromStdString(qt_config_loc),
                                                 QSettings::IniFormat);

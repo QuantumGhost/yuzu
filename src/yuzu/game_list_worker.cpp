@@ -297,7 +297,6 @@ void GameListWorker::ScanFileSystem(ScanTarget target, const std::string& dir_pa
         }
 
         const auto physical_name = Common::FS::PathToUTF8String(path);
-
         const auto is_dir = Common::FS::IsDir(path);
 
         if (!is_dir &&

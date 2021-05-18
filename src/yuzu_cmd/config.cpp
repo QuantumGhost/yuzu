@@ -41,22 +41,23 @@ Config::Config() {
 Config::~Config() = default;
 
 bool Config::LoadINI(const std::string& default_contents, bool retry) {
+    const auto config_loc_str = FS::PathToUTF8String(sdl2_config_loc);
     if (sdl2_config->ParseError() < 0) {
         if (retry) {
             LOG_WARNING(Config, "Failed to load {}. Creating file from defaults...",
-                        FS::PathToUTF8String(sdl2_config_loc));
+                        config_loc_str);
 
             void(FS::CreateParentDir(sdl2_config_loc));
             void(FS::WriteStringToFile(sdl2_config_loc, FS::FileType::TextFile, default_contents));
 
-            sdl2_config = std::make_unique<INIReader>(FS::PathToUTF8String(sdl2_config_loc));
+            sdl2_config = std::make_unique<INIReader>(config_loc_str);
 
             return LoadINI(default_contents, false);
         }
         LOG_ERROR(Config, "Failed.");
         return false;
     }
-    LOG_INFO(Config, "Successfully loaded {}", FS::PathToUTF8String(sdl2_config_loc));
+    LOG_INFO(Config, "Successfully loaded {}", config_loc_str);
     return true;
 }
 
