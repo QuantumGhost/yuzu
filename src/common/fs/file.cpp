@@ -183,7 +183,6 @@ size_t WriteStringToFile(const std::filesystem::path& path, FileType type,
 
 size_t AppendStringToFile(const std::filesystem::path& path, FileType type,
                           std::string_view string) {
-
     if (!Exists(path)) {
         return WriteStringToFile(path, type, string);
     }
@@ -253,13 +252,12 @@ void IOFile::Open(const fs::path& path, FileAccessMode mode, FileType type, File
 
 #ifdef _WIN32
     if (flag != FileShareFlag::ShareNone) {
-        file = _wfsopen(path.wstring().c_str(), AccessModeToWStr(mode, type),
-                        ToWindowsFileShareFlag(flag));
+        file = _wfsopen(path.c_str(), AccessModeToWStr(mode, type), ToWindowsFileShareFlag(flag));
     } else {
-        _wfopen_s(&file, path.wstring().c_str(), AccessModeToWStr(mode, type));
+        _wfopen_s(&file, path.c_str(), AccessModeToWStr(mode, type));
     }
 #else
-    file = std::fopen(PathToUTF8String(path).c_str(), AccessModeToStr(mode, type));
+    file = std::fopen(path.c_str(), AccessModeToStr(mode, type));
 #endif
 
     if (!IsOpen()) {
@@ -348,8 +346,6 @@ u64 IOFile::GetSize() const {
     if (!IsOpen()) {
         return 0;
     }
-
-    errno = 0;
 
     std::error_code ec;
 
