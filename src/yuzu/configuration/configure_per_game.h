@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include <QAbstractButton>
 #include <QDialog>
 #include <QList>
 
@@ -38,6 +39,8 @@ public:
 private:
     void changeEvent(QEvent* event) override;
     void RetranslateUI();
+
+    void HandleApplyButtonClicked();
 
     void LoadConfiguration();
 
