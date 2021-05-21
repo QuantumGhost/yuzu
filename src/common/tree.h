@@ -372,6 +372,11 @@ void RB_REMOVE_COLOR(RBHead<Node>* head, Node* parent, Node* elm) {
                 tmp = RB_LEFT(parent);
             }
 
+            if (!tmp) {
+                ASSERT_MSG(false, "tmp is invalid!");
+                break;
+            }
+
             if ((RB_LEFT(tmp) == nullptr || RB_IS_BLACK(RB_LEFT(tmp))) &&
                 (RB_RIGHT(tmp) == nullptr || RB_IS_BLACK(RB_RIGHT(tmp)))) {
                 RB_SET_COLOR(tmp, EntryColor::Red);

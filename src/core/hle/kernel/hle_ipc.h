@@ -214,6 +214,10 @@ public:
         return command_header->type;
     }
 
+    u64 GetPID() const {
+        return pid;
+    }
+
     u32 GetDataPayloadOffset() const {
         return data_payload_offset;
     }
@@ -348,11 +352,12 @@ private:
     std::vector<IPC::BufferDescriptorABW> buffer_w_desciptors;
     std::vector<IPC::BufferDescriptorC> buffer_c_desciptors;
 
+    u32_le command{};
+    u64 pid{};
     u32 write_size{};
     u32 data_payload_offset{};
     u32 handles_offset{};
     u32 domain_offset{};
-    u32_le command{};
 
     std::shared_ptr<SessionRequestManager> manager;
     bool is_thread_waiting{};
