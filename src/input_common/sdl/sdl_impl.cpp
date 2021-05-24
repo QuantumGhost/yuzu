@@ -18,16 +18,6 @@
 #include <utility>
 #include <vector>
 
-// Ignore -Wimplicit-fallthrough due to https://github.com/libsdl-org/SDL/issues/4307
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
-#endif
-#include <SDL.h>
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
-
 #include "common/logging/log.h"
 #include "common/math_util.h"
 #include "common/param_package.h"
@@ -214,20 +204,38 @@ public:
         sdl_controller.reset(controller);
     }
 
-    bool IsJoyconLeft() {
-        if (!sdl_controller) {
-            return false;
-        }
-        const std::string name = SDL_GameControllerName(sdl_controller.get());
-        return name.find("Joy-Con Left") != std::string::npos;
+    bool IsJoyconLeft() const {
+        return std::strstr(GetControllerName().c_str(), "Joy-Con Left") != nullptr;
     }
 
-    bool IsJoyconRight() {
-        if (!sdl_controller) {
-            return false;
+    bool IsJoyconRight() const {
+        return std::strstr(GetControllerName().c_str(), "Joy-Con Right") != nullptr;
+    }
+
+    std::string GetControllerName() const {
+        if (sdl_controller) {
+            switch (SDL_GameControllerGetType(sdl_controller.get())) {
+            case SDL_CONTROLLER_TYPE_XBOX360:
+                return "XBox 360 Controller";
+            case SDL_CONTROLLER_TYPE_XBOXONE:
+                return "XBox One Controller";
+            default:
+                break;
+            }
+            const auto name = SDL_GameControllerName(sdl_controller.get());
+            if (name) {
+                return name;
+            }
         }
-        const std::string name = SDL_GameControllerName(sdl_controller.get());
-        return name.find("Joy-Con Right") != std::string::npos;
+
+        if (sdl_joystick) {
+            const auto name = SDL_JoystickName(sdl_joystick.get());
+            if (name) {
+                return name;
+            }
+        }
+
+        return "Unknown";
     }
 
 private:
@@ -877,29 +885,23 @@ std::vector<Common::ParamPackage> SDLState::GetInputDevices() {
     std::unordered_map<int, std::shared_ptr<SDLJoystick>> joycon_pairs;
     for (const auto& [key, value] : joystick_map) {
         for (const auto& joystick : value) {
-            if (auto* const controller = joystick->GetSDLGameController()) {
-                std::string name =
-                    fmt::format("{} {}", GetControllerName(controller), joystick->GetPort());
-                devices.emplace_back(Common::ParamPackage{
-                    {"class", "sdl"},
-                    {"display", std::move(name)},
-                    {"guid", joystick->GetGUID()},
-                    {"port", std::to_string(joystick->GetPort())},
-                });
-                if (joystick->IsJoyconLeft()) {
-                    joycon_pairs[joystick->GetPort()] = joystick;
-                }
-            } else if (auto* const joy = joystick->GetSDLJoystick()) {
-                std::string name = fmt::format("{} {}", SDL_JoystickName(joy), joystick->GetPort());
-                devices.emplace_back(Common::ParamPackage{
-                    {"class", "sdl"},
-                    {"display", std::move(name)},
-                    {"guid", joystick->GetGUID()},
-                    {"port", std::to_string(joystick->GetPort())},
-                });
+            if (!joystick->GetSDLJoystick()) {
+                continue;
+            }
+            std::string name =
+                fmt::format("{} {}", joystick->GetControllerName(), joystick->GetPort());
+            devices.emplace_back(Common::ParamPackage{
+                {"class", "sdl"},
+                {"display", std::move(name)},
+                {"guid", joystick->GetGUID()},
+                {"port", std::to_string(joystick->GetPort())},
+            });
+            if (joystick->IsJoyconLeft()) {
+                joycon_pairs.insert_or_assign(joystick->GetPort(), joystick);
             }
         }
     }
+
     // Add dual controllers
     for (const auto& [key, value] : joystick_map) {
         for (const auto& joystick : value) {
@@ -922,17 +924,6 @@ std::vector<Common::ParamPackage> SDLState::GetInputDevices() {
         }
     }
     return devices;
-}
-
-std::string SDLState::GetControllerName(SDL_GameController* controller) const {
-    switch (SDL_GameControllerGetType(controller)) {
-    case SDL_CONTROLLER_TYPE_XBOX360:
-        return "XBox 360 Controller";
-    case SDL_CONTROLLER_TYPE_XBOXONE:
-        return "XBox One Controller";
-    default:
-        return SDL_GameControllerName(controller);
-    }
 }
 
 namespace {
@@ -1114,16 +1105,67 @@ ButtonMapping SDLState::GetButtonMappingForDevice(const Common::ParamPackage& pa
         return {};
     }
     const auto joystick = GetSDLJoystickByGUID(params.Get("guid", ""), params.Get("port", 0));
-    const auto joystick2 = GetSDLJoystickByGUID(params.Get("guid2", ""), params.Get("port", 0));
 
     auto* controller = joystick->GetSDLGameController();
     if (controller == nullptr) {
         return {};
     }
 
-    const bool is_switch =
-        SDL_GameControllerGetType(controller) == SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO;
+    // This list is missing ZL/ZR since those are not considered buttons in SDL GameController.
+    // We will add those afterwards
+    // This list also excludes Screenshot since theres not really a mapping for that
+    ButtonBindings switch_to_sdl_button;
 
+    if (SDL_GameControllerGetType(controller) == SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO) {
+        switch_to_sdl_button = GetNintendoButtonBinding(joystick);
+    } else {
+        switch_to_sdl_button = GetDefaultButtonBinding();
+    }
+
+    // Add the missing bindings for ZL/ZR
+    static constexpr ZButtonBindings switch_to_sdl_axis{{
+        {Settings::NativeButton::ZL, SDL_CONTROLLER_AXIS_TRIGGERLEFT},
+        {Settings::NativeButton::ZR, SDL_CONTROLLER_AXIS_TRIGGERRIGHT},
+    }};
+
+    // Parameters contain two joysticks return dual
+    if (params.Has("guid2")) {
+        const auto joystick2 = GetSDLJoystickByGUID(params.Get("guid2", ""), params.Get("port", 0));
+
+        if (joystick2->GetSDLGameController() != nullptr) {
+            return GetDualControllerMapping(joystick, joystick2, switch_to_sdl_button,
+                                            switch_to_sdl_axis);
+        }
+    }
+
+    return GetSingleControllerMapping(joystick, switch_to_sdl_button, switch_to_sdl_axis);
+}
+
+ButtonBindings SDLState::GetDefaultButtonBinding() const {
+    return {
+        std::pair{Settings::NativeButton::A, SDL_CONTROLLER_BUTTON_B},
+        {Settings::NativeButton::B, SDL_CONTROLLER_BUTTON_A},
+        {Settings::NativeButton::X, SDL_CONTROLLER_BUTTON_Y},
+        {Settings::NativeButton::Y, SDL_CONTROLLER_BUTTON_X},
+        {Settings::NativeButton::LStick, SDL_CONTROLLER_BUTTON_LEFTSTICK},
+        {Settings::NativeButton::RStick, SDL_CONTROLLER_BUTTON_RIGHTSTICK},
+        {Settings::NativeButton::L, SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
+        {Settings::NativeButton::R, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
+        {Settings::NativeButton::Plus, SDL_CONTROLLER_BUTTON_START},
+        {Settings::NativeButton::Minus, SDL_CONTROLLER_BUTTON_BACK},
+        {Settings::NativeButton::DLeft, SDL_CONTROLLER_BUTTON_DPAD_LEFT},
+        {Settings::NativeButton::DUp, SDL_CONTROLLER_BUTTON_DPAD_UP},
+        {Settings::NativeButton::DRight, SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
+        {Settings::NativeButton::DDown, SDL_CONTROLLER_BUTTON_DPAD_DOWN},
+        {Settings::NativeButton::SL, SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
+        {Settings::NativeButton::SR, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
+        {Settings::NativeButton::Home, SDL_CONTROLLER_BUTTON_GUIDE},
+    };
+}
+
+ButtonBindings SDLState::GetNintendoButtonBinding(
+    const std::shared_ptr<SDLJoystick>& joystick) const {
+    // Default SL/SR mapping for pro controllers
     auto sl_button = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
     auto sr_button = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
 
@@ -1136,72 +1178,104 @@ ButtonMapping SDLState::GetButtonMappingForDevice(const Common::ParamPackage& pa
         sr_button = SDL_CONTROLLER_BUTTON_PADDLE1;
     }
 
-    // This list is missing ZL/ZR since those are not considered buttons in SDL GameController.
-    // We will add those afterwards
-    // This list also excludes Screenshot since theres not really a mapping for that
-    using ButtonBindings =
-        std::array<std::tuple<bool, Settings::NativeButton::Values, SDL_GameControllerButton>, 17>;
-    const ButtonBindings switch_to_sdl_button{{
-        {false, Settings::NativeButton::A,
-         is_switch ? SDL_CONTROLLER_BUTTON_A : SDL_CONTROLLER_BUTTON_B},
-        {false, Settings::NativeButton::B,
-         is_switch ? SDL_CONTROLLER_BUTTON_B : SDL_CONTROLLER_BUTTON_A},
-        {false, Settings::NativeButton::X,
-         is_switch ? SDL_CONTROLLER_BUTTON_X : SDL_CONTROLLER_BUTTON_Y},
-        {false, Settings::NativeButton::Y,
-         is_switch ? SDL_CONTROLLER_BUTTON_Y : SDL_CONTROLLER_BUTTON_X},
-        {true, Settings::NativeButton::LStick, SDL_CONTROLLER_BUTTON_LEFTSTICK},
-        {false, Settings::NativeButton::RStick, SDL_CONTROLLER_BUTTON_RIGHTSTICK},
-        {true, Settings::NativeButton::L, SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
-        {false, Settings::NativeButton::R, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
-        {false, Settings::NativeButton::Plus, SDL_CONTROLLER_BUTTON_START},
-        {true, Settings::NativeButton::Minus, SDL_CONTROLLER_BUTTON_BACK},
-        {true, Settings::NativeButton::DLeft, SDL_CONTROLLER_BUTTON_DPAD_LEFT},
-        {true, Settings::NativeButton::DUp, SDL_CONTROLLER_BUTTON_DPAD_UP},
-        {true, Settings::NativeButton::DRight, SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
-        {true, Settings::NativeButton::DDown, SDL_CONTROLLER_BUTTON_DPAD_DOWN},
-        {true, Settings::NativeButton::SL, sl_button},
-        {true, Settings::NativeButton::SR, sr_button},
-        {false, Settings::NativeButton::Home, SDL_CONTROLLER_BUTTON_GUIDE},
-    }};
+    return {
+        std::pair{Settings::NativeButton::A, SDL_CONTROLLER_BUTTON_A},
+        {Settings::NativeButton::B, SDL_CONTROLLER_BUTTON_B},
+        {Settings::NativeButton::X, SDL_CONTROLLER_BUTTON_X},
+        {Settings::NativeButton::Y, SDL_CONTROLLER_BUTTON_Y},
+        {Settings::NativeButton::LStick, SDL_CONTROLLER_BUTTON_LEFTSTICK},
+        {Settings::NativeButton::RStick, SDL_CONTROLLER_BUTTON_RIGHTSTICK},
+        {Settings::NativeButton::L, SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
+        {Settings::NativeButton::R, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
+        {Settings::NativeButton::Plus, SDL_CONTROLLER_BUTTON_START},
+        {Settings::NativeButton::Minus, SDL_CONTROLLER_BUTTON_BACK},
+        {Settings::NativeButton::DLeft, SDL_CONTROLLER_BUTTON_DPAD_LEFT},
+        {Settings::NativeButton::DUp, SDL_CONTROLLER_BUTTON_DPAD_UP},
+        {Settings::NativeButton::DRight, SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
+        {Settings::NativeButton::DDown, SDL_CONTROLLER_BUTTON_DPAD_DOWN},
+        {Settings::NativeButton::SL, sl_button},
+        {Settings::NativeButton::SR, sr_button},
+        {Settings::NativeButton::Home, SDL_CONTROLLER_BUTTON_GUIDE},
+    };
+}
 
-    // Add the missing bindings for ZL/ZR
-    using ZBindings =
-        std::array<std::tuple<bool, Settings::NativeButton::Values, SDL_GameControllerAxis>, 2>;
-    static constexpr ZBindings switch_to_sdl_axis{{
-        {true, Settings::NativeButton::ZL, SDL_CONTROLLER_AXIS_TRIGGERLEFT},
-        {false, Settings::NativeButton::ZR, SDL_CONTROLLER_AXIS_TRIGGERRIGHT},
-    }};
-
+ButtonMapping SDLState::GetSingleControllerMapping(
+    const std::shared_ptr<SDLJoystick>& joystick, const ButtonBindings& switch_to_sdl_button,
+    const ZButtonBindings& switch_to_sdl_axis) const {
     ButtonMapping mapping;
     mapping.reserve(switch_to_sdl_button.size() + switch_to_sdl_axis.size());
+    auto* controller = joystick->GetSDLGameController();
 
-    for (const auto& [is_left, switch_button, sdl_button] : switch_to_sdl_button) {
+    for (const auto& [switch_button, sdl_button] : switch_to_sdl_button) {
         const auto& binding = SDL_GameControllerGetBindForButton(controller, sdl_button);
-        if (params.Has("guid2") && is_left) {
-            mapping.insert_or_assign(
-                switch_button,
-                BuildParamPackageForBinding(joystick2->GetPort(), joystick2->GetGUID(), binding));
-            continue;
-        }
         mapping.insert_or_assign(
             switch_button,
             BuildParamPackageForBinding(joystick->GetPort(), joystick->GetGUID(), binding));
     }
-    for (const auto& [is_left, switch_button, sdl_axis] : switch_to_sdl_axis) {
+    for (const auto& [switch_button, sdl_axis] : switch_to_sdl_axis) {
         const auto& binding = SDL_GameControllerGetBindForAxis(controller, sdl_axis);
-        if (params.Has("guid2") && is_left) {
-            mapping.insert_or_assign(
-                switch_button,
-                BuildParamPackageForBinding(joystick2->GetPort(), joystick2->GetGUID(), binding));
-            continue;
-        }
         mapping.insert_or_assign(
             switch_button,
             BuildParamPackageForBinding(joystick->GetPort(), joystick->GetGUID(), binding));
     }
 
     return mapping;
+}
+
+ButtonMapping SDLState::GetDualControllerMapping(const std::shared_ptr<SDLJoystick>& joystick,
+                                                 const std::shared_ptr<SDLJoystick>& joystick2,
+                                                 const ButtonBindings& switch_to_sdl_button,
+                                                 const ZButtonBindings& switch_to_sdl_axis) const {
+    ButtonMapping mapping;
+    mapping.reserve(switch_to_sdl_button.size() + switch_to_sdl_axis.size());
+    auto* controller = joystick->GetSDLGameController();
+    auto* controller2 = joystick2->GetSDLGameController();
+
+    for (const auto& [switch_button, sdl_button] : switch_to_sdl_button) {
+        if (IsButtonOnLeftSide(switch_button)) {
+            const auto& binding = SDL_GameControllerGetBindForButton(controller2, sdl_button);
+            mapping.insert_or_assign(
+                switch_button,
+                BuildParamPackageForBinding(joystick2->GetPort(), joystick2->GetGUID(), binding));
+            continue;
+        }
+        const auto& binding = SDL_GameControllerGetBindForButton(controller, sdl_button);
+        mapping.insert_or_assign(
+            switch_button,
+            BuildParamPackageForBinding(joystick->GetPort(), joystick->GetGUID(), binding));
+    }
+    for (const auto& [switch_button, sdl_axis] : switch_to_sdl_axis) {
+        if (IsButtonOnLeftSide(switch_button)) {
+            const auto& binding = SDL_GameControllerGetBindForAxis(controller2, sdl_axis);
+            mapping.insert_or_assign(
+                switch_button,
+                BuildParamPackageForBinding(joystick2->GetPort(), joystick2->GetGUID(), binding));
+            continue;
+        }
+        const auto& binding = SDL_GameControllerGetBindForAxis(controller, sdl_axis);
+        mapping.insert_or_assign(
+            switch_button,
+            BuildParamPackageForBinding(joystick->GetPort(), joystick->GetGUID(), binding));
+    }
+
+    return mapping;
+}
+
+bool SDLState::IsButtonOnLeftSide(Settings::NativeButton::Values button) const {
+    switch (button) {
+    case Settings::NativeButton::DDown:
+    case Settings::NativeButton::DLeft:
+    case Settings::NativeButton::DRight:
+    case Settings::NativeButton::DUp:
+    case Settings::NativeButton::L:
+    case Settings::NativeButton::LStick:
+    case Settings::NativeButton::Minus:
+    case Settings::NativeButton::Screenshot:
+    case Settings::NativeButton::ZL:
+        return true;
+    default:
+        return false;
+    }
 }
 
 AnalogMapping SDLState::GetAnalogMappingForDevice(const Common::ParamPackage& params) {
