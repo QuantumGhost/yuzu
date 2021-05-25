@@ -48,7 +48,6 @@ enum class YuzuPath {
 [[nodiscard]] bool ValidatePath(const std::filesystem::path& path);
 
 #ifdef _WIN32
-
 template <typename Path>
 [[nodiscard]] bool ValidatePath(const Path& path) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -57,7 +56,6 @@ template <typename Path>
         return ValidatePath(std::filesystem::path{path});
     }
 }
-
 #endif
 
 /**
@@ -77,7 +75,6 @@ template <typename Path>
                                                const std::filesystem::path& second);
 
 #ifdef _WIN32
-
 template <typename Path1, typename Path2>
 [[nodiscard]] std::filesystem::path ConcatPath(const Path1& first, const Path2& second) {
     using ValueType1 = typename Path1::value_type;
@@ -92,7 +89,6 @@ template <typename Path1, typename Path2>
         return ConcatPath(std::filesystem::path{first}, std::filesystem::path{second});
     }
 }
-
 #endif
 
 /**
@@ -111,7 +107,6 @@ template <typename Path1, typename Path2>
                                                    const std::filesystem::path& offset);
 
 #ifdef _WIN32
-
 template <typename Path1, typename Path2>
 [[nodiscard]] std::filesystem::path ConcatPathSafe(const Path1& base, const Path2& offset) {
     using ValueType1 = typename Path1::value_type;
@@ -126,7 +121,6 @@ template <typename Path1, typename Path2>
         return ConcatPathSafe(std::filesystem::path{base}, std::filesystem::path{offset});
     }
 }
-
 #endif
 
 /**
@@ -141,7 +135,6 @@ template <typename Path1, typename Path2>
                                    const std::filesystem::path& path);
 
 #ifdef _WIN32
-
 template <typename Path1, typename Path2>
 [[nodiscard]] bool IsPathSandboxed(const Path1& base, const Path2& path) {
     using ValueType1 = typename Path1::value_type;
@@ -156,7 +149,6 @@ template <typename Path1, typename Path2>
         return IsPathSandboxed(std::filesystem::path{base}, std::filesystem::path{path});
     }
 }
-
 #endif
 
 /**
@@ -187,7 +179,6 @@ template <typename Path1, typename Path2>
 [[nodiscard]] std::filesystem::path RemoveTrailingSeparators(const std::filesystem::path& path);
 
 #ifdef _WIN32
-
 template <typename Path>
 [[nodiscard]] std::filesystem::path RemoveTrailingSeparators(const Path& path) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -196,7 +187,6 @@ template <typename Path>
         return RemoveTrailingSeparators(std::filesystem::path{path});
     }
 }
-
 #endif
 
 /**
@@ -227,7 +217,6 @@ template <typename Path>
 void SetYuzuPath(YuzuPath yuzu_path, const std::filesystem::path& new_path);
 
 #ifdef _WIN32
-
 template <typename Path>
 [[nodiscard]] void SetYuzuPath(YuzuPath yuzu_path, const Path& new_path) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -236,7 +225,6 @@ template <typename Path>
         SetYuzuPath(yuzu_path, std::filesystem::path{new_path});
     }
 }
-
 #endif
 
 #ifdef _WIN32

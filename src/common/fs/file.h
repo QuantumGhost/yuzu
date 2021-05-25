@@ -37,7 +37,6 @@ void OpenFileStream(FileStream& file_stream, const std::filesystem::path& path,
 }
 
 #ifdef _WIN32
-
 template <typename FileStream, typename Path>
 void OpenFileStream(FileStream& file_stream, const Path& path, std::ios_base::openmode open_mode) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -46,7 +45,6 @@ void OpenFileStream(FileStream& file_stream, const Path& path, std::ios_base::op
         file_stream.open(std::filesystem::path{path}, open_mode);
     }
 }
-
 #endif
 
 /**
@@ -61,7 +59,6 @@ void OpenFileStream(FileStream& file_stream, const Path& path, std::ios_base::op
 [[nodiscard]] std::string ReadStringFromFile(const std::filesystem::path& path, FileType type);
 
 #ifdef _WIN32
-
 template <typename Path>
 [[nodiscard]] std::string ReadStringFromFile(const Path& path, FileType type) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -70,7 +67,6 @@ template <typename Path>
         return ReadStringFromFile(std::filesystem::path{path}, type);
     }
 }
-
 #endif
 
 /**
@@ -87,7 +83,6 @@ template <typename Path>
                                        std::string_view string);
 
 #ifdef _WIN32
-
 template <typename Path>
 [[nodiscard]] size_t WriteStringToFile(const Path& path, FileType type, std::string_view string) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -96,7 +91,6 @@ template <typename Path>
         return WriteStringToFile(std::filesystem::path{path}, type, string);
     }
 }
-
 #endif
 
 /**
@@ -113,7 +107,6 @@ template <typename Path>
                                         std::string_view string);
 
 #ifdef _WIN32
-
 template <typename Path>
 [[nodiscard]] size_t AppendStringToFile(const Path& path, FileType type, std::string_view string) {
     if constexpr (IsChar<typename Path::value_type>) {
@@ -122,7 +115,6 @@ template <typename Path>
         return AppendStringToFile(std::filesystem::path{path}, type, string);
     }
 }
-
 #endif
 
 class IOFile final : NonCopyable {
@@ -191,7 +183,6 @@ public:
               FileShareFlag flag = FileShareFlag::ShareReadOnly);
 
 #ifdef _WIN32
-
     template <typename Path>
     [[nodiscard]] void Open(const Path& path, FileAccessMode mode,
                             FileType type = FileType::BinaryFile,
@@ -203,7 +194,6 @@ public:
             Open(std::filesystem::path{path}, mode, type, flag);
         }
     }
-
 #endif
 
     /// Closes the file if it is opened.
