@@ -5,7 +5,6 @@
 #pragma once
 
 #include <memory>
-#include <QAbstractButton>
 #include <QDialog>
 
 class HotkeyRegistry;

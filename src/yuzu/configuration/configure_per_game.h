@@ -7,7 +7,6 @@
 #include <memory>
 #include <vector>
 
-#include <QAbstractButton>
 #include <QDialog>
 #include <QList>
 
