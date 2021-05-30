@@ -1,7 +1,7 @@
 yuzu emulator early access
 =============
 
-This is the source code for early-access 1730.
+This is the source code for early-access 1732.
 
 ## Legal Notice
 
