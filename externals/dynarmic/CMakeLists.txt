@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(dynarmic C CXX)
+project(dynarmic C CXX ASM)
 
 # Determine if we're built as a subproject (using add_subdirectory)
 # or if this is the master project.
@@ -140,7 +140,7 @@ endif()
 add_subdirectory(externals)
 
 # Dynarmic project files
-add_subdirectory(src)
+add_subdirectory(src/dynarmic)
 if (DYNARMIC_TESTS)
     add_subdirectory(tests)
 endif()

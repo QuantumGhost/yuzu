@@ -11,24 +11,24 @@
 #include <vector>
 
 #include <catch.hpp>
-#include <dynarmic/A32/a32.h>
 
-#include "common/common_types.h"
-#include "common/fp/fpcr.h"
-#include "common/fp/fpsr.h"
-#include "common/llvm_disassemble.h"
-#include "common/scope_exit.h"
-#include "frontend/A32/ITState.h"
-#include "frontend/A32/location_descriptor.h"
-#include "frontend/A32/translate/translate.h"
-#include "frontend/A32/types.h"
-#include "frontend/ir/basic_block.h"
-#include "frontend/ir/location_descriptor.h"
-#include "frontend/ir/opcodes.h"
-#include "fuzz_util.h"
-#include "rand_int.h"
-#include "testenv.h"
-#include "unicorn_emu/a32_unicorn.h"
+#include "../fuzz_util.h"
+#include "../rand_int.h"
+#include "../unicorn_emu/a32_unicorn.h"
+#include "./testenv.h"
+#include "dynarmic/common/common_types.h"
+#include "dynarmic/common/fp/fpcr.h"
+#include "dynarmic/common/fp/fpsr.h"
+#include "dynarmic/common/llvm_disassemble.h"
+#include "dynarmic/common/scope_exit.h"
+#include "dynarmic/frontend/A32/ITState.h"
+#include "dynarmic/frontend/A32/location_descriptor.h"
+#include "dynarmic/frontend/A32/translate/translate.h"
+#include "dynarmic/frontend/A32/types.h"
+#include "dynarmic/interface/A32/a32.h"
+#include "dynarmic/ir/basic_block.h"
+#include "dynarmic/ir/location_descriptor.h"
+#include "dynarmic/ir/opcodes.h"
 
 // Must be declared last for all necessary operator<< to be declared prior to this.
 #include <fmt/format.h>
@@ -79,12 +79,12 @@ u32 GenRandomArmInst(u32 pc, bool is_last_inst) {
     static const struct InstructionGeneratorInfo {
         std::vector<InstructionGenerator> generators;
         std::vector<InstructionGenerator> invalid;
-    } instructions = []{
-        const std::vector<std::tuple<std::string, const char*>> list {
+    } instructions = [] {
+        const std::vector<std::tuple<std::string, const char*>> list{
 #define INST(fn, name, bitstring) {#fn, bitstring},
-#include "frontend/A32/decoder/arm.inc"
-#include "frontend/A32/decoder/asimd.inc"
-#include "frontend/A32/decoder/vfp.inc"
+#include "dynarmic/frontend/A32/decoder/arm.inc"
+#include "dynarmic/frontend/A32/decoder/asimd.inc"
+#include "dynarmic/frontend/A32/decoder/vfp.inc"
 #undef INST
         };
 
@@ -92,7 +92,7 @@ u32 GenRandomArmInst(u32 pc, bool is_last_inst) {
         std::vector<InstructionGenerator> invalid;
 
         // List of instructions not to test
-        static constexpr std::array do_not_test {
+        static constexpr std::array do_not_test{
             // Translating load/stores
             "arm_LDRBT", "arm_LDRBT", "arm_LDRHT", "arm_LDRHT", "arm_LDRSBT", "arm_LDRSBT", "arm_LDRSHT", "arm_LDRSHT", "arm_LDRT", "arm_LDRT",
             "arm_STRBT", "arm_STRBT", "arm_STRHT", "arm_STRHT", "arm_STRT", "arm_STRT",
@@ -117,9 +117,9 @@ u32 GenRandomArmInst(u32 pc, bool is_last_inst) {
             // FPSCR is inaccurate
             "vfp_VMRS",
             // Incorrect Unicorn implementations
-            "asimd_VRECPS", // Unicorn does not fuse the multiply and subtraction, resulting in being off by 1ULP.
-            "asimd_VRSQRTS", // Unicorn does not fuse the multiply and subtraction, resulting in being off by 1ULP.
-            "vfp_VCVT_from_fixed", // Unicorn does not do round-to-nearest-even for this instruction correctly.
+            "asimd_VRECPS",         // Unicorn does not fuse the multiply and subtraction, resulting in being off by 1ULP.
+            "asimd_VRSQRTS",        // Unicorn does not fuse the multiply and subtraction, resulting in being off by 1ULP.
+            "vfp_VCVT_from_fixed",  // Unicorn does not do round-to-nearest-even for this instruction correctly.
         };
 
         for (const auto& [fn, bitstring] : list) {
@@ -150,11 +150,23 @@ std::vector<u16> GenRandomThumbInst(u32 pc, bool is_last_inst, A32::ITState it_s
     static const struct InstructionGeneratorInfo {
         std::vector<InstructionGenerator> generators;
         std::vector<InstructionGenerator> invalid;
-    } instructions = []{
-        const std::vector<std::tuple<std::string, const char*>> list {
+    } instructions = [] {
+        const std::vector<std::tuple<std::string, const char*>> list{
 #define INST(fn, name, bitstring) {#fn, bitstring},
-#include "frontend/A32/decoder/thumb16.inc"
-#include "frontend/A32/decoder/thumb32.inc"
+#include "dynarmic/frontend/A32/decoder/thumb16.inc"
+#include "dynarmic/frontend/A32/decoder/thumb32.inc"
+#undef INST
+        };
+
+        const std::vector<std::tuple<std::string, const char*>> vfp_list{
+#define INST(fn, name, bitstring) {#fn, bitstring},
+#include "dynarmic/frontend/A32/decoder/vfp.inc"
+#undef INST
+        };
+
+        const std::vector<std::tuple<std::string, const char*>> asimd_list{
+#define INST(fn, name, bitstring) {#fn, bitstring},
+#include "dynarmic/frontend/A32/decoder/asimd.inc"
 #undef INST
         };
 
@@ -162,16 +174,41 @@ std::vector<u16> GenRandomThumbInst(u32 pc, bool is_last_inst, A32::ITState it_s
         std::vector<InstructionGenerator> invalid;
 
         // List of instructions not to test
-        static constexpr std::array do_not_test {
+        static constexpr std::array do_not_test{
             "thumb16_BKPT",
             "thumb16_IT",
             "thumb16_SETEND",
 
             // Exclusive load/stores
+            "thumb32_LDREX",
+            "thumb32_LDREXB",
+            "thumb32_LDREXD",
+            "thumb32_LDREXH",
             "thumb32_STREX",
             "thumb32_STREXB",
             "thumb32_STREXD",
             "thumb32_STREXH",
+
+            // FPSCR is inaccurate
+            "vfp_VMRS",
+
+            // Unicorn is incorrect?
+            "thumb32_MRS_reg",
+
+            // Unicorn has incorrect implementation (incorrect rounding and unsets CPSR.T??)
+            "vfp_VCVT_to_fixed",
+            "vfp_VCVT_from_fixed",
+            "asimd_VRECPS",   // Unicorn does not fuse the multiply and subtraction, resulting in being off by 1ULP.
+            "asimd_VRSQRTS",  // Unicorn does not fuse the multiply and subtraction, resulting in being off by 1ULP.
+
+            // Coprocessor
+            "thumb32_CDP",
+            "thumb32_LDC",
+            "thumb32_MCR",
+            "thumb32_MCRR",
+            "thumb32_MRC",
+            "thumb32_MRRC",
+            "thumb32_STC",
         };
 
         for (const auto& [fn, bitstring] : list) {
@@ -180,6 +217,34 @@ std::vector<u16> GenRandomThumbInst(u32 pc, bool is_last_inst, A32::ITState it_s
                 continue;
             }
             generators.emplace_back(InstructionGenerator{bitstring});
+        }
+        for (const auto& [fn, bs] : vfp_list) {
+            std::string bitstring = bs;
+            if (bitstring.substr(0, 4) == "cccc" || bitstring.substr(0, 4) == "----") {
+                bitstring.replace(0, 4, "1110");
+            }
+            if (std::find(do_not_test.begin(), do_not_test.end(), fn) != do_not_test.end()) {
+                invalid.emplace_back(InstructionGenerator{bitstring.c_str()});
+                continue;
+            }
+            generators.emplace_back(InstructionGenerator{bitstring.c_str()});
+        }
+        for (const auto& [fn, bs] : asimd_list) {
+            std::string bitstring = bs;
+            if (bitstring.substr(0, 7) == "1111001") {
+                const char U = bitstring[7];
+                bitstring.replace(0, 8, "111-1111");
+                bitstring[3] = U;
+            } else if (bitstring.substr(0, 8) == "11110100") {
+                bitstring.replace(0, 8, "11111001");
+            } else {
+                ASSERT_FALSE("Unhandled ASIMD instruction: {} {}", fn, bs);
+            }
+            if (std::find(do_not_test.begin(), do_not_test.end(), fn) != do_not_test.end()) {
+                invalid.emplace_back(InstructionGenerator{bitstring.c_str()});
+                continue;
+            }
+            generators.emplace_back(InstructionGenerator{bitstring.c_str()});
         }
         return InstructionGeneratorInfo{generators, invalid};
     }();
@@ -191,13 +256,13 @@ std::vector<u16> GenRandomThumbInst(u32 pc, bool is_last_inst, A32::ITState it_s
 
         if (ShouldTestInst(is_four_bytes ? Common::SwapHalves32(inst) : inst, pc, true, is_last_inst, it_state)) {
             if (is_four_bytes)
-                return { static_cast<u16>(inst >> 16), static_cast<u16>(inst) };
-            return { static_cast<u16>(inst) };
+                return {static_cast<u16>(inst >> 16), static_cast<u16>(inst)};
+            return {static_cast<u16>(inst)};
         }
     }
 }
 
-template <typename TestEnv>
+template<typename TestEnv>
 Dynarmic::A32::UserConfig GetUserConfig(TestEnv& testenv) {
     Dynarmic::A32::UserConfig user_config;
     user_config.optimizations &= ~OptimizationFlag::FastDispatch;
@@ -206,7 +271,7 @@ Dynarmic::A32::UserConfig GetUserConfig(TestEnv& testenv) {
     return user_config;
 }
 
-template <typename TestEnv>
+template<typename TestEnv>
 static void RunTestInstance(Dynarmic::A32::Jit& jit,
                             A32Unicorn<TestEnv>& uni,
                             TestEnv& jit_env,
@@ -250,7 +315,7 @@ static void RunTestInstance(Dynarmic::A32::Jit& jit,
     jit_env.ticks_left = ticks_left;
     jit.Run();
 
-    uni_env.ticks_left = instructions.size(); // Unicorn counts thumb instructions weirdly.
+    uni_env.ticks_left = instructions.size();  // Unicorn counts thumb instructions weirdly.
     uni.Run();
 
     SCOPE_FAIL {
@@ -335,7 +400,7 @@ static void RunTestInstance(Dynarmic::A32::Jit& jit,
     REQUIRE(uni_env.modified_memory == jit_env.modified_memory);
     REQUIRE(uni_env.interrupts.empty());
 }
-} // Anonymous namespace
+}  // Anonymous namespace
 
 TEST_CASE("A32: Single random arm instruction", "[arm]") {
     ArmTestEnv jit_env{};
@@ -515,7 +580,7 @@ TEST_CASE("A32: Test thumb IT instruction", "[thumb]") {
         }
 
         // Emit IT instruction
-        A32::ITState it_state = [&]{
+        A32::ITState it_state = [&] {
             while (true) {
                 const u16 imm8 = RandInt<u16>(0, 0xFF);
                 if (Common::Bits<0, 3>(imm8) == 0b0000 || Common::Bits<4, 7>(imm8) == 0b1111 || (Common::Bits<4, 7>(imm8) == 0b1110 && Common::BitCount(Common::Bits<0, 3>(imm8)) != 1)) {
