@@ -16,6 +16,7 @@
 
 #include "dynarmic/backend/x64/abi.h"
 #include "dynarmic/backend/x64/block_of_code.h"
+#include "dynarmic/backend/x64/constants.h"
 #include "dynarmic/backend/x64/emit_x64.h"
 #include "dynarmic/common/assert.h"
 #include "dynarmic/common/cast_util.h"
@@ -79,21 +80,6 @@ constexpr u64 f64_max_u64_lim = 0x43f0000000000000u;  // 2^64 as a double (actua
         }                            \
     }
 
-std::optional<int> ConvertRoundingModeToX64Immediate(FP::RoundingMode rounding_mode) {
-    switch (rounding_mode) {
-    case FP::RoundingMode::ToNearest_TieEven:
-        return 0b00;
-    case FP::RoundingMode::TowardsPlusInfinity:
-        return 0b10;
-    case FP::RoundingMode::TowardsMinusInfinity:
-        return 0b01;
-    case FP::RoundingMode::TowardsZero:
-        return 0b11;
-    default:
-        return std::nullopt;
-    }
-}
-
 template<size_t fsize>
 void DenormalsAreZero(BlockOfCode& code, EmitContext& ctx, std::initializer_list<Xbyak::Xmm> to_daz) {
     if (ctx.FPCR().FZ()) {
@@ -116,9 +102,18 @@ void DenormalsAreZero(BlockOfCode& code, EmitContext& ctx, std::initializer_list
 
 template<size_t fsize>
 void ZeroIfNaN(BlockOfCode& code, Xbyak::Xmm xmm_value, Xbyak::Xmm xmm_scratch) {
-    code.xorps(xmm_scratch, xmm_scratch);
-    FCODE(cmpords)(xmm_scratch, xmm_value);  // true mask when ordered (i.e.: when not an NaN)
-    code.pand(xmm_value, xmm_scratch);
+    if (code.HasHostFeature(HostFeature::AVX512_OrthoFloat)) {
+        constexpr u32 nan_to_zero = FixupLUT(FpFixup::PosZero,
+                                             FpFixup::PosZero);
+        FCODE(vfixupimms)(xmm_value, xmm_value, code.MConst(ptr, u64(nan_to_zero)), u8(0));
+    } else if (code.HasHostFeature(HostFeature::AVX)) {
+        FCODE(vcmpords)(xmm_scratch, xmm_value, xmm_value);
+        FCODE(vandp)(xmm_value, xmm_value, xmm_scratch);
+    } else {
+        code.xorps(xmm_scratch, xmm_scratch);
+        FCODE(cmpords)(xmm_scratch, xmm_value);  // true mask when ordered (i.e.: when not an NaN)
+        code.pand(xmm_value, xmm_scratch);
+    }
 }
 
 template<size_t fsize>

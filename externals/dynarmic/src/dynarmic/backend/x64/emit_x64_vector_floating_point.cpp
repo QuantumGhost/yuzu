@@ -19,6 +19,7 @@
 
 #include "dynarmic/backend/x64/abi.h"
 #include "dynarmic/backend/x64/block_of_code.h"
+#include "dynarmic/backend/x64/constants.h"
 #include "dynarmic/backend/x64/emit_x64.h"
 #include "dynarmic/common/assert.h"
 #include "dynarmic/common/fp/fpcr.h"
@@ -203,7 +204,11 @@ void ForceToDefaultNaN(BlockOfCode& code, FP::FPCR fpcr, Xbyak::Xmm result) {
 template<size_t fsize>
 void ZeroIfNaN(BlockOfCode& code, Xbyak::Xmm result) {
     const Xbyak::Xmm nan_mask = xmm0;
-    if (code.HasHostFeature(HostFeature::AVX)) {
+    if (code.HasHostFeature(HostFeature::AVX512_OrthoFloat)) {
+        constexpr u32 nan_to_zero = FixupLUT(FpFixup::PosZero,
+                                             FpFixup::PosZero);
+        FCODE(vfixupimmp)(result, result, code.MConst(ptr_b, u64(nan_to_zero)), u8(0));
+    } else if (code.HasHostFeature(HostFeature::AVX)) {
         FCODE(vcmpordp)(nan_mask, result, result);
         FCODE(vandp)(result, result, nan_mask);
     } else {
@@ -635,6 +640,49 @@ void EmitX64::EmitFPVectorEqual64(EmitContext& ctx, IR::Inst* inst) {
     });
 
     ctx.reg_alloc.DefineValue(inst, a);
+}
+
+void EmitX64::EmitFPVectorFromHalf32(EmitContext& ctx, IR::Inst* inst) {
+    const auto rounding_mode = static_cast<FP::RoundingMode>(inst->GetArg(1).GetU8());
+    const bool fpcr_controlled = inst->GetArg(2).GetU1();
+
+    if (code.HasHostFeature(HostFeature::F16C) && !ctx.FPCR().AHP() && !ctx.FPCR().FZ16()) {
+        auto args = ctx.reg_alloc.GetArgumentInfo(inst);
+
+        const Xbyak::Xmm result = ctx.reg_alloc.ScratchXmm();
+        const Xbyak::Xmm value = ctx.reg_alloc.UseXmm(args[0]);
+
+        code.vcvtph2ps(result, value);
+        ForceToDefaultNaN<32>(code, ctx.FPCR(fpcr_controlled), result);
+
+        ctx.reg_alloc.DefineValue(inst, result);
+        return;
+    }
+
+    using rounding_list = mp::list<
+        mp::lift_value<FP::RoundingMode::ToNearest_TieEven>,
+        mp::lift_value<FP::RoundingMode::TowardsPlusInfinity>,
+        mp::lift_value<FP::RoundingMode::TowardsMinusInfinity>,
+        mp::lift_value<FP::RoundingMode::TowardsZero>,
+        mp::lift_value<FP::RoundingMode::ToNearest_TieAwayFromZero>>;
+
+    static const auto lut = Common::GenerateLookupTableFromList(
+        [](auto arg) {
+            return std::pair{
+                mp::lower_to_tuple_v<decltype(arg)>,
+                Common::FptrCast(
+                    [](VectorArray<u32>& output, const VectorArray<u16>& input, FP::FPCR fpcr, FP::FPSR& fpsr) {
+                        constexpr auto t = mp::lower_to_tuple_v<decltype(arg)>;
+                        constexpr FP::RoundingMode rounding_mode = std::get<0>(t);
+
+                        for (size_t i = 0; i < output.size(); ++i) {
+                            output[i] = FP::FPConvert<u32, u16>(input[i], fpcr, rounding_mode, fpsr);
+                        }
+                    })};
+        },
+        mp::cartesian_product<rounding_list>{});
+
+    EmitTwoOpFallback<2>(code, ctx, inst, lut.at(std::make_tuple(rounding_mode)));
 }
 
 void EmitX64::EmitFPVectorFromSignedFixed32(EmitContext& ctx, IR::Inst* inst) {
@@ -1600,6 +1648,53 @@ void EmitX64::EmitFPVectorSub32(EmitContext& ctx, IR::Inst* inst) {
 
 void EmitX64::EmitFPVectorSub64(EmitContext& ctx, IR::Inst* inst) {
     EmitThreeOpVectorOperation<64, DefaultIndexer>(code, ctx, inst, &Xbyak::CodeGenerator::subpd);
+}
+
+void EmitX64::EmitFPVectorToHalf32(EmitContext& ctx, IR::Inst* inst) {
+    const auto rounding_mode = static_cast<FP::RoundingMode>(inst->GetArg(1).GetU8());
+    const bool fpcr_controlled = inst->GetArg(2).GetU1();
+
+    if (code.HasHostFeature(HostFeature::F16C) && !ctx.FPCR().AHP() && !ctx.FPCR().FZ16()) {
+        auto args = ctx.reg_alloc.GetArgumentInfo(inst);
+        const auto round_imm = ConvertRoundingModeToX64Immediate(rounding_mode);
+
+        const Xbyak::Xmm result = ctx.reg_alloc.UseScratchXmm(args[0]);
+
+        ForceToDefaultNaN<32>(code, ctx.FPCR(fpcr_controlled), result);
+        code.vcvtps2ph(result, result, static_cast<u8>(*round_imm));
+
+        ctx.reg_alloc.DefineValue(inst, result);
+        return;
+    }
+
+    using rounding_list = mp::list<
+        mp::lift_value<FP::RoundingMode::ToNearest_TieEven>,
+        mp::lift_value<FP::RoundingMode::TowardsPlusInfinity>,
+        mp::lift_value<FP::RoundingMode::TowardsMinusInfinity>,
+        mp::lift_value<FP::RoundingMode::TowardsZero>,
+        mp::lift_value<FP::RoundingMode::ToNearest_TieAwayFromZero>>;
+
+    static const auto lut = Common::GenerateLookupTableFromList(
+        [](auto arg) {
+            return std::pair{
+                mp::lower_to_tuple_v<decltype(arg)>,
+                Common::FptrCast(
+                    [](VectorArray<u16>& output, const VectorArray<u32>& input, FP::FPCR fpcr, FP::FPSR& fpsr) {
+                        constexpr auto t = mp::lower_to_tuple_v<decltype(arg)>;
+                        constexpr FP::RoundingMode rounding_mode = std::get<0>(t);
+
+                        for (size_t i = 0; i < output.size(); ++i) {
+                            if (i < input.size()) {
+                                output[i] = FP::FPConvert<u16, u32>(input[i], fpcr, rounding_mode, fpsr);
+                            } else {
+                                output[i] = 0;
+                            }
+                        }
+                    })};
+        },
+        mp::cartesian_product<rounding_list>{});
+
+    EmitTwoOpFallback<2>(code, ctx, inst, lut.at(std::make_tuple(rounding_mode)));
 }
 
 template<size_t fsize, bool unsigned_>
