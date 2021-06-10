@@ -59,12 +59,11 @@ using PFN_VirtualAlloc2 = _Ret_maybenull_ PVOID(WINAPI*)(
     _Inout_updates_opt_(ParameterCount) MEM_EXTENDED_PARAMETER* ExtendedParameters,
     _In_ ULONG ParameterCount);
 
-using PFN_MapViewOfFile3 = _Ret_maybenull_ __out_data_source(FILE)
-    PVOID(WINAPI*)(_In_ HANDLE FileMapping, _In_opt_ HANDLE Process, _In_opt_ PVOID BaseAddress,
-                   _In_ ULONG64 Offset, _In_ SIZE_T ViewSize, _In_ ULONG AllocationType,
-                   _In_ ULONG PageProtection,
-                   _Inout_updates_opt_(ParameterCount) MEM_EXTENDED_PARAMETER* ExtendedParameters,
-                   _In_ ULONG ParameterCount);
+using PFN_MapViewOfFile3 = _Ret_maybenull_ PVOID(WINAPI*)(
+    _In_ HANDLE FileMapping, _In_opt_ HANDLE Process, _In_opt_ PVOID BaseAddress,
+    _In_ ULONG64 Offset, _In_ SIZE_T ViewSize, _In_ ULONG AllocationType, _In_ ULONG PageProtection,
+    _Inout_updates_opt_(ParameterCount) MEM_EXTENDED_PARAMETER* ExtendedParameters,
+    _In_ ULONG ParameterCount);
 
 using PFN_UnmapViewOfFile2 = BOOL(WINAPI*)(_In_ HANDLE Process, _In_ PVOID BaseAddress,
                                            _In_ ULONG UnmapFlags);
