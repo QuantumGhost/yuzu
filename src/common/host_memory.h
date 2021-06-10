@@ -22,8 +22,8 @@ public:
      * Copy constructors. They shall return a copy of the buffer without the mappings.
      * TODO: Implement them with COW if needed.
      */
-    HostMemory(HostMemory& other) = delete;
-    HostMemory& operator=(HostMemory& other) = delete;
+    HostMemory(const HostMemory& other) = delete;
+    HostMemory& operator=(const HostMemory& other) = delete;
 
     /**
      * Move constructors. They will move the buffer and the mappings to the new object.

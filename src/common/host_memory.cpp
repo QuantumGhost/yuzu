@@ -1,17 +1,21 @@
-#ifdef __linux__
+#ifdef _WIN32
+
+#include <iterator>
+#include <unordered_map>
+#include <boost/icl/separate_interval_set.hpp>
+#include <windows.h>
+#include "common/dynamic_library.h"
+
+#elif defined(__linux__) // ^^^ Windows ^^^ vvv Linux vvv
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#elif defined(_WIN32) // ^^^ Linux ^^^ vvv Windows vvv
-#include <iterator>
-#include <unordered_map>
-#include <boost/icl/separate_interval_set.hpp>
-#include <windows.h>
-#include "common/dynamic_library.h"
-#endif // ^^^ Windows ^^^
+
+#endif // ^^^ Linux ^^^
 
 #include <mutex>
 
@@ -19,6 +23,7 @@
 #include "common/assert.h"
 #include "common/host_memory.h"
 #include "common/logging/log.h"
+#include "common/scope_exit.h"
 
 namespace Common {
 
@@ -33,6 +38,12 @@ constexpr size_t HugePageSize = 0x200000;
 #endif
 #ifndef MEM_REPLACE_PLACEHOLDER
 #define MEM_REPLACE_PLACEHOLDER 0x00004000
+#endif
+#ifndef MEM_COALESCE_PLACEHOLDERS
+#define MEM_COALESCE_PLACEHOLDERS 0x00000001
+#endif
+#ifndef MEM_PRESERVE_PLACEHOLDER
+#define MEM_PRESERVE_PLACEHOLDER 0x00000002
 #endif
 
 using PFN_CreateFileMapping2 = _Ret_maybenull_ HANDLE(WINAPI*)(
@@ -333,18 +344,23 @@ private:
     std::unordered_map<size_t, size_t> placeholder_host_pointers; ///< Placeholder backing offset
 };
 
-#elif defined(__linux__)
+#elif defined(__linux__) // ^^^ Windows ^^^ vvv Linux vvv
 
 class HostMemory::Impl {
 public:
     explicit Impl(size_t backing_size_, size_t virtual_size_)
         : backing_size{backing_size_}, virtual_size{virtual_size_} {
+        bool good = false;
+        SCOPE_EXIT({
+            if (!good) {
+                Release();
+            }
+        });
 
         // Backing memory initialization
         fd = memfd_create("HostMemory", 0);
         if (fd == -1) {
             LOG_CRITICAL(HW_Memory, "memfd_create failed: {}", strerror(errno));
-            Release();
             throw std::bad_alloc{};
         }
 
@@ -353,7 +369,6 @@ public:
         if (ret != 0) {
             LOG_CRITICAL(HW_Memory, "ftruncate failed with {}, are you out-of-memory?",
                          strerror(errno));
-            Release();
             throw std::bad_alloc{};
         }
 
@@ -361,7 +376,6 @@ public:
             mmap(nullptr, backing_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
         if (backing_base == MAP_FAILED) {
             LOG_CRITICAL(HW_Memory, "mmap failed: {}", strerror(errno));
-            Release();
             throw std::bad_alloc{};
         }
 
@@ -370,9 +384,10 @@ public:
             mmap(nullptr, virtual_size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
         if (virtual_base == MAP_FAILED) {
             LOG_CRITICAL(HW_Memory, "mmap failed: {}", strerror(errno));
-            Release();
             throw std::bad_alloc{};
         }
+
+        good = true;
     }
 
     ~Impl() {
@@ -397,10 +412,12 @@ public:
 
     void Protect(size_t virtual_offset, size_t length, bool read, bool write) {
         int flags = 0;
-        if (read)
+        if (read) {
             flags |= PROT_READ;
-        if (write)
+        }
+        if (write) {
             flags |= PROT_WRITE;
+        }
         int ret = mprotect(virtual_base + virtual_offset, length, flags);
         ASSERT_MSG(ret == 0, "mprotect failed: {}", strerror(errno));
     }
@@ -433,7 +450,7 @@ private:
     int fd{-1}; // memfd file descriptor, -1 is the error value of memfd_create
 };
 
-#else
+#else // ^^^ Linux ^^^
 
 #error Please implement the host memory for your platform
 
