@@ -654,6 +654,7 @@ void Config::ReadDebuggingValues() {
     Settings::values.quest_flag = ReadSetting(QStringLiteral("quest_flag"), false).toBool();
     Settings::values.disable_macro_jit =
         ReadSetting(QStringLiteral("disable_macro_jit"), false).toBool();
+    Settings::values.unlimit_fps = ReadSetting(QStringLiteral("unlimit_fps"), false).toBool();
     Settings::values.extended_logging =
         ReadSetting(QStringLiteral("extended_logging"), false).toBool();
     Settings::values.use_debug_asserts =
@@ -1267,6 +1268,7 @@ void Config::SaveDebuggingValues() {
     WriteSetting(QStringLiteral("quest_flag"), Settings::values.quest_flag, false);
     WriteSetting(QStringLiteral("use_debug_asserts"), Settings::values.use_debug_asserts, false);
     WriteSetting(QStringLiteral("disable_macro_jit"), Settings::values.disable_macro_jit, false);
+    WriteSetting(QStringLiteral("unlimit_fps"), Settings::values.unlimit_fps, false);
 
     qt_config->endGroup();
 }
