@@ -45,7 +45,7 @@ s32 ApplyMixRamp(std::span<s32> output, std::span<const s32> input, float gain, 
     // XC2 passes in NaN mix volumes, causing further issues as we handle everything as s32 rather
     // than float, so the NaN propogation is lost. As the samples get further modified for
     // volume etc, they can get out of NaN range, so a later heuristic for catching this is
-    // more difficult. Handle that here by setting these samples to silence.
+    // more difficult. Handle it here by setting these samples to silence.
     if (std::isnan(gain)) {
         gain = 0.0f;
         delta = 0.0f;
