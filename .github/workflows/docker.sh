@@ -1,6 +1,7 @@
 #!/bin/bash -ex
 
 BRANCH=`echo ${GITHUB_REF##*/}`
+build_date=$(date +%F -r .)
 
 ver=$(cat /yuzu/README.md | grep -o 'early-access [[:digit:]]*' | cut -c 14-17)
 title="yuzu Early Access $ver"
