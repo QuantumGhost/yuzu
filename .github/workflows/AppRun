@@ -1,17 +1,14 @@
 #!/bin/bash
 
-export QT_QPA_PLATFORMTHEME=gtk3
-
 mkdir -p $HOME/.local/share/icons/hicolor/scalable/apps && cp $APPDIR/yuzu.svg $HOME/.local/share/icons/hicolor/scalable/apps
 
 GITVER=`wget -qO- https://api.github.com/repos/pineappleEA/pineapple-src/releases/latest | grep "releases/tag" | grep -o 'EA-[[:digit:]]*'`
 APPVER=`cat $APPDIR/version.txt`
 
 if [[ -z "$GITVER" ]]; then
-	$APPDIR/usr/bin/yuzu
+	$APPDIR/AppRun-patched
 elif [ "$GITVER" = "$APPVER" ]; then
-	$APPDIR/usr/bin/yuzu
+	$APPDIR/AppRun-patched
 else
 	$APPDIR/update.sh
 fi
-
