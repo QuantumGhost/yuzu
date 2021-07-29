@@ -41,8 +41,18 @@ mkdir -p /yuzu/artifacts/version
     mkdir -p squashfs-root/usr/optional/{libstdc++,libgcc_s}
     cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 ./squashfs-root/usr/optional/libstdc++/
     cp /lib/libgcc_s.so.1 ./squashfs-root/usr/optional/libgcc_s/
-    curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/AppRun-patched-x86_64 -o ./squashfs-root/AppRun
-    chmod a+x ./squashfs-root/AppRun
+    curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/AppRun-patched-x86_64 -o ./squashfs-root/AppRun.wrapped
+# create AppRun
+cat << 'EOF' > $HOME/squashfs-root/AppRun
+#! /usr/bin/env bash
+set -e
+this_dir="$(readlink -f "$(dirname "$0")")"
+#GDK_PIXBUF
+export GDK_PIXBUF_MODULEDIR=$(pkg-config --variable=gdk_pixbuf_moduledir gdk-pixbuf-2.0)
+export GDK_PIXBUF_MODULE_FILE=$(pkg-config --variable=gdk_pixbuf_cache_file gdk-pixbuf-2.0)
+exec "$this_dir"/AppRun.wrapped "$@"
+EOF
+    chmod a+x ./squashfs-root/{AppRun,AppRun.wrapped}
     curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/exec-x86_64.so -o ./squashfs-root/usr/optional/exec.so
     printf "#include <sstream>\n#include <exception>\n#include <memory_resource>\nint main(){auto x = std::stringbuf();x.get_allocator();std::make_exception_ptr(0);std::pmr::get_default_resource();}" \
     | $CXX -x c++ -std=c++2a -o ./squashfs-root/usr/optional/checker -
@@ -55,7 +65,8 @@ export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH
 mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 
 # Continuous AppImage
-mv $HOME/squashfs-root/AppRun ./squashfs-root/AppRun-patched
+mv $HOME/squashfs-root/AppRun.wrapped ./squashfs-root/AppRun-patched
+rm $HOME/squashfs-root/AppRun
 curl -sL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$BRANCH/.github/workflows/AppRun" -o $HOME/squashfs-root/AppRun
 chmod a+x ./squashfs-root/AppRun
 mv /tmp/update/AppImageUpdate $HOME/squashfs-root/usr/bin/
