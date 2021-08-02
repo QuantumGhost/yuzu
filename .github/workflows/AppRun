@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export GDK_PIXBUF_MODULEDIR=$(pkg-config --variable=gdk_pixbuf_moduledir gdk-pixbuf-2.0)
+export GDK_PIXBUF_MODULE_FILE=$(pkg-config --variable=gdk_pixbuf_cache_file gdk-pixbuf-2.0)
+	
 mkdir -p $HOME/.local/share/icons/hicolor/scalable/apps && cp $APPDIR/yuzu.svg $HOME/.local/share/icons/hicolor/scalable/apps
 
 GITVER=`wget -qO- https://api.github.com/repos/pineappleEA/pineapple-src/releases/latest | grep "releases/tag" | grep -o 'EA-[[:digit:]]*'`
