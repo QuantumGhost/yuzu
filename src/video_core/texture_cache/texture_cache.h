@@ -23,6 +23,7 @@
 #include "common/common_types.h"
 #include "common/literals.h"
 #include "common/logging/log.h"
+#include "common/settings.h"
 #include "video_core/compatible_formats.h"
 #include "video_core/delayed_destruction_ring.h"
 #include "video_core/dirty_flags.h"
@@ -509,7 +510,7 @@ void TextureCache<P>::RunGarbageCollector() {
 
 template <class P>
 void TextureCache<P>::TickFrame() {
-    if (total_used_memory > minimum_memory) {
+    if (Settings::values.use_caches_gc.GetValue() && total_used_memory > minimum_memory) {
         RunGarbageCollector();
     }
     sentenced_images.Tick();
