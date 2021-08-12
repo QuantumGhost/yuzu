@@ -59,7 +59,7 @@ Codec::~Codec() {
 
 bool Codec::CreateGpuAvDevice() {
 #if defined(LIBVA_FOUND)
-    static constexpr std::array<const char*, 2> VAAPI_DRIVERS = {
+    static constexpr std::array<const char*, 3> VAAPI_DRIVERS = {
         "i915",
         "iHD",
         "amdgpu",
