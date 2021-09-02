@@ -1,7 +1,7 @@
 yuzu emulator early access
 =============
 
-This is the source code for early-access 2029.
+This is the source code for early-access 2030.
 
 ## Legal Notice
 
