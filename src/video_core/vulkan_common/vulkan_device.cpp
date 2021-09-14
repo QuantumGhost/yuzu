@@ -243,7 +243,6 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
     SetupFamilies(surface);
     SetupFeatures();
     SetupProperties();
-    CollectTelemetryParameters();
 
     const auto queue_cis = GetDeviceQueueCreateInfos();
     const std::vector extensions = LoadExtensions(surface != nullptr);
@@ -368,15 +367,6 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
         .shaderDemoteToHelperInvocation = true,
     };
     SetNext(next, demote);
-
-    if (driver_id == VK_DRIVER_ID_AMD_PROPRIETARY || driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE) {
-        const u32 version = (properties.driverVersion << 3) >> 3;
-        // Broken in this driver
-        if (version >= 0x008000c6) {
-            is_int8_supported = false;
-            is_float16_supported = false;
-        }
-    }
 
     if (is_int8_supported || is_float16_supported) {
         VkPhysicalDeviceFloat16Int8FeaturesKHR float16_int8{
@@ -570,6 +560,7 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
     logical = vk::Device::Create(physical, queue_cis, extensions, first_next, dld);
 
     CollectPhysicalMemoryInfo();
+    CollectTelemetryParameters();
     CollectToolingInfo();
 
     if (driver_id == VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR) {
@@ -596,13 +587,6 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
             ext_extended_dynamic_state = false;
         }
     }
-    if (ext_sampler_filter_minmax) {
-        if (driver_id == VK_DRIVER_ID_AMD_PROPRIETARY ||
-            driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE || driver_id == VK_DRIVER_ID_MESA_RADV) {
-            // Disable ext_sampler_filter_minmax in GCN as it is broken.
-            ext_sampler_filter_minmax = is_float16_supported;
-        }
-    }
     if (ext_vertex_input_dynamic_state && driver_id == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS) {
         LOG_WARNING(Render_Vulkan, "Blacklisting Intel for VK_EXT_vertex_input_dynamic_state");
         ext_vertex_input_dynamic_state = false;
@@ -618,6 +602,7 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
 
     sets_per_pool = 64;
     if (driver_id == VK_DRIVER_ID_AMD_PROPRIETARY || driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE) {
+        // AMD drivers need a higher amount of Sets per Pool in certain circunstances like in XC2.
         sets_per_pool = 96;
     }
 }
