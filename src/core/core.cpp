@@ -84,9 +84,7 @@ FileSys::StorageId GetStorageIdForFrontendSlot(
 }
 
 void KProcessDeleter(Kernel::KProcess* process) {
-    if (process) {
-        process->Destroy();
-    }
+    process->Destroy();
 }
 
 using KProcessPtr = std::unique_ptr<Kernel::KProcess, decltype(&KProcessDeleter)>;
@@ -324,6 +322,7 @@ struct System::Impl {
         kernel.Shutdown();
         memory.Reset();
         applet_manager.ClearAll();
+        // TODO: The main process should be freed based on KAutoObject ref counting.
         main_process.reset();
 
         LOG_DEBUG(Core, "Shutdown OK");
