@@ -14,6 +14,8 @@ find . -name "CMakeLists.txt" ! -path "*/externals/*" -exec sed -i 's/^.*-Werror
 find . -name "CMakeLists.txt" ! -path "*/externals/*" -exec sed -i 's/^.*-Werror=.*$/ /g' {} +
 find . -name "CMakeLists.txt" ! -path "*/externals/*" -exec sed -i 's/-Werror/-W/g' {} +
 
+pip3 install conan --upgrade 
+
 mkdir build && cd build 
 
 cmake ..                                    \
