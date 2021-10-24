@@ -137,12 +137,6 @@ public:
         return has_changed;
     }
 
-    bool ChangedYNegate(u32 new_y_negate) {
-        const bool has_changed = current_y_negate != new_y_negate;
-        current_y_negate = new_y_negate;
-        return has_changed;
-    }
-
 private:
     static constexpr auto INVALID_TOPOLOGY = static_cast<Maxwell::PrimitiveTopology>(~0u);
 
@@ -155,7 +149,6 @@ private:
     Tegra::Engines::Maxwell3D::DirtyState::Flags& flags;
     Tegra::Engines::Maxwell3D::DirtyState::Flags invalidation_flags;
     Maxwell::PrimitiveTopology current_topology = INVALID_TOPOLOGY;
-    u32 current_y_negate{};
 };
 
 } // namespace Vulkan
