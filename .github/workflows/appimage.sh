@@ -39,8 +39,10 @@ mkdir $HOME/artifacts/
 mkdir -p /yuzu/artifacts/version
 # Version AppImage
     mkdir -p squashfs-root/usr/optional/{libstdc++,libgcc_s}
+    mkdir -p squashfs-root/usr/lib
     cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 ./squashfs-root/usr/optional/libstdc++/
     cp /lib/libgcc_s.so.1 ./squashfs-root/usr/optional/libgcc_s/
+    cp /usr/lib/x86_64-linux-gnu/libgio-2.0.so.0 ./squashfs-root/usr/lib
     curl -sSfL https://github.com/RPCS3/AppImageKit-checkrt/releases/download/continuous2/AppRun-patched-x86_64 -o ./squashfs-root/AppRun.wrapped
 # create AppRun
 cat << 'EOF' > $HOME/squashfs-root/AppRun
