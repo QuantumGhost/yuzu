@@ -25,9 +25,9 @@ const std::vector<u8>& VP8::ComposeFrame(const NvdecCommon::NvdecRegisters& stat
 
     // Based on page 30 of the VP8 specification.
     // https://datatracker.ietf.org/doc/rfc6386/
-    frame[0] = is_key_frame ? 0u : 1u;     // 1-bit frame type (0: keyframe, 1: interframes).
-    frame[0] |= (info.version & 7u) << 1u; // 3-bit version number
-    frame[0] |= 1u << 4u;                  // 1-bit show_frame flag
+    frame[0] = is_key_frame ? 0u : 1u; // 1-bit frame type (0: keyframe, 1: interframes).
+    frame[0] |= static_cast<u8>((info.version & 7u) << 1u); // 3-bit version number
+    frame[0] |= static_cast<u8>(1u << 4u);                  // 1-bit show_frame flag
 
     // The next 19-bits are the first partition size
     frame[0] |= static_cast<u8>((info.first_part_size & 7u) << 5u);
@@ -35,9 +35,9 @@ const std::vector<u8>& VP8::ComposeFrame(const NvdecCommon::NvdecRegisters& stat
     frame[2] = static_cast<u8>((info.first_part_size & 0x7f800u) >> 11u);
 
     if (is_key_frame) {
-        frame[3] = 0x9d;
-        frame[4] = 0x01;
-        frame[5] = 0x2a;
+        frame[3] = 0x9du;
+        frame[4] = 0x01u;
+        frame[5] = 0x2au;
         // TODO(ameerj): Horizontal/Vertical Scale
         // 16 bits: (2 bits Horizontal Scale << 14) | Width (14 bits)
         frame[6] = static_cast<u8>(info.frame_width & 0xff);
