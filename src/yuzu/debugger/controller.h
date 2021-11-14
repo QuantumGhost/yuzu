@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include <QFileSystemWatcher>
 #include <QWidget>
+#include "common/settings.h"
 
 class QAction;
 class QHideEvent;
@@ -15,43 +17,35 @@ namespace InputCommon {
 class InputSubsystem;
 }
 
-namespace Core::HID {
-class HIDCore;
-class EmulatedController;
-enum class ControllerTriggerType;
-} // namespace Core::HID
+struct ControllerInput {
+    std::array<std::pair<float, float>, Settings::NativeAnalog::NUM_STICKS_HID> axis_values{};
+    std::array<bool, Settings::NativeButton::NumButtons> button_values{};
+    bool changed{};
+};
+
+struct ControllerCallback {
+    std::function<void(ControllerInput)> input;
+};
 
 class ControllerDialog : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ControllerDialog(Core::HID::HIDCore& hid_core_,
-                              std::shared_ptr<InputCommon::InputSubsystem> input_subsystem_,
-                              QWidget* parent = nullptr);
+    explicit ControllerDialog(QWidget* parent = nullptr,
+                              InputCommon::InputSubsystem* input_subsystem_ = nullptr);
 
     /// Returns a QAction that can be used to toggle visibility of this dialog.
     QAction* toggleViewAction();
-
-    /// Reloads the widget to apply any changes in the configuration
     void refreshConfiguration();
-
-    /// Disables events from the emulated controller
-    void UnloadController();
 
 protected:
     void showEvent(QShowEvent* ev) override;
     void hideEvent(QHideEvent* ev) override;
 
 private:
-    /// Redirects input from the widget to the TAS driver
-    void ControllerUpdate(Core::HID::ControllerTriggerType type);
-
-    int callback_key;
-    bool is_controller_set{};
-    Core::HID::EmulatedController* controller;
-
+    void InputController(ControllerInput input);
     QAction* toggle_view_action = nullptr;
+    QFileSystemWatcher* watcher = nullptr;
     PlayerControlPreview* widget;
-    Core::HID::HIDCore& hid_core;
-    std::shared_ptr<InputCommon::InputSubsystem> input_subsystem;
+    InputCommon::InputSubsystem* input_subsystem;
 };

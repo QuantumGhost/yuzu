@@ -97,7 +97,7 @@ void ConfigureVibration::SetVibrationDevices(std::size_t player_index) {
 
         const auto engine = param.Get("engine", "");
         const auto guid = param.Get("guid", "");
-        const auto port = param.Get("port", 0);
+        const auto port = param.Get("port", "");
 
         if (engine.empty() || engine == "keyboard" || engine == "mouse" || engine == "tas") {
             continue;
@@ -105,7 +105,7 @@ void ConfigureVibration::SetVibrationDevices(std::size_t player_index) {
 
         vibration_param_str += fmt::format("engine:{}", engine);
 
-        if (port != 0) {
+        if (!port.empty()) {
             vibration_param_str += fmt::format(",port:{}", port);
         }
         if (!guid.empty()) {

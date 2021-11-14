@@ -62,21 +62,10 @@ enum Values : int {
 
 constexpr int STICK_HID_BEGIN = LStick;
 constexpr int STICK_HID_END = NumAnalogs;
+constexpr int NUM_STICKS_HID = NumAnalogs;
 
 extern const std::array<const char*, NumAnalogs> mapping;
 } // namespace NativeAnalog
-
-namespace NativeTrigger {
-enum Values : int {
-    LTrigger,
-    RTrigger,
-
-    NumTriggers,
-};
-
-constexpr int TRIGGER_HID_BEGIN = LTrigger;
-constexpr int TRIGGER_HID_END = NumTriggers;
-} // namespace NativeTrigger
 
 namespace NativeVibration {
 enum Values : int {
@@ -129,6 +118,7 @@ extern const std::array<const char*, NumMouseButtons> mapping;
 namespace NativeKeyboard {
 enum Keys {
     None,
+    Error,
 
     A = 4,
     B,
@@ -166,22 +156,22 @@ enum Keys {
     N8,
     N9,
     N0,
-    Return,
+    Enter,
     Escape,
     Backspace,
     Tab,
     Space,
     Minus,
-    Plus,
-    OpenBracket,
-    CloseBracket,
-    Pipe,
+    Equal,
+    LeftBrace,
+    RightBrace,
+    Backslash,
     Tilde,
     Semicolon,
-    Quote,
-    Backquote,
+    Apostrophe,
+    Grave,
     Comma,
-    Period,
+    Dot,
     Slash,
     CapsLockKey,
 
@@ -198,7 +188,7 @@ enum Keys {
     F11,
     F12,
 
-    PrintScreen,
+    SystemRequest,
     ScrollLockKey,
     Pause,
     Insert,
@@ -267,18 +257,8 @@ enum Keys {
     ScrollLockActive,
     KPComma,
 
-    Ro = 0x87,
-    KatakanaHiragana,
-    Yen,
-    Henkan,
-    Muhenkan,
-    NumPadCommaPc98,
-
-    HangulEnglish = 0x90,
-    Hanja,
-    KatakanaKey,
-    HiraganaKey,
-    ZenkakuHankaku,
+    KPLeftParenthesis,
+    KPRightParenthesis,
 
     LeftControlKey = 0xE0,
     LeftShiftKey,
@@ -327,8 +307,6 @@ enum Modifiers {
     CapsLock,
     ScrollLock,
     NumLock,
-    Katakana,
-    Hiragana,
 
     NumKeyboardMods,
 };

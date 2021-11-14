@@ -89,6 +89,31 @@
               <height>21</height>
              </size>
             </property>
+            <item>
+             <property name="text">
+              <string>Pro Controller</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Dual Joycons</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Left Joycon</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Right Joycon</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Handheld</string>
+             </property>
+            </item>
            </widget>
           </item>
          </layout>
@@ -117,9 +142,22 @@
           </property>
           <item>
            <widget class="QComboBox" name="comboDevices">
-            <property name="minimumContentsLength">
-             <number>60</number>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>21</height>
+             </size>
             </property>
+            <item>
+             <property name="text">
+              <string>Any</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Keyboard/Mouse</string>
+             </property>
+            </item>
            </widget>
           </item>
           <item>
@@ -304,7 +342,7 @@
                <number>3</number>
               </property>
               <property name="topMargin">
-               <number>6</number>
+               <number>0</number>
               </property>
               <property name="rightMargin">
                <number>3</number>
@@ -880,7 +918,7 @@
                <number>3</number>
               </property>
               <property name="topMargin">
-               <number>6</number>
+               <number>0</number>
               </property>
               <property name="rightMargin">
                <number>3</number>
@@ -2183,7 +2221,7 @@
                <number>3</number>
               </property>
               <property name="topMargin">
-               <number>6</number>
+               <number>0</number>
               </property>
               <property name="rightMargin">
                <number>3</number>
@@ -2532,7 +2570,7 @@
                <number>3</number>
               </property>
               <property name="topMargin">
-               <number>6</number>
+               <number>0</number>
               </property>
               <property name="rightMargin">
                <number>3</number>

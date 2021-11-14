@@ -10,10 +10,7 @@
 #include "common/settings.h"
 #include "common/string_util.h"
 #include "core/core.h"
-#include "core/hid/emulated_controller.h"
-#include "core/hid/hid_core.h"
-#include "core/hid/hid_types.h"
-#include "core/hid/input_interpreter.h"
+#include "core/frontend/input_interpreter.h"
 #include "ui_qt_software_keyboard.h"
 #include "yuzu/applets/qt_software_keyboard.h"
 #include "yuzu/main.h"
@@ -487,7 +484,7 @@ void QtSoftwareKeyboardDialog::open() {
 void QtSoftwareKeyboardDialog::reject() {
     // Pressing the ESC key in a dialog calls QDialog::reject().
     // We will override this behavior to the "Cancel" action on the software keyboard.
-    TranslateButtonPress(Core::HID::NpadButton::X);
+    TranslateButtonPress(HIDButton::X);
 }
 
 void QtSoftwareKeyboardDialog::keyPressEvent(QKeyEvent* event) {
@@ -725,7 +722,7 @@ void QtSoftwareKeyboardDialog::SetTextDrawType() {
 
         connect(
             ui->line_edit_osk, &QLineEdit::returnPressed, this,
-            [this] { TranslateButtonPress(Core::HID::NpadButton::Plus); }, Qt::QueuedConnection);
+            [this] { TranslateButtonPress(HIDButton::Plus); }, Qt::QueuedConnection);
 
         ui->line_edit_osk->setPlaceholderText(
             QString::fromStdU16String(initialize_parameters.guide_text));
@@ -798,10 +795,9 @@ void QtSoftwareKeyboardDialog::SetTextDrawType() {
 }
 
 void QtSoftwareKeyboardDialog::SetControllerImage() {
-    const auto* handheld = system.HIDCore().GetEmulatedController(Core::HID::NpadIdType::Handheld);
-    const auto* player_1 = system.HIDCore().GetEmulatedController(Core::HID::NpadIdType::Player1);
-    const auto controller_type =
-        handheld->IsConnected() ? handheld->GetNpadStyleIndex() : player_1->GetNpadStyleIndex();
+    const auto controller_type = Settings::values.players.GetValue()[8].connected
+                                     ? Settings::values.players.GetValue()[8].controller_type
+                                     : Settings::values.players.GetValue()[0].controller_type;
 
     const QString theme = [] {
         if (QIcon::themeName().contains(QStringLiteral("dark")) ||
@@ -813,8 +809,8 @@ void QtSoftwareKeyboardDialog::SetControllerImage() {
     }();
 
     switch (controller_type) {
-    case Core::HID::NpadStyleIndex::ProController:
-    case Core::HID::NpadStyleIndex::GameCube:
+    case Settings::ControllerType::ProController:
+    case Settings::ControllerType::GameCube:
         ui->icon_controller->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_pro%1.png);").arg(theme));
         ui->icon_controller_shift->setStyleSheet(
@@ -822,7 +818,7 @@ void QtSoftwareKeyboardDialog::SetControllerImage() {
         ui->icon_controller_num->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_pro%1.png);").arg(theme));
         break;
-    case Core::HID::NpadStyleIndex::JoyconDual:
+    case Settings::ControllerType::DualJoyconDetached:
         ui->icon_controller->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_dual_joycon%1.png);").arg(theme));
         ui->icon_controller_shift->setStyleSheet(
@@ -830,7 +826,7 @@ void QtSoftwareKeyboardDialog::SetControllerImage() {
         ui->icon_controller_num->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_dual_joycon%1.png);").arg(theme));
         break;
-    case Core::HID::NpadStyleIndex::JoyconLeft:
+    case Settings::ControllerType::LeftJoycon:
         ui->icon_controller->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_single_joycon_left%1.png);")
                 .arg(theme));
@@ -841,7 +837,7 @@ void QtSoftwareKeyboardDialog::SetControllerImage() {
             QStringLiteral("image: url(:/overlay/controller_single_joycon_left%1.png);")
                 .arg(theme));
         break;
-    case Core::HID::NpadStyleIndex::JoyconRight:
+    case Settings::ControllerType::RightJoycon:
         ui->icon_controller->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_single_joycon_right%1.png);")
                 .arg(theme));
@@ -852,7 +848,7 @@ void QtSoftwareKeyboardDialog::SetControllerImage() {
             QStringLiteral("image: url(:/overlay/controller_single_joycon_right%1.png);")
                 .arg(theme));
         break;
-    case Core::HID::NpadStyleIndex::Handheld:
+    case Settings::ControllerType::Handheld:
         ui->icon_controller->setStyleSheet(
             QStringLiteral("image: url(:/overlay/controller_handheld%1.png);").arg(theme));
         ui->icon_controller_shift->setStyleSheet(
@@ -1212,9 +1208,9 @@ void QtSoftwareKeyboardDialog::SetupMouseHover() {
     }
 }
 
-template <Core::HID::NpadButton... T>
+template <HIDButton... T>
 void QtSoftwareKeyboardDialog::HandleButtonPressedOnce() {
-    const auto f = [this](Core::HID::NpadButton button) {
+    const auto f = [this](HIDButton button) {
         if (input_interpreter->IsButtonPressedOnce(button)) {
             TranslateButtonPress(button);
         }
@@ -1223,9 +1219,9 @@ void QtSoftwareKeyboardDialog::HandleButtonPressedOnce() {
     (f(T), ...);
 }
 
-template <Core::HID::NpadButton... T>
+template <HIDButton... T>
 void QtSoftwareKeyboardDialog::HandleButtonHold() {
-    const auto f = [this](Core::HID::NpadButton button) {
+    const auto f = [this](HIDButton button) {
         if (input_interpreter->IsButtonHeld(button)) {
             TranslateButtonPress(button);
         }
@@ -1234,9 +1230,9 @@ void QtSoftwareKeyboardDialog::HandleButtonHold() {
     (f(T), ...);
 }
 
-void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button) {
+void QtSoftwareKeyboardDialog::TranslateButtonPress(HIDButton button) {
     switch (button) {
-    case Core::HID::NpadButton::A:
+    case HIDButton::A:
         switch (bottom_osk_index) {
         case BottomOSKIndex::LowerCase:
         case BottomOSKIndex::UpperCase:
@@ -1249,7 +1245,7 @@ void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button
             break;
         }
         break;
-    case Core::HID::NpadButton::B:
+    case HIDButton::B:
         switch (bottom_osk_index) {
         case BottomOSKIndex::LowerCase:
             ui->button_backspace->click();
@@ -1264,7 +1260,7 @@ void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button
             break;
         }
         break;
-    case Core::HID::NpadButton::X:
+    case HIDButton::X:
         if (is_inline) {
             emit SubmitInlineText(SwkbdReplyType::DecidedCancel, current_text, cursor_position);
         } else {
@@ -1275,7 +1271,7 @@ void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button
             emit SubmitNormalText(SwkbdResult::Cancel, std::move(text));
         }
         break;
-    case Core::HID::NpadButton::Y:
+    case HIDButton::Y:
         switch (bottom_osk_index) {
         case BottomOSKIndex::LowerCase:
             ui->button_space->click();
@@ -1288,8 +1284,8 @@ void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button
             break;
         }
         break;
-    case Core::HID::NpadButton::StickL:
-    case Core::HID::NpadButton::StickR:
+    case HIDButton::LStick:
+    case HIDButton::RStick:
         switch (bottom_osk_index) {
         case BottomOSKIndex::LowerCase:
             ui->button_shift->click();
@@ -1302,13 +1298,13 @@ void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button
             break;
         }
         break;
-    case Core::HID::NpadButton::L:
+    case HIDButton::L:
         MoveTextCursorDirection(Direction::Left);
         break;
-    case Core::HID::NpadButton::R:
+    case HIDButton::R:
         MoveTextCursorDirection(Direction::Right);
         break;
-    case Core::HID::NpadButton::Plus:
+    case HIDButton::Plus:
         switch (bottom_osk_index) {
         case BottomOSKIndex::LowerCase:
             ui->button_ok->click();
@@ -1323,24 +1319,24 @@ void QtSoftwareKeyboardDialog::TranslateButtonPress(Core::HID::NpadButton button
             break;
         }
         break;
-    case Core::HID::NpadButton::Left:
-    case Core::HID::NpadButton::StickLLeft:
-    case Core::HID::NpadButton::StickRLeft:
+    case HIDButton::DLeft:
+    case HIDButton::LStickLeft:
+    case HIDButton::RStickLeft:
         MoveButtonDirection(Direction::Left);
         break;
-    case Core::HID::NpadButton::Up:
-    case Core::HID::NpadButton::StickLUp:
-    case Core::HID::NpadButton::StickRUp:
+    case HIDButton::DUp:
+    case HIDButton::LStickUp:
+    case HIDButton::RStickUp:
         MoveButtonDirection(Direction::Up);
         break;
-    case Core::HID::NpadButton::Right:
-    case Core::HID::NpadButton::StickLRight:
-    case Core::HID::NpadButton::StickRRight:
+    case HIDButton::DRight:
+    case HIDButton::LStickRight:
+    case HIDButton::RStickRight:
         MoveButtonDirection(Direction::Right);
         break;
-    case Core::HID::NpadButton::Down:
-    case Core::HID::NpadButton::StickLDown:
-    case Core::HID::NpadButton::StickRDown:
+    case HIDButton::DDown:
+    case HIDButton::LStickDown:
+    case HIDButton::RStickDown:
         MoveButtonDirection(Direction::Down);
         break;
     default:
@@ -1471,25 +1467,19 @@ void QtSoftwareKeyboardDialog::InputThread() {
     while (input_thread_running) {
         input_interpreter->PollInput();
 
-        HandleButtonPressedOnce<
-            Core::HID::NpadButton::A, Core::HID::NpadButton::B, Core::HID::NpadButton::X,
-            Core::HID::NpadButton::Y, Core::HID::NpadButton::StickL, Core::HID::NpadButton::StickR,
-            Core::HID::NpadButton::L, Core::HID::NpadButton::R, Core::HID::NpadButton::Plus,
-            Core::HID::NpadButton::Left, Core::HID::NpadButton::Up, Core::HID::NpadButton::Right,
-            Core::HID::NpadButton::Down, Core::HID::NpadButton::StickLLeft,
-            Core::HID::NpadButton::StickLUp, Core::HID::NpadButton::StickLRight,
-            Core::HID::NpadButton::StickLDown, Core::HID::NpadButton::StickRLeft,
-            Core::HID::NpadButton::StickRUp, Core::HID::NpadButton::StickRRight,
-            Core::HID::NpadButton::StickRDown>();
+        HandleButtonPressedOnce<HIDButton::A, HIDButton::B, HIDButton::X, HIDButton::Y,
+                                HIDButton::LStick, HIDButton::RStick, HIDButton::L, HIDButton::R,
+                                HIDButton::Plus, HIDButton::DLeft, HIDButton::DUp,
+                                HIDButton::DRight, HIDButton::DDown, HIDButton::LStickLeft,
+                                HIDButton::LStickUp, HIDButton::LStickRight, HIDButton::LStickDown,
+                                HIDButton::RStickLeft, HIDButton::RStickUp, HIDButton::RStickRight,
+                                HIDButton::RStickDown>();
 
-        HandleButtonHold<Core::HID::NpadButton::B, Core::HID::NpadButton::L,
-                         Core::HID::NpadButton::R, Core::HID::NpadButton::Left,
-                         Core::HID::NpadButton::Up, Core::HID::NpadButton::Right,
-                         Core::HID::NpadButton::Down, Core::HID::NpadButton::StickLLeft,
-                         Core::HID::NpadButton::StickLUp, Core::HID::NpadButton::StickLRight,
-                         Core::HID::NpadButton::StickLDown, Core::HID::NpadButton::StickRLeft,
-                         Core::HID::NpadButton::StickRUp, Core::HID::NpadButton::StickRRight,
-                         Core::HID::NpadButton::StickRDown>();
+        HandleButtonHold<HIDButton::B, HIDButton::L, HIDButton::R, HIDButton::DLeft, HIDButton::DUp,
+                         HIDButton::DRight, HIDButton::DDown, HIDButton::LStickLeft,
+                         HIDButton::LStickUp, HIDButton::LStickRight, HIDButton::LStickDown,
+                         HIDButton::RStickLeft, HIDButton::RStickUp, HIDButton::RStickRight,
+                         HIDButton::RStickDown>();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

@@ -30,8 +30,11 @@ class System;
 
 namespace InputCommon {
 class InputSubsystem;
+}
+
+namespace MouseInput {
 enum class MouseButton;
-} // namespace InputCommon
+}
 
 namespace VideoCore {
 enum class LoadCallbackStage;
@@ -154,17 +157,11 @@ public:
 
     void resizeEvent(QResizeEvent* event) override;
 
-    /// Converts a Qt keybard key into NativeKeyboard key
-    static int QtKeyToSwitchKey(Qt::Key qt_keys);
-
-    /// Converts a Qt modifier keys into NativeKeyboard modifier keys
-    static int QtModifierToSwitchModdifier(quint32 qt_moddifiers);
-
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
 
     /// Converts a Qt mouse button into MouseInput mouse button
-    static InputCommon::MouseButton QtButtonToMouseButton(Qt::MouseButton button);
+    static MouseInput::MouseButton QtButtonToMouseButton(Qt::MouseButton button);
 
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -212,7 +209,7 @@ private:
     void TouchUpdateEvent(const QTouchEvent* event);
     void TouchEndEvent();
 
-    void TouchStart(const QTouchEvent::TouchPoint& touch_point);
+    bool TouchStart(const QTouchEvent::TouchPoint& touch_point);
     bool TouchUpdate(const QTouchEvent::TouchPoint& touch_point);
     bool TouchExist(std::size_t id, const QList<QTouchEvent::TouchPoint>& touch_points) const;
 

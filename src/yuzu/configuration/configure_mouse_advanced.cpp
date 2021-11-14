@@ -11,11 +11,8 @@
 
 #include "common/assert.h"
 #include "common/param_package.h"
-#include "input_common/drivers/keyboard.h"
-#include "input_common/drivers/mouse.h"
 #include "input_common/main.h"
 #include "ui_configure_mouse_advanced.h"
-#include "yuzu/bootmanager.h"
 #include "yuzu/configuration/config.h"
 #include "yuzu/configuration/configure_mouse_advanced.h"
 
@@ -104,7 +101,7 @@ ConfigureMouseAdvanced::ConfigureMouseAdvanced(QWidget* parent,
                 [=, this](const Common::ParamPackage& params) {
                     buttons_param[button_id] = params;
                 },
-                InputCommon::Polling::InputType::Button);
+                InputCommon::Polling::DeviceType::Button);
         });
         connect(button, &QPushButton::customContextMenuRequested,
                 [=, this](const QPoint& menu_location) {
@@ -130,10 +127,13 @@ ConfigureMouseAdvanced::ConfigureMouseAdvanced(QWidget* parent,
     connect(timeout_timer.get(), &QTimer::timeout, [this] { SetPollingResult({}, true); });
 
     connect(poll_timer.get(), &QTimer::timeout, [this] {
-        const auto& params = input_subsystem->GetNextInput();
-        if (params.Has("engine")) {
-            SetPollingResult(params, false);
-            return;
+        Common::ParamPackage params;
+        for (auto& poller : device_pollers) {
+            params = poller->GetNextInput();
+            if (params.Has("engine")) {
+                SetPollingResult(params, false);
+                return;
+            }
         }
     });
 
@@ -196,13 +196,26 @@ void ConfigureMouseAdvanced::UpdateButtonLabels() {
 
 void ConfigureMouseAdvanced::HandleClick(
     QPushButton* button, std::function<void(const Common::ParamPackage&)> new_input_setter,
-    InputCommon::Polling::InputType type) {
+    InputCommon::Polling::DeviceType type) {
     button->setText(tr("[press key]"));
     button->setFocus();
 
+    // Keyboard keys or mouse buttons can only be used as button devices
+    want_keyboard_mouse = type == InputCommon::Polling::DeviceType::Button;
+    if (want_keyboard_mouse) {
+        const auto iter = std::find(button_map.begin(), button_map.end(), button);
+        ASSERT(iter != button_map.end());
+        const auto index = std::distance(button_map.begin(), iter);
+        ASSERT(index < Settings::NativeButton::NumButtons && index >= 0);
+    }
+
     input_setter = new_input_setter;
 
-    input_subsystem->BeginMapping(type);
+    device_pollers = input_subsystem->GetPollers(type);
+
+    for (auto& poller : device_pollers) {
+        poller->Start();
+    }
 
     QWidget::grabMouse();
     QWidget::grabKeyboard();
@@ -214,7 +227,9 @@ void ConfigureMouseAdvanced::HandleClick(
 void ConfigureMouseAdvanced::SetPollingResult(const Common::ParamPackage& params, bool abort) {
     timeout_timer->stop();
     poll_timer->stop();
-    input_subsystem->StopMapping();
+    for (auto& poller : device_pollers) {
+        poller->Stop();
+    }
 
     QWidget::releaseMouse();
     QWidget::releaseKeyboard();
@@ -232,8 +247,15 @@ void ConfigureMouseAdvanced::mousePressEvent(QMouseEvent* event) {
         return;
     }
 
-    const auto button = GRenderWindow::QtButtonToMouseButton(event->button());
-    input_subsystem->GetMouse()->PressButton(0, 0, 0, 0, button);
+    if (want_keyboard_mouse) {
+        SetPollingResult(Common::ParamPackage{InputCommon::GenerateKeyboardParam(event->button())},
+                         false);
+    } else {
+        // We don't want any mouse buttons, so don't stop polling
+        return;
+    }
+
+    SetPollingResult({}, true);
 }
 
 void ConfigureMouseAdvanced::keyPressEvent(QKeyEvent* event) {
@@ -242,6 +264,13 @@ void ConfigureMouseAdvanced::keyPressEvent(QKeyEvent* event) {
     }
 
     if (event->key() != Qt::Key_Escape) {
-        input_subsystem->GetKeyboard()->PressKey(event->key());
+        if (want_keyboard_mouse) {
+            SetPollingResult(Common::ParamPackage{InputCommon::GenerateKeyboardParam(event->key())},
+                             false);
+        } else {
+            // Escape key wasn't pressed and we don't want any keyboard keys, so don't stop polling
+            return;
+        }
     }
+    SetPollingResult({}, true);
 }

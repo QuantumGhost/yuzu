@@ -6,8 +6,7 @@
 #include <QScreen>
 
 #include "core/core.h"
-#include "core/hid/hid_types.h"
-#include "core/hid/input_interpreter.h"
+#include "core/frontend/input_interpreter.h"
 #include "ui_overlay_dialog.h"
 #include "yuzu/util/overlay_dialog.h"
 
@@ -180,9 +179,9 @@ void OverlayDialog::MoveAndResizeWindow() {
     QDialog::resize(width, height);
 }
 
-template <Core::HID::NpadButton... T>
+template <HIDButton... T>
 void OverlayDialog::HandleButtonPressedOnce() {
-    const auto f = [this](Core::HID::NpadButton button) {
+    const auto f = [this](HIDButton button) {
         if (input_interpreter->IsButtonPressedOnce(button)) {
             TranslateButtonPress(button);
         }
@@ -191,7 +190,7 @@ void OverlayDialog::HandleButtonPressedOnce() {
     (f(T), ...);
 }
 
-void OverlayDialog::TranslateButtonPress(Core::HID::NpadButton button) {
+void OverlayDialog::TranslateButtonPress(HIDButton button) {
     QPushButton* left_button = use_rich_text ? ui->button_cancel_rich : ui->button_cancel;
     QPushButton* right_button = use_rich_text ? ui->button_ok_rich : ui->button_ok_label;
 
@@ -199,20 +198,20 @@ void OverlayDialog::TranslateButtonPress(Core::HID::NpadButton button) {
     // TODO (Morph): focusPrevious/NextChild() doesn't work well with the rich text dialog, fix it
 
     switch (button) {
-    case Core::HID::NpadButton::A:
-    case Core::HID::NpadButton::B:
+    case HIDButton::A:
+    case HIDButton::B:
         if (left_button->hasFocus()) {
             left_button->click();
         } else if (right_button->hasFocus()) {
             right_button->click();
         }
         break;
-    case Core::HID::NpadButton::Left:
-    case Core::HID::NpadButton::StickLLeft:
+    case HIDButton::DLeft:
+    case HIDButton::LStickLeft:
         focusPreviousChild();
         break;
-    case Core::HID::NpadButton::Right:
-    case Core::HID::NpadButton::StickLRight:
+    case HIDButton::DRight:
+    case HIDButton::LStickRight:
         focusNextChild();
         break;
     default:
@@ -242,10 +241,8 @@ void OverlayDialog::InputThread() {
     while (input_thread_running) {
         input_interpreter->PollInput();
 
-        HandleButtonPressedOnce<Core::HID::NpadButton::A, Core::HID::NpadButton::B,
-                                Core::HID::NpadButton::Left, Core::HID::NpadButton::Right,
-                                Core::HID::NpadButton::StickLLeft,
-                                Core::HID::NpadButton::StickLRight>();
+        HandleButtonPressedOnce<HIDButton::A, HIDButton::B, HIDButton::DLeft, HIDButton::DRight,
+                                HIDButton::LStickLeft, HIDButton::LStickRight>();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

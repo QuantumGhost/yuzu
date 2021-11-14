@@ -14,11 +14,9 @@
 #endif
 
 #include "common/fs/path_util.h"
-#include "common/param_package.h"
 #include "core/core.h"
-#include "core/hid/hid_types.h"
-#include "core/hid/input_interpreter.h"
-#include "input_common/drivers/keyboard.h"
+#include "core/frontend/input_interpreter.h"
+#include "input_common/keyboard.h"
 #include "input_common/main.h"
 #include "yuzu/applets/qt_web_browser.h"
 #include "yuzu/applets/qt_web_browser_scripts.h"
@@ -29,19 +27,19 @@
 
 namespace {
 
-constexpr int HIDButtonToKey(Core::HID::NpadButton button) {
+constexpr int HIDButtonToKey(HIDButton button) {
     switch (button) {
-    case Core::HID::NpadButton::Left:
-    case Core::HID::NpadButton::StickLLeft:
+    case HIDButton::DLeft:
+    case HIDButton::LStickLeft:
         return Qt::Key_Left;
-    case Core::HID::NpadButton::Up:
-    case Core::HID::NpadButton::StickLUp:
+    case HIDButton::DUp:
+    case HIDButton::LStickUp:
         return Qt::Key_Up;
-    case Core::HID::NpadButton::Right:
-    case Core::HID::NpadButton::StickLRight:
+    case HIDButton::DRight:
+    case HIDButton::LStickRight:
         return Qt::Key_Right;
-    case Core::HID::NpadButton::Down:
-    case Core::HID::NpadButton::StickLDown:
+    case HIDButton::DDown:
+    case HIDButton::LStickDown:
         return Qt::Key_Down;
     default:
         return 0;
@@ -210,25 +208,25 @@ void QtNXWebEngineView::keyReleaseEvent(QKeyEvent* event) {
     }
 }
 
-template <Core::HID::NpadButton... T>
+template <HIDButton... T>
 void QtNXWebEngineView::HandleWindowFooterButtonPressedOnce() {
-    const auto f = [this](Core::HID::NpadButton button) {
+    const auto f = [this](HIDButton button) {
         if (input_interpreter->IsButtonPressedOnce(button)) {
             page()->runJavaScript(
                 QStringLiteral("yuzu_key_callbacks[%1] == null;").arg(static_cast<u8>(button)),
                 [this, button](const QVariant& variant) {
                     if (variant.toBool()) {
                         switch (button) {
-                        case Core::HID::NpadButton::A:
+                        case HIDButton::A:
                             SendMultipleKeyPressEvents<Qt::Key_A, Qt::Key_Space, Qt::Key_Return>();
                             break;
-                        case Core::HID::NpadButton::B:
+                        case HIDButton::B:
                             SendKeyPressEvent(Qt::Key_B);
                             break;
-                        case Core::HID::NpadButton::X:
+                        case HIDButton::X:
                             SendKeyPressEvent(Qt::Key_X);
                             break;
-                        case Core::HID::NpadButton::Y:
+                        case HIDButton::Y:
                             SendKeyPressEvent(Qt::Key_Y);
                             break;
                         default:
@@ -246,9 +244,9 @@ void QtNXWebEngineView::HandleWindowFooterButtonPressedOnce() {
     (f(T), ...);
 }
 
-template <Core::HID::NpadButton... T>
+template <HIDButton... T>
 void QtNXWebEngineView::HandleWindowKeyButtonPressedOnce() {
-    const auto f = [this](Core::HID::NpadButton button) {
+    const auto f = [this](HIDButton button) {
         if (input_interpreter->IsButtonPressedOnce(button)) {
             SendKeyPressEvent(HIDButtonToKey(button));
         }
@@ -257,9 +255,9 @@ void QtNXWebEngineView::HandleWindowKeyButtonPressedOnce() {
     (f(T), ...);
 }
 
-template <Core::HID::NpadButton... T>
+template <HIDButton... T>
 void QtNXWebEngineView::HandleWindowKeyButtonHold() {
-    const auto f = [this](Core::HID::NpadButton button) {
+    const auto f = [this](HIDButton button) {
         if (input_interpreter->IsButtonHeld(button)) {
             SendKeyPressEvent(HIDButtonToKey(button));
         }
@@ -310,21 +308,17 @@ void QtNXWebEngineView::InputThread() {
     while (input_thread_running) {
         input_interpreter->PollInput();
 
-        HandleWindowFooterButtonPressedOnce<Core::HID::NpadButton::A, Core::HID::NpadButton::B,
-                                            Core::HID::NpadButton::X, Core::HID::NpadButton::Y,
-                                            Core::HID::NpadButton::L, Core::HID::NpadButton::R>();
+        HandleWindowFooterButtonPressedOnce<HIDButton::A, HIDButton::B, HIDButton::X, HIDButton::Y,
+                                            HIDButton::L, HIDButton::R>();
 
-        HandleWindowKeyButtonPressedOnce<
-            Core::HID::NpadButton::Left, Core::HID::NpadButton::Up, Core::HID::NpadButton::Right,
-            Core::HID::NpadButton::Down, Core::HID::NpadButton::StickLLeft,
-            Core::HID::NpadButton::StickLUp, Core::HID::NpadButton::StickLRight,
-            Core::HID::NpadButton::StickLDown>();
+        HandleWindowKeyButtonPressedOnce<HIDButton::DLeft, HIDButton::DUp, HIDButton::DRight,
+                                         HIDButton::DDown, HIDButton::LStickLeft,
+                                         HIDButton::LStickUp, HIDButton::LStickRight,
+                                         HIDButton::LStickDown>();
 
-        HandleWindowKeyButtonHold<
-            Core::HID::NpadButton::Left, Core::HID::NpadButton::Up, Core::HID::NpadButton::Right,
-            Core::HID::NpadButton::Down, Core::HID::NpadButton::StickLLeft,
-            Core::HID::NpadButton::StickLUp, Core::HID::NpadButton::StickLRight,
-            Core::HID::NpadButton::StickLDown>();
+        HandleWindowKeyButtonHold<HIDButton::DLeft, HIDButton::DUp, HIDButton::DRight,
+                                  HIDButton::DDown, HIDButton::LStickLeft, HIDButton::LStickUp,
+                                  HIDButton::LStickRight, HIDButton::LStickDown>();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }

@@ -2,18 +2,17 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
-#include "core/hid/hid_core.h"
+#include "core/core.h"
 #include "ui_configure_debug_controller.h"
 #include "yuzu/configuration/configure_debug_controller.h"
 #include "yuzu/configuration/configure_input_player.h"
 
 ConfigureDebugController::ConfigureDebugController(QWidget* parent,
                                                    InputCommon::InputSubsystem* input_subsystem,
-                                                   InputProfiles* profiles,
-                                                   Core::HID::HIDCore& hid_core, bool is_powered_on)
+                                                   InputProfiles* profiles, Core::System& system)
     : QDialog(parent), ui(std::make_unique<Ui::ConfigureDebugController>()),
-      debug_controller(new ConfigureInputPlayer(this, 9, nullptr, input_subsystem, profiles,
-                                                hid_core, is_powered_on, true)) {
+      debug_controller(
+          new ConfigureInputPlayer(this, 9, nullptr, input_subsystem, profiles, system, true)) {
     ui->setupUi(this);
 
     ui->controllerLayout->addWidget(debug_controller);

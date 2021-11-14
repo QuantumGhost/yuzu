@@ -13,14 +13,12 @@
 
 #include "common/common_types.h"
 
+enum class HIDButton : u8;
+
 class InputInterpreter;
 
 namespace Core {
 class System;
-}
-
-namespace Core::HID {
-enum class NpadButton : u64;
 }
 
 namespace Ui {
@@ -81,7 +79,7 @@ private:
      *
      * @tparam HIDButton The list of buttons that can be converted into keyboard input.
      */
-    template <Core::HID::NpadButton... T>
+    template <HIDButton... T>
     void HandleButtonPressedOnce();
 
     /**
@@ -89,7 +87,7 @@ private:
      *
      * @param button The button press to process.
      */
-    void TranslateButtonPress(Core::HID::NpadButton button);
+    void TranslateButtonPress(HIDButton button);
 
     void StartInputThread();
     void StopInputThread();

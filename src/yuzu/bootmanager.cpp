@@ -32,11 +32,10 @@
 #include "common/settings.h"
 #include "core/core.h"
 #include "core/frontend/framebuffer_layout.h"
-#include "input_common/drivers/keyboard.h"
-#include "input_common/drivers/mouse.h"
-#include "input_common/drivers/tas_input.h"
-#include "input_common/drivers/touch_screen.h"
+#include "input_common/keyboard.h"
 #include "input_common/main.h"
+#include "input_common/mouse/mouse_input.h"
+#include "input_common/tas/tas_input.h"
 #include "video_core/renderer_base.h"
 #include "video_core/video_core.h"
 #include "yuzu/bootmanager.h"
@@ -297,6 +296,7 @@ GRenderWindow::GRenderWindow(GMainWindow* parent, EmuThread* emu_thread_,
     layout->setContentsMargins(0, 0, 0, 0);
     setLayout(layout);
     input_subsystem->Initialize();
+
     this->setMouseTracking(true);
 
     connect(this, &GRenderWindow::FirstFrameDisplayed, parent, &GMainWindow::OnLoadComplete);
@@ -383,306 +383,34 @@ void GRenderWindow::closeEvent(QCloseEvent* event) {
     QWidget::closeEvent(event);
 }
 
-int GRenderWindow::QtKeyToSwitchKey(Qt::Key qt_key) {
-    switch (qt_key) {
-    case Qt::Key_A:
-        return Settings::NativeKeyboard::A;
-    case Qt::Key_B:
-        return Settings::NativeKeyboard::B;
-    case Qt::Key_C:
-        return Settings::NativeKeyboard::C;
-    case Qt::Key_D:
-        return Settings::NativeKeyboard::D;
-    case Qt::Key_E:
-        return Settings::NativeKeyboard::E;
-    case Qt::Key_F:
-        return Settings::NativeKeyboard::F;
-    case Qt::Key_G:
-        return Settings::NativeKeyboard::G;
-    case Qt::Key_H:
-        return Settings::NativeKeyboard::H;
-    case Qt::Key_I:
-        return Settings::NativeKeyboard::I;
-    case Qt::Key_J:
-        return Settings::NativeKeyboard::J;
-    case Qt::Key_K:
-        return Settings::NativeKeyboard::K;
-    case Qt::Key_L:
-        return Settings::NativeKeyboard::L;
-    case Qt::Key_M:
-        return Settings::NativeKeyboard::M;
-    case Qt::Key_N:
-        return Settings::NativeKeyboard::N;
-    case Qt::Key_O:
-        return Settings::NativeKeyboard::O;
-    case Qt::Key_P:
-        return Settings::NativeKeyboard::P;
-    case Qt::Key_Q:
-        return Settings::NativeKeyboard::Q;
-    case Qt::Key_R:
-        return Settings::NativeKeyboard::R;
-    case Qt::Key_S:
-        return Settings::NativeKeyboard::S;
-    case Qt::Key_T:
-        return Settings::NativeKeyboard::T;
-    case Qt::Key_U:
-        return Settings::NativeKeyboard::U;
-    case Qt::Key_V:
-        return Settings::NativeKeyboard::V;
-    case Qt::Key_W:
-        return Settings::NativeKeyboard::W;
-    case Qt::Key_X:
-        return Settings::NativeKeyboard::X;
-    case Qt::Key_Y:
-        return Settings::NativeKeyboard::Y;
-    case Qt::Key_Z:
-        return Settings::NativeKeyboard::Z;
-    case Qt::Key_1:
-        return Settings::NativeKeyboard::N1;
-    case Qt::Key_2:
-        return Settings::NativeKeyboard::N2;
-    case Qt::Key_3:
-        return Settings::NativeKeyboard::N3;
-    case Qt::Key_4:
-        return Settings::NativeKeyboard::N4;
-    case Qt::Key_5:
-        return Settings::NativeKeyboard::N5;
-    case Qt::Key_6:
-        return Settings::NativeKeyboard::N6;
-    case Qt::Key_7:
-        return Settings::NativeKeyboard::N7;
-    case Qt::Key_8:
-        return Settings::NativeKeyboard::N8;
-    case Qt::Key_9:
-        return Settings::NativeKeyboard::N9;
-    case Qt::Key_0:
-        return Settings::NativeKeyboard::N0;
-    case Qt::Key_Return:
-        return Settings::NativeKeyboard::Return;
-    case Qt::Key_Escape:
-        return Settings::NativeKeyboard::Escape;
-    case Qt::Key_Backspace:
-        return Settings::NativeKeyboard::Backspace;
-    case Qt::Key_Tab:
-        return Settings::NativeKeyboard::Tab;
-    case Qt::Key_Space:
-        return Settings::NativeKeyboard::Space;
-    case Qt::Key_Minus:
-        return Settings::NativeKeyboard::Minus;
-    case Qt::Key_Plus:
-    case Qt::Key_questiondown:
-        return Settings::NativeKeyboard::Plus;
-    case Qt::Key_BracketLeft:
-    case Qt::Key_BraceLeft:
-        return Settings::NativeKeyboard::OpenBracket;
-    case Qt::Key_BracketRight:
-    case Qt::Key_BraceRight:
-        return Settings::NativeKeyboard::CloseBracket;
-    case Qt::Key_Bar:
-        return Settings::NativeKeyboard::Pipe;
-    case Qt::Key_Dead_Tilde:
-        return Settings::NativeKeyboard::Tilde;
-    case Qt::Key_Ntilde:
-    case Qt::Key_Semicolon:
-        return Settings::NativeKeyboard::Semicolon;
-    case Qt::Key_Apostrophe:
-        return Settings::NativeKeyboard::Quote;
-    case Qt::Key_Dead_Grave:
-        return Settings::NativeKeyboard::Backquote;
-    case Qt::Key_Comma:
-        return Settings::NativeKeyboard::Comma;
-    case Qt::Key_Period:
-        return Settings::NativeKeyboard::Period;
-    case Qt::Key_Slash:
-        return Settings::NativeKeyboard::Slash;
-    case Qt::Key_CapsLock:
-        return Settings::NativeKeyboard::CapsLock;
-    case Qt::Key_F1:
-        return Settings::NativeKeyboard::F1;
-    case Qt::Key_F2:
-        return Settings::NativeKeyboard::F2;
-    case Qt::Key_F3:
-        return Settings::NativeKeyboard::F3;
-    case Qt::Key_F4:
-        return Settings::NativeKeyboard::F4;
-    case Qt::Key_F5:
-        return Settings::NativeKeyboard::F5;
-    case Qt::Key_F6:
-        return Settings::NativeKeyboard::F6;
-    case Qt::Key_F7:
-        return Settings::NativeKeyboard::F7;
-    case Qt::Key_F8:
-        return Settings::NativeKeyboard::F8;
-    case Qt::Key_F9:
-        return Settings::NativeKeyboard::F9;
-    case Qt::Key_F10:
-        return Settings::NativeKeyboard::F10;
-    case Qt::Key_F11:
-        return Settings::NativeKeyboard::F11;
-    case Qt::Key_F12:
-        return Settings::NativeKeyboard::F12;
-    case Qt::Key_Print:
-        return Settings::NativeKeyboard::PrintScreen;
-    case Qt::Key_ScrollLock:
-        return Settings::NativeKeyboard::ScrollLock;
-    case Qt::Key_Pause:
-        return Settings::NativeKeyboard::Pause;
-    case Qt::Key_Insert:
-        return Settings::NativeKeyboard::Insert;
-    case Qt::Key_Home:
-        return Settings::NativeKeyboard::Home;
-    case Qt::Key_PageUp:
-        return Settings::NativeKeyboard::PageUp;
-    case Qt::Key_Delete:
-        return Settings::NativeKeyboard::Delete;
-    case Qt::Key_End:
-        return Settings::NativeKeyboard::End;
-    case Qt::Key_PageDown:
-        return Settings::NativeKeyboard::PageDown;
-    case Qt::Key_Right:
-        return Settings::NativeKeyboard::Right;
-    case Qt::Key_Left:
-        return Settings::NativeKeyboard::Left;
-    case Qt::Key_Down:
-        return Settings::NativeKeyboard::Down;
-    case Qt::Key_Up:
-        return Settings::NativeKeyboard::Up;
-    case Qt::Key_NumLock:
-        return Settings::NativeKeyboard::NumLock;
-    // Numpad keys are missing here
-    case Qt::Key_F13:
-        return Settings::NativeKeyboard::F13;
-    case Qt::Key_F14:
-        return Settings::NativeKeyboard::F14;
-    case Qt::Key_F15:
-        return Settings::NativeKeyboard::F15;
-    case Qt::Key_F16:
-        return Settings::NativeKeyboard::F16;
-    case Qt::Key_F17:
-        return Settings::NativeKeyboard::F17;
-    case Qt::Key_F18:
-        return Settings::NativeKeyboard::F18;
-    case Qt::Key_F19:
-        return Settings::NativeKeyboard::F19;
-    case Qt::Key_F20:
-        return Settings::NativeKeyboard::F20;
-    case Qt::Key_F21:
-        return Settings::NativeKeyboard::F21;
-    case Qt::Key_F22:
-        return Settings::NativeKeyboard::F22;
-    case Qt::Key_F23:
-        return Settings::NativeKeyboard::F23;
-    case Qt::Key_F24:
-        return Settings::NativeKeyboard::F24;
-    // case Qt:::
-    //    return Settings::NativeKeyboard::KPComma;
-    // case Qt:::
-    //    return Settings::NativeKeyboard::Ro;
-    case Qt::Key_Hiragana_Katakana:
-        return Settings::NativeKeyboard::KatakanaHiragana;
-    case Qt::Key_yen:
-        return Settings::NativeKeyboard::Yen;
-    case Qt::Key_Henkan:
-        return Settings::NativeKeyboard::Henkan;
-    case Qt::Key_Muhenkan:
-        return Settings::NativeKeyboard::Muhenkan;
-    // case Qt:::
-    //    return Settings::NativeKeyboard::NumPadCommaPc98;
-    case Qt::Key_Hangul:
-        return Settings::NativeKeyboard::HangulEnglish;
-    case Qt::Key_Hangul_Hanja:
-        return Settings::NativeKeyboard::Hanja;
-    case Qt::Key_Katakana:
-        return Settings::NativeKeyboard::KatakanaKey;
-    case Qt::Key_Hiragana:
-        return Settings::NativeKeyboard::HiraganaKey;
-    case Qt::Key_Zenkaku_Hankaku:
-        return Settings::NativeKeyboard::ZenkakuHankaku;
-    // Modifier keys are handled by the modifier property
-    default:
-        return 0;
-    }
-}
-
-int GRenderWindow::QtModifierToSwitchModdifier(quint32 qt_moddifiers) {
-    int moddifier = 0;
-    // The values are obtained through testing, Qt doesn't seem to provide a proper enum
-    if ((qt_moddifiers & 0x1) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::LeftShift;
-    }
-    if ((qt_moddifiers & 0x2) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::LeftControl;
-    }
-    if ((qt_moddifiers & 0x4) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::LeftAlt;
-    }
-    if ((qt_moddifiers & 0x08) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::LeftMeta;
-    }
-    if ((qt_moddifiers & 0x10) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::RightShift;
-    }
-    if ((qt_moddifiers & 0x20) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::RightControl;
-    }
-    if ((qt_moddifiers & 0x40) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::RightAlt;
-    }
-    if ((qt_moddifiers & 0x80) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::RightMeta;
-    }
-    if ((qt_moddifiers & 0x100) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::CapsLock;
-    }
-    if ((qt_moddifiers & 0x200) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::NumLock;
-    }
-    // Verify the last two keys
-    if ((qt_moddifiers & 0x400) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::Katakana;
-    }
-    if ((qt_moddifiers & 0x800) != 0) {
-        moddifier |= 1 << Settings::NativeKeyboard::Hiragana;
-    }
-    return moddifier;
-}
-
 void GRenderWindow::keyPressEvent(QKeyEvent* event) {
     if (!event->isAutoRepeat()) {
-        const auto moddifier = QtModifierToSwitchModdifier(event->nativeModifiers());
-        // Replace event->key() with event->nativeVirtualKey() since the second one provides raw key
-        // buttons
-        const auto key = QtKeyToSwitchKey(Qt::Key(event->key()));
-        input_subsystem->GetKeyboard()->SetModifiers(moddifier);
-        input_subsystem->GetKeyboard()->PressKey(key);
+        input_subsystem->GetKeyboard()->PressKey(event->key());
     }
 }
 
 void GRenderWindow::keyReleaseEvent(QKeyEvent* event) {
     if (!event->isAutoRepeat()) {
-        const auto moddifier = QtModifierToSwitchModdifier(event->nativeModifiers());
-        const auto key = QtKeyToSwitchKey(Qt::Key(event->key()));
-        input_subsystem->GetKeyboard()->SetModifiers(moddifier);
-        input_subsystem->GetKeyboard()->ReleaseKey(key);
+        input_subsystem->GetKeyboard()->ReleaseKey(event->key());
     }
 }
 
-InputCommon::MouseButton GRenderWindow::QtButtonToMouseButton(Qt::MouseButton button) {
+MouseInput::MouseButton GRenderWindow::QtButtonToMouseButton(Qt::MouseButton button) {
     switch (button) {
     case Qt::LeftButton:
-        return InputCommon::MouseButton::Left;
+        return MouseInput::MouseButton::Left;
     case Qt::RightButton:
-        return InputCommon::MouseButton::Right;
+        return MouseInput::MouseButton::Right;
     case Qt::MiddleButton:
-        return InputCommon::MouseButton::Wheel;
+        return MouseInput::MouseButton::Wheel;
     case Qt::BackButton:
-        return InputCommon::MouseButton::Backward;
+        return MouseInput::MouseButton::Backward;
     case Qt::ForwardButton:
-        return InputCommon::MouseButton::Forward;
+        return MouseInput::MouseButton::Forward;
     case Qt::TaskButton:
-        return InputCommon::MouseButton::Task;
+        return MouseInput::MouseButton::Task;
     default:
-        return InputCommon::MouseButton::Extra;
+        return MouseInput::MouseButton::Extra;
     }
 }
 
@@ -695,9 +423,12 @@ void GRenderWindow::mousePressEvent(QMouseEvent* event) {
     // coordinates and map them to the current render area
     const auto pos = mapFromGlobal(QCursor::pos());
     const auto [x, y] = ScaleTouch(pos);
-    const auto [touch_x, touch_y] = MapToTouchScreen(x, y);
     const auto button = QtButtonToMouseButton(event->button());
-    input_subsystem->GetMouse()->PressButton(x, y, touch_x, touch_y, button);
+    input_subsystem->GetMouse()->PressButton(x, y, button);
+
+    if (event->button() == Qt::LeftButton) {
+        this->TouchPressed(x, y, 0);
+    }
 
     emit MouseActivity();
 }
@@ -711,10 +442,10 @@ void GRenderWindow::mouseMoveEvent(QMouseEvent* event) {
     // coordinates and map them to the current render area
     const auto pos = mapFromGlobal(QCursor::pos());
     const auto [x, y] = ScaleTouch(pos);
-    const auto [touch_x, touch_y] = MapToTouchScreen(x, y);
     const int center_x = width() / 2;
     const int center_y = height() / 2;
-    input_subsystem->GetMouse()->MouseMove(x, y, touch_x, touch_y, center_x, center_y);
+    input_subsystem->GetMouse()->MouseMove(x, y, center_x, center_y);
+    this->TouchMoved(x, y, 0);
 
     if (Settings::values.mouse_panning) {
         QCursor::setPos(mapToGlobal({center_x, center_y}));
@@ -731,6 +462,10 @@ void GRenderWindow::mouseReleaseEvent(QMouseEvent* event) {
 
     const auto button = QtButtonToMouseButton(event->button());
     input_subsystem->GetMouse()->ReleaseButton(button);
+
+    if (event->button() == Qt::LeftButton) {
+        this->TouchReleased(0);
+    }
 }
 
 void GRenderWindow::TouchBeginEvent(const QTouchEvent* event) {
@@ -753,7 +488,7 @@ void GRenderWindow::TouchUpdateEvent(const QTouchEvent* event) {
     for (std::size_t id = 0; id < touch_ids.size(); ++id) {
         if (!TouchExist(touch_ids[id], touch_points)) {
             touch_ids[id] = 0;
-            input_subsystem->GetTouchScreen()->TouchReleased(id);
+            this->TouchReleased(id + 1);
         }
     }
 }
@@ -762,28 +497,28 @@ void GRenderWindow::TouchEndEvent() {
     for (std::size_t id = 0; id < touch_ids.size(); ++id) {
         if (touch_ids[id] != 0) {
             touch_ids[id] = 0;
-            input_subsystem->GetTouchScreen()->TouchReleased(id);
+            this->TouchReleased(id + 1);
         }
     }
 }
 
-void GRenderWindow::TouchStart(const QTouchEvent::TouchPoint& touch_point) {
+bool GRenderWindow::TouchStart(const QTouchEvent::TouchPoint& touch_point) {
     for (std::size_t id = 0; id < touch_ids.size(); ++id) {
         if (touch_ids[id] == 0) {
             touch_ids[id] = touch_point.id() + 1;
             const auto [x, y] = ScaleTouch(touch_point.pos());
-            const auto [touch_x, touch_y] = MapToTouchScreen(x, y);
-            input_subsystem->GetTouchScreen()->TouchPressed(touch_x, touch_y, id);
+            this->TouchPressed(x, y, id + 1);
+            return true;
         }
     }
+    return false;
 }
 
 bool GRenderWindow::TouchUpdate(const QTouchEvent::TouchPoint& touch_point) {
     for (std::size_t id = 0; id < touch_ids.size(); ++id) {
         if (touch_ids[id] == static_cast<std::size_t>(touch_point.id() + 1)) {
             const auto [x, y] = ScaleTouch(touch_point.pos());
-            const auto [touch_x, touch_y] = MapToTouchScreen(x, y);
-            input_subsystem->GetTouchScreen()->TouchMoved(touch_x, touch_y, id);
+            this->TouchMoved(x, y, id + 1);
             return true;
         }
     }
@@ -816,7 +551,7 @@ void GRenderWindow::focusOutEvent(QFocusEvent* event) {
     QWidget::focusOutEvent(event);
     input_subsystem->GetKeyboard()->ReleaseAllKeys();
     input_subsystem->GetMouse()->ReleaseAllButtons();
-    input_subsystem->GetTouchScreen()->ReleaseAllTouch();
+    this->TouchReleased(0);
 }
 
 void GRenderWindow::resizeEvent(QResizeEvent* event) {

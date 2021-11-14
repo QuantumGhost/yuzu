@@ -16,10 +16,6 @@ namespace Core {
 class System;
 }
 
-namespace Core::HID {
-enum class NpadStyleSet : u32;
-}
-
 namespace Service::AM::Applets {
 
 using IdentificationColor = std::array<u8, 4>;
@@ -56,7 +52,7 @@ struct ControllerSupportArgPrivate {
     bool flag_1{};
     ControllerSupportMode mode{};
     ControllerSupportCaller caller{};
-    Core::HID::NpadStyleSet style_set{};
+    u32 style_set{};
     u32 joy_hold_type{};
 };
 static_assert(sizeof(ControllerSupportArgPrivate) == 0x14,

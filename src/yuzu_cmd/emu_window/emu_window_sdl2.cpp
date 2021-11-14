@@ -9,10 +9,10 @@
 #include "common/settings.h"
 #include "core/core.h"
 #include "core/perf_stats.h"
-#include "input_common/drivers/keyboard.h"
-#include "input_common/drivers/mouse.h"
-#include "input_common/drivers/touch_screen.h"
+#include "input_common/keyboard.h"
 #include "input_common/main.h"
+#include "input_common/mouse/mouse_input.h"
+#include "input_common/sdl/sdl.h"
 #include "yuzu_cmd/emu_window/emu_window_sdl2.h"
 #include "yuzu_cmd/yuzu_icon.h"
 
@@ -32,32 +32,42 @@ EmuWindow_SDL2::~EmuWindow_SDL2() {
 }
 
 void EmuWindow_SDL2::OnMouseMotion(s32 x, s32 y) {
-    input_subsystem->GetMouse()->MouseMove(x, y, 0, 0, 0, 0);
+    TouchMoved((unsigned)std::max(x, 0), (unsigned)std::max(y, 0), 0);
+
+    input_subsystem->GetMouse()->MouseMove(x, y, 0, 0);
 }
 
-InputCommon::MouseButton EmuWindow_SDL2::SDLButtonToMouseButton(u32 button) const {
+MouseInput::MouseButton EmuWindow_SDL2::SDLButtonToMouseButton(u32 button) const {
     switch (button) {
     case SDL_BUTTON_LEFT:
-        return InputCommon::MouseButton::Left;
+        return MouseInput::MouseButton::Left;
     case SDL_BUTTON_RIGHT:
-        return InputCommon::MouseButton::Right;
+        return MouseInput::MouseButton::Right;
     case SDL_BUTTON_MIDDLE:
-        return InputCommon::MouseButton::Wheel;
+        return MouseInput::MouseButton::Wheel;
     case SDL_BUTTON_X1:
-        return InputCommon::MouseButton::Backward;
+        return MouseInput::MouseButton::Backward;
     case SDL_BUTTON_X2:
-        return InputCommon::MouseButton::Forward;
+        return MouseInput::MouseButton::Forward;
     default:
-        return InputCommon::MouseButton::Undefined;
+        return MouseInput::MouseButton::Undefined;
     }
 }
 
 void EmuWindow_SDL2::OnMouseButton(u32 button, u8 state, s32 x, s32 y) {
     const auto mouse_button = SDLButtonToMouseButton(button);
-    if (state == SDL_PRESSED) {
-        input_subsystem->GetMouse()->PressButton(x, y, 0, 0, mouse_button);
+    if (button == SDL_BUTTON_LEFT) {
+        if (state == SDL_PRESSED) {
+            TouchPressed((unsigned)std::max(x, 0), (unsigned)std::max(y, 0), 0);
+        } else {
+            TouchReleased(0);
+        }
     } else {
-        input_subsystem->GetMouse()->ReleaseButton(mouse_button);
+        if (state == SDL_PRESSED) {
+            input_subsystem->GetMouse()->PressButton(x, y, mouse_button);
+        } else {
+            input_subsystem->GetMouse()->ReleaseButton(mouse_button);
+        }
     }
 }
 
@@ -72,35 +82,29 @@ std::pair<unsigned, unsigned> EmuWindow_SDL2::TouchToPixelPos(float touch_x, flo
             static_cast<unsigned>(std::max(std::round(touch_y), 0.0f))};
 }
 
-void EmuWindow_SDL2::OnFingerDown(float x, float y, std::size_t id) {
-    int width, height;
-    SDL_GetWindowSize(render_window, &width, &height);
-    const auto [px, py] = TouchToPixelPos(x, y);
-    const float fx = px * 1.0f / width;
-    const float fy = py * 1.0f / height;
+void EmuWindow_SDL2::OnFingerDown(float x, float y) {
+    // TODO(NeatNit): keep track of multitouch using the fingerID and a dictionary of some kind
+    // This isn't critical because the best we can do when we have that is to average them, like the
+    // 3DS does
 
-    input_subsystem->GetTouchScreen()->TouchPressed(fx, fy, id);
+    const auto [px, py] = TouchToPixelPos(x, y);
+    TouchPressed(px, py, 0);
 }
 
-void EmuWindow_SDL2::OnFingerMotion(float x, float y, std::size_t id) {
-    int width, height;
-    SDL_GetWindowSize(render_window, &width, &height);
+void EmuWindow_SDL2::OnFingerMotion(float x, float y) {
     const auto [px, py] = TouchToPixelPos(x, y);
-    const float fx = px * 1.0f / width;
-    const float fy = py * 1.0f / height;
-
-    input_subsystem->GetTouchScreen()->TouchMoved(fx, fy, id);
+    TouchMoved(px, py, 0);
 }
 
 void EmuWindow_SDL2::OnFingerUp() {
-    input_subsystem->GetTouchScreen()->TouchReleased(0);
+    TouchReleased(0);
 }
 
 void EmuWindow_SDL2::OnKeyEvent(int key, u8 state) {
     if (state == SDL_PRESSED) {
-        input_subsystem->GetKeyboard()->PressKey(static_cast<std::size_t>(key));
+        input_subsystem->GetKeyboard()->PressKey(key);
     } else if (state == SDL_RELEASED) {
-        input_subsystem->GetKeyboard()->ReleaseKey(static_cast<std::size_t>(key));
+        input_subsystem->GetKeyboard()->ReleaseKey(key);
     }
 }
 
@@ -201,12 +205,10 @@ void EmuWindow_SDL2::WaitEvent() {
         }
         break;
     case SDL_FINGERDOWN:
-        OnFingerDown(event.tfinger.x, event.tfinger.y,
-                     static_cast<std::size_t>(event.tfinger.touchId));
+        OnFingerDown(event.tfinger.x, event.tfinger.y);
         break;
     case SDL_FINGERMOTION:
-        OnFingerMotion(event.tfinger.x, event.tfinger.y,
-                       static_cast<std::size_t>(event.tfinger.touchId));
+        OnFingerMotion(event.tfinger.x, event.tfinger.y);
         break;
     case SDL_FINGERUP:
         OnFingerUp();
