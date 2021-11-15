@@ -11,7 +11,6 @@
 #include "core/hle/service/acc/profile_manager.h"
 #include "core/hle/service/hid/controllers/npad.h"
 #include "input_common/main.h"
-#include "input_common/udp/client.h"
 #include "yuzu/configuration/config.h"
 
 namespace FS = Common::FS;
@@ -59,162 +58,6 @@ const std::array<std::array<int, 4>, Settings::NativeAnalog::NumAnalogs> Config:
 const std::array<int, 2> Config::default_stick_mod = {
     Qt::Key_Shift,
     0,
-};
-
-const std::array<int, Settings::NativeMouseButton::NumMouseButtons> Config::default_mouse_buttons =
-    {
-        Qt::Key_BracketLeft, Qt::Key_BracketRight, Qt::Key_Apostrophe, Qt::Key_Minus, Qt::Key_Equal,
-};
-
-const std::array<int, Settings::NativeKeyboard::NumKeyboardKeys> Config::default_keyboard_keys = {
-    0,
-    0,
-    0,
-    0,
-    Qt::Key_A,
-    Qt::Key_B,
-    Qt::Key_C,
-    Qt::Key_D,
-    Qt::Key_E,
-    Qt::Key_F,
-    Qt::Key_G,
-    Qt::Key_H,
-    Qt::Key_I,
-    Qt::Key_J,
-    Qt::Key_K,
-    Qt::Key_L,
-    Qt::Key_M,
-    Qt::Key_N,
-    Qt::Key_O,
-    Qt::Key_P,
-    Qt::Key_Q,
-    Qt::Key_R,
-    Qt::Key_S,
-    Qt::Key_T,
-    Qt::Key_U,
-    Qt::Key_V,
-    Qt::Key_W,
-    Qt::Key_X,
-    Qt::Key_Y,
-    Qt::Key_Z,
-    Qt::Key_1,
-    Qt::Key_2,
-    Qt::Key_3,
-    Qt::Key_4,
-    Qt::Key_5,
-    Qt::Key_6,
-    Qt::Key_7,
-    Qt::Key_8,
-    Qt::Key_9,
-    Qt::Key_0,
-    Qt::Key_Enter,
-    Qt::Key_Escape,
-    Qt::Key_Backspace,
-    Qt::Key_Tab,
-    Qt::Key_Space,
-    Qt::Key_Minus,
-    Qt::Key_Equal,
-    Qt::Key_BracketLeft,
-    Qt::Key_BracketRight,
-    Qt::Key_Backslash,
-    Qt::Key_Dead_Tilde,
-    Qt::Key_Semicolon,
-    Qt::Key_Apostrophe,
-    Qt::Key_Dead_Grave,
-    Qt::Key_Comma,
-    Qt::Key_Period,
-    Qt::Key_Slash,
-    Qt::Key_CapsLock,
-
-    Qt::Key_F1,
-    Qt::Key_F2,
-    Qt::Key_F3,
-    Qt::Key_F4,
-    Qt::Key_F5,
-    Qt::Key_F6,
-    Qt::Key_F7,
-    Qt::Key_F8,
-    Qt::Key_F9,
-    Qt::Key_F10,
-    Qt::Key_F11,
-    Qt::Key_F12,
-
-    Qt::Key_SysReq,
-    Qt::Key_ScrollLock,
-    Qt::Key_Pause,
-    Qt::Key_Insert,
-    Qt::Key_Home,
-    Qt::Key_PageUp,
-    Qt::Key_Delete,
-    Qt::Key_End,
-    Qt::Key_PageDown,
-    Qt::Key_Right,
-    Qt::Key_Left,
-    Qt::Key_Down,
-    Qt::Key_Up,
-
-    Qt::Key_NumLock,
-    Qt::Key_Slash,
-    Qt::Key_Asterisk,
-    Qt::Key_Minus,
-    Qt::Key_Plus,
-    Qt::Key_Enter,
-    Qt::Key_1,
-    Qt::Key_2,
-    Qt::Key_3,
-    Qt::Key_4,
-    Qt::Key_5,
-    Qt::Key_6,
-    Qt::Key_7,
-    Qt::Key_8,
-    Qt::Key_9,
-    Qt::Key_0,
-    Qt::Key_Period,
-
-    0,
-    0,
-    Qt::Key_PowerOff,
-    Qt::Key_Equal,
-
-    Qt::Key_F13,
-    Qt::Key_F14,
-    Qt::Key_F15,
-    Qt::Key_F16,
-    Qt::Key_F17,
-    Qt::Key_F18,
-    Qt::Key_F19,
-    Qt::Key_F20,
-    Qt::Key_F21,
-    Qt::Key_F22,
-    Qt::Key_F23,
-    Qt::Key_F24,
-
-    Qt::Key_Open,
-    Qt::Key_Help,
-    Qt::Key_Menu,
-    0,
-    Qt::Key_Stop,
-    Qt::Key_AudioRepeat,
-    Qt::Key_Undo,
-    Qt::Key_Cut,
-    Qt::Key_Copy,
-    Qt::Key_Paste,
-    Qt::Key_Find,
-    Qt::Key_VolumeMute,
-    Qt::Key_VolumeUp,
-    Qt::Key_VolumeDown,
-    Qt::Key_CapsLock,
-    Qt::Key_NumLock,
-    Qt::Key_ScrollLock,
-    Qt::Key_Comma,
-
-    Qt::Key_ParenLeft,
-    Qt::Key_ParenRight,
-};
-
-const std::array<int, Settings::NativeKeyboard::NumKeyboardMods> Config::default_keyboard_mods = {
-    Qt::Key_Control, Qt::Key_Shift, Qt::Key_Alt,   Qt::Key_ApplicationLeft,
-    Qt::Key_Control, Qt::Key_Shift, Qt::Key_AltGr, Qt::Key_ApplicationRight,
 };
 
 // This shouldn't have anything except static initializers (no functions). So
@@ -496,35 +339,10 @@ void Config::ReadDebugValues() {
 
 void Config::ReadKeyboardValues() {
     ReadBasicSetting(Settings::values.keyboard_enabled);
-
-    std::transform(default_keyboard_keys.begin(), default_keyboard_keys.end(),
-                   Settings::values.keyboard_keys.begin(), InputCommon::GenerateKeyboardParam);
-    std::transform(default_keyboard_mods.begin(), default_keyboard_mods.end(),
-                   Settings::values.keyboard_keys.begin() +
-                       Settings::NativeKeyboard::LeftControlKey,
-                   InputCommon::GenerateKeyboardParam);
-    std::transform(default_keyboard_mods.begin(), default_keyboard_mods.end(),
-                   Settings::values.keyboard_mods.begin(), InputCommon::GenerateKeyboardParam);
 }
 
 void Config::ReadMouseValues() {
     ReadBasicSetting(Settings::values.mouse_enabled);
-
-    for (int i = 0; i < Settings::NativeMouseButton::NumMouseButtons; ++i) {
-        const std::string default_param =
-            InputCommon::GenerateKeyboardParam(default_mouse_buttons[i]);
-        auto& mouse_buttons = Settings::values.mouse_buttons[i];
-
-        mouse_buttons = qt_config
-                            ->value(QStringLiteral("mouse_") +
-                                        QString::fromUtf8(Settings::NativeMouseButton::mapping[i]),
-                                    QString::fromStdString(default_param))
-                            .toString()
-                            .toStdString();
-        if (mouse_buttons.empty()) {
-            mouse_buttons = default_param;
-        }
-    }
 }
 
 void Config::ReadTouchscreenValues() {
@@ -574,7 +392,6 @@ void Config::ReadControlValues() {
 
     ReadBasicSetting(Settings::values.tas_enable);
     ReadBasicSetting(Settings::values.tas_loop);
-    ReadBasicSetting(Settings::values.tas_swap_controllers);
     ReadBasicSetting(Settings::values.pause_tas_on_load);
 
     ReadGlobalSetting(Settings::values.use_docked_mode);
@@ -625,9 +442,7 @@ void Config::ReadMotionTouchValues() {
     }
     qt_config->endArray();
 
-    ReadBasicSetting(Settings::values.motion_device);
     ReadBasicSetting(Settings::values.touch_device);
-    ReadBasicSetting(Settings::values.use_touch_from_button);
     ReadBasicSetting(Settings::values.touch_from_button_map_index);
     Settings::values.touch_from_button_map_index = std::clamp(
         Settings::values.touch_from_button_map_index.GetValue(), 0, num_touch_from_button_maps - 1);
@@ -1111,15 +926,6 @@ void Config::SaveDebugValues() {
 
 void Config::SaveMouseValues() {
     WriteBasicSetting(Settings::values.mouse_enabled);
-
-    for (int i = 0; i < Settings::NativeMouseButton::NumMouseButtons; ++i) {
-        const std::string default_param =
-            InputCommon::GenerateKeyboardParam(default_mouse_buttons[i]);
-        WriteSetting(QStringLiteral("mouse_") +
-                         QString::fromStdString(Settings::NativeMouseButton::mapping[i]),
-                     QString::fromStdString(Settings::values.mouse_buttons[i]),
-                     QString::fromStdString(default_param));
-    }
 }
 
 void Config::SaveTouchscreenValues() {
@@ -1133,9 +939,7 @@ void Config::SaveTouchscreenValues() {
 }
 
 void Config::SaveMotionTouchValues() {
-    WriteBasicSetting(Settings::values.motion_device);
     WriteBasicSetting(Settings::values.touch_device);
-    WriteBasicSetting(Settings::values.use_touch_from_button);
     WriteBasicSetting(Settings::values.touch_from_button_map_index);
     WriteBasicSetting(Settings::values.udp_input_servers);
 
@@ -1210,7 +1014,6 @@ void Config::SaveControlValues() {
 
     WriteBasicSetting(Settings::values.tas_enable);
     WriteBasicSetting(Settings::values.tas_loop);
-    WriteBasicSetting(Settings::values.tas_swap_controllers);
     WriteBasicSetting(Settings::values.pause_tas_on_load);
 
     qt_config->endGroup();
