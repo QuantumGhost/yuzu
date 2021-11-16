@@ -35,6 +35,14 @@ unset QT_PLUGIN_PATH
 unset LD_LIBRARY_PATH
 unset QTDIR
 
+# Add Wayland components
+mkdir -p squashfs-root/usr/plugins
+mkdir -p squashfs-root/usr/lib/dri
+cp /usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0 squashfs-root/usr/lib
+cp /opt/qt5*/lib/libQt5WaylandClient.so.5 squashfs-root/usr/lib
+cp /usr/lib/x86_64-linux-gnu/dri/swrast_dri.so squashfs-root/usr/lib/dri
+cp -r /opt/qt5*/plugins/{xcbglintegrations,platforms,wayland-graphics-integration-client,wayland-decoration-client,wayland-shell-integration} squashfs-root/usr/plugins
+
 mkdir $HOME/artifacts/
 mkdir -p /yuzu/artifacts/version
 # Version AppImage
