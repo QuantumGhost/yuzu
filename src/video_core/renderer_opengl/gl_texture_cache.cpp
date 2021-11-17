@@ -9,8 +9,8 @@
 
 #include <glad/glad.h>
 
+#include "common/literals.h"
 #include "common/settings.h"
-
 #include "video_core/renderer_opengl/gl_device.h"
 #include "video_core/renderer_opengl/gl_shader_manager.h"
 #include "video_core/renderer_opengl/gl_state_tracker.h"
@@ -42,6 +42,7 @@ using VideoCore::Surface::IsPixelFormatSRGB;
 using VideoCore::Surface::MaxPixelFormat;
 using VideoCore::Surface::PixelFormat;
 using VideoCore::Surface::SurfaceType;
+using namespace Common::Literals;
 
 struct CopyOrigin {
     GLint level;
@@ -494,6 +495,15 @@ ImageBufferMap TextureCacheRuntime::UploadStagingBuffer(size_t size) {
 
 ImageBufferMap TextureCacheRuntime::DownloadStagingBuffer(size_t size) {
     return download_buffers.RequestMap(size, false);
+}
+
+u64 TextureCacheRuntime::GetDeviceLocalMemory() const {
+    if (GLAD_GL_NVX_gpu_memory_info) {
+        GLint cur_avail_mem_kb = 0;
+        glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &cur_avail_mem_kb);
+        return static_cast<u64>(cur_avail_mem_kb) * 1_KiB;
+    }
+    return 2_GiB; // Return minimum requirements
 }
 
 void TextureCacheRuntime::CopyImage(Image& dst_image, Image& src_image,
@@ -1117,6 +1127,8 @@ ImageView::ImageView(TextureCacheRuntime&, const VideoCommon::ImageInfo& info,
 ImageView::ImageView(TextureCacheRuntime& runtime, const VideoCommon::NullImageViewParams& params)
     : VideoCommon::ImageViewBase{params}, views{runtime.null_image_views} {}
 
+ImageView::~ImageView() = default;
+
 GLuint ImageView::StorageView(Shader::TextureType texture_type, Shader::ImageFormat image_format) {
     if (image_format == Shader::ImageFormat::Typeless) {
         return Handle(texture_type);
@@ -1201,13 +1213,7 @@ Sampler::Sampler(TextureCacheRuntime& runtime, const TSCEntry& config) {
     glSamplerParameterfv(handle, GL_TEXTURE_BORDER_COLOR, config.BorderColor().data());
 
     if (GLAD_GL_ARB_texture_filter_anisotropic || GLAD_GL_EXT_texture_filter_anisotropic) {
-        const f32 setting_anisotropic =
-            static_cast<f32>(1U << Settings::values.max_anisotropy.GetValue());
-        const f32 game_anisotropic = std::clamp(config.MaxAnisotropy(), 1.0f, 16.0f);
-        const bool aument_anisotropic =
-            game_anisotropic > 1.0f || config.mipmap_filter == TextureMipmapFilter::Linear;
-        const f32 max_anisotropy =
-            aument_anisotropic ? std::max(game_anisotropic, setting_anisotropic) : game_anisotropic;
+        const f32 max_anisotropy = std::clamp(config.MaxAnisotropy(), 1.0f, 16.0f);
         glSamplerParameterf(handle, GL_TEXTURE_MAX_ANISOTROPY, max_anisotropy);
     } else {
         LOG_WARNING(Render_OpenGL, "GL_ARB_texture_filter_anisotropic is required");
@@ -1277,6 +1283,8 @@ Framebuffer::Framebuffer(TextureCacheRuntime& runtime, std::span<ImageView*, NUM
         glObjectLabel(GL_FRAMEBUFFER, handle, static_cast<GLsizei>(name.size()), name.data());
     }
 }
+
+Framebuffer::~Framebuffer() = default;
 
 void BGRCopyPass::CopyBGR(Image& dst_image, Image& src_image,
                           std::span<const VideoCommon::ImageCopy> copies) {
