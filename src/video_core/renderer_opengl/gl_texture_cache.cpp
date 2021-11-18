@@ -148,6 +148,8 @@ GLenum AttachmentType(PixelFormat format) {
     switch (const SurfaceType type = VideoCore::Surface::GetFormatType(format); type) {
     case SurfaceType::Depth:
         return GL_DEPTH_ATTACHMENT;
+    case SurfaceType::Stencil:
+        return GL_STENCIL_ATTACHMENT;
     case SurfaceType::DepthStencil:
         return GL_DEPTH_STENCIL_ATTACHMENT;
     default:
@@ -394,6 +396,10 @@ OGLTexture MakeImage(const VideoCommon::ImageInfo& info, GLenum gl_internal_form
     }
     UNREACHABLE_MSG("Invalid image format={}", format);
     return GL_R32UI;
+}
+
+[[nodiscard]] u32 NextPow2(u32 value) {
+    return 1U << (32U - std::countl_zero(value - 1U));
 }
 } // Anonymous namespace
 
@@ -910,6 +916,8 @@ void Image::Scale(bool up_scale) {
             return GL_COLOR_ATTACHMENT0;
         case SurfaceType::Depth:
             return GL_DEPTH_ATTACHMENT;
+        case SurfaceType::Stencil:
+            return GL_STENCIL_ATTACHMENT;
         case SurfaceType::DepthStencil:
             return GL_DEPTH_STENCIL_ATTACHMENT;
         default:
@@ -923,8 +931,10 @@ void Image::Scale(bool up_scale) {
             return GL_COLOR_BUFFER_BIT;
         case SurfaceType::Depth:
             return GL_DEPTH_BUFFER_BIT;
+        case SurfaceType::Stencil:
+            return GL_STENCIL_BUFFER_BIT;
         case SurfaceType::DepthStencil:
-            return GL_STENCIL_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
+            return GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
         default:
             UNREACHABLE();
             return GL_COLOR_BUFFER_BIT;
@@ -936,8 +946,10 @@ void Image::Scale(bool up_scale) {
             return 0;
         case SurfaceType::Depth:
             return 1;
-        case SurfaceType::DepthStencil:
+        case SurfaceType::Stencil:
             return 2;
+        case SurfaceType::DepthStencil:
+            return 3;
         default:
             UNREACHABLE();
             return 0;
@@ -1267,10 +1279,20 @@ Framebuffer::Framebuffer(TextureCacheRuntime& runtime, std::span<ImageView*, NUM
     }
 
     if (const ImageView* const image_view = depth_buffer; image_view) {
-        if (GetFormatType(image_view->format) == SurfaceType::DepthStencil) {
-            buffer_bits |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-        } else {
+        switch (GetFormatType(image_view->format)) {
+        case SurfaceType::Depth:
             buffer_bits |= GL_DEPTH_BUFFER_BIT;
+            break;
+        case SurfaceType::Stencil:
+            buffer_bits |= GL_STENCIL_BUFFER_BIT;
+            break;
+        case SurfaceType::DepthStencil:
+            buffer_bits |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+            break;
+        default:
+            UNREACHABLE();
+            buffer_bits |= GL_DEPTH_BUFFER_BIT;
+            break;
         }
         const GLenum attachment = AttachmentType(image_view->format);
         AttachTexture(handle, attachment, image_view);
@@ -1311,7 +1333,7 @@ void FormatConversionPass::ConvertImage(Image& dst_image, Image& src_image,
         const u32 copy_size = region.width * region.height * region.depth * img_bpp;
         if (pbo_size < copy_size) {
             intermediate_pbo.Create();
-            pbo_size = copy_size;
+            pbo_size = NextPow2(copy_size);
             glNamedBufferData(intermediate_pbo.handle, pbo_size, nullptr, GL_STREAM_COPY);
         }
         // Copy from source to PBO
