@@ -1335,8 +1335,14 @@ bool GMainWindow::LoadROM(const QString& filename, u64 program_id, std::size_t p
         std::make_unique<QtWebBrowser>(*this),         // Web Browser
     });
 
-    const Core::SystemResultStatus result{
-        system->Load(*render_window, filename.toStdString(), program_id, program_index)};
+    Core::SystemResultStatus result{};
+    auto load_thread = std::jthread(
+        [this, filename, program_id, program_index](Core::SystemResultStatus& result) {
+            result =
+                system->Load(*render_window, filename.toStdString(), program_id, program_index);
+        },
+        std::ref(result));
+    load_thread.join();
 
     const auto drd_callout = (UISettings::values.callout_flags.GetValue() &
                               static_cast<u32>(CalloutFlag::DRDDeprecation)) == 0;
@@ -3306,9 +3312,9 @@ void GMainWindow::OnReinitializeKeys(ReinitializeKeyBehavior behavior) {
         if (!errors.isEmpty()) {
             QMessageBox::warning(
                 this, tr("Derivation Components Missing"),
-                tr("Components are missing that may hinder key derivation from completing. "
+                tr("Encryption keys are missing. "
                    "<br>Please follow <a href='https://yuzu-emu.org/help/quickstart/'>the yuzu "
-                   "quickstart guide</a> to get all your keys and "
+                   "quickstart guide</a> to get all your keys, firmware and "
                    "games.<br><br><small>(%1)</small>")
                     .arg(errors));
         }
