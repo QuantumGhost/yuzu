@@ -472,7 +472,7 @@ template <class P>
 void TextureCache<P>::BlitImage(const Tegra::Engines::Fermi2D::Surface& dst,
                                 const Tegra::Engines::Fermi2D::Surface& src,
                                 const Tegra::Engines::Fermi2D::Config& copy) {
-    const BlitImages images = GetBlitImages(dst, src);
+    const BlitImages images = GetBlitImages(dst, src, copy);
     const ImageId dst_id = images.dst_id;
     const ImageId src_id = images.src_id;
 
@@ -762,12 +762,15 @@ ImageId TextureCache<P>::FindImage(const ImageInfo& info, GPUVAddr gpu_addr,
     const bool broken_views =
         runtime.HasBrokenTextureViewFormats() || True(options & RelaxedOptions::ForceBrokenViews);
     const bool native_bgr = runtime.HasNativeBgr();
-    ImageId image_id;
+    const bool flexible_formats = True(options & RelaxedOptions::Format);
+    ImageId image_id{};
+    boost::container::small_vector<ImageId, 1> image_ids;
     const auto lambda = [&](ImageId existing_image_id, ImageBase& existing_image) {
         if (True(existing_image.flags & ImageFlagBits::Remapped)) {
             return false;
         }
-        if (info.type == ImageType::Linear || existing_image.info.type == ImageType::Linear) {
+        if (info.type == ImageType::Linear || existing_image.info.type == ImageType::Linear)
+            [[unlikely]] {
             const bool strict_size = False(options & RelaxedOptions::Size) &&
                                      True(existing_image.flags & ImageFlagBits::Strong);
             const ImageInfo& existing = existing_image.info;
@@ -776,17 +779,27 @@ ImageId TextureCache<P>::FindImage(const ImageInfo& info, GPUVAddr gpu_addr,
                 IsPitchLinearSameSize(existing, info, strict_size) &&
                 IsViewCompatible(existing.format, info.format, broken_views, native_bgr)) {
                 image_id = existing_image_id;
-                return true;
+                image_ids.push_back(existing_image_id);
+                return !flexible_formats && existing.format == info.format;
             }
         } else if (IsSubresource(info, existing_image, gpu_addr, options, broken_views,
                                  native_bgr)) {
             image_id = existing_image_id;
-            return true;
+            image_ids.push_back(existing_image_id);
+            return !flexible_formats && existing_image.info.format == info.format;
         }
         return false;
     };
     ForEachImageInRegion(*cpu_addr, CalculateGuestSizeInBytes(info), lambda);
-    return image_id;
+    if (image_ids.size() <= 1) [[likely]] {
+        return image_id;
+    }
+    auto image_ids_compare = [this](ImageId a, ImageId b) {
+        auto& image_a = slot_images[a];
+        auto& image_b = slot_images[b];
+        return image_a.modification_tick < image_b.modification_tick;
+    };
+    return *std::ranges::max_element(image_ids, image_ids_compare);
 }
 
 template <class P>
@@ -1078,30 +1091,69 @@ ImageId TextureCache<P>::JoinImages(const ImageInfo& info, GPUVAddr gpu_addr, VA
 
 template <class P>
 typename TextureCache<P>::BlitImages TextureCache<P>::GetBlitImages(
-    const Tegra::Engines::Fermi2D::Surface& dst, const Tegra::Engines::Fermi2D::Surface& src) {
+    const Tegra::Engines::Fermi2D::Surface& dst, const Tegra::Engines::Fermi2D::Surface& src,
+    const Tegra::Engines::Fermi2D::Config& copy) {
+
     static constexpr auto FIND_OPTIONS = RelaxedOptions::Samples;
     const GPUVAddr dst_addr = dst.Address();
     const GPUVAddr src_addr = src.Address();
     ImageInfo dst_info(dst);
     ImageInfo src_info(src);
+    const bool can_be_depth_blit =
+        dst_info.format == src_info.format && copy.filter == Tegra::Engines::Fermi2D::Filter::Point;
     ImageId dst_id;
     ImageId src_id;
+    const auto convert_depth_format = [](PixelFormat format) {
+        switch (format) {
+        case PixelFormat::R16_UNORM:
+            return PixelFormat::D16_UNORM;
+        case PixelFormat::A8B8G8R8_UNORM:
+            return PixelFormat::S8_UINT_D24_UNORM;
+        case PixelFormat::R32_FLOAT:
+            return PixelFormat::D32_FLOAT;
+        default:
+            return format;
+        }
+    };
+    auto insert_images = [&]() {
+        if (!src_id) {
+            src_id = InsertImage(src_info, src_addr, RelaxedOptions{});
+        }
+        if (!dst_id) {
+            dst_id = InsertImage(dst_info, dst_addr, RelaxedOptions{});
+        }
+    };
+    RelaxedOptions try_options = FIND_OPTIONS;
+    if (can_be_depth_blit) {
+        try_options |= RelaxedOptions::Format;
+    }
     do {
         has_deleted_images = false;
-        dst_id = FindImage(dst_info, dst_addr, FIND_OPTIONS);
-        src_id = FindImage(src_info, src_addr, FIND_OPTIONS);
-        const ImageBase* const dst_image = dst_id ? &slot_images[dst_id] : nullptr;
+        src_id = FindImage(src_info, src_addr, try_options);
+        dst_id = FindImage(dst_info, dst_addr, try_options);
         const ImageBase* const src_image = src_id ? &slot_images[src_id] : nullptr;
-        DeduceBlitImages(dst_info, src_info, dst_image, src_image);
-        ASSERT(GetFormatType(dst_info.format) == GetFormatType(src_info.format));
-        RelaxedOptions find_options{};
-        if (src_info.num_samples > 1) {
-            // it's a resolve, we must enforce the same format.
-            find_options = RelaxedOptions::ForceBrokenViews;
+        if (src_image && src_image->info.num_samples > 1) {
+            RelaxedOptions find_options{FIND_OPTIONS | RelaxedOptions::ForceBrokenViews};
+            src_id = FindOrInsertImage(src_info, src_addr, find_options);
+            dst_id = FindOrInsertImage(dst_info, dst_addr, find_options);
+            if (has_deleted_images) {
+                continue;
+            }
+            break;
         }
-        src_id = FindOrInsertImage(src_info, src_addr, find_options);
-        dst_id = FindOrInsertImage(dst_info, dst_addr, find_options);
+        if (can_be_depth_blit) {
+            const ImageBase* const dst_image = src_id ? &slot_images[src_id] : nullptr;
+            DeduceBlitImages(dst_info, src_info, dst_image, src_image);
+            if (GetFormatType(dst_info.format) != GetFormatType(src_info.format)) {
+                continue;
+            }
+        }
+        insert_images();
     } while (has_deleted_images);
+    if (GetFormatType(dst_info.format) != SurfaceType::ColorTexture) {
+        src_id = FindOrInsertImage(src_info, src_addr, RelaxedOptions{});
+        dst_id = FindOrInsertImage(dst_info, dst_addr, RelaxedOptions{});
+    }
     return BlitImages{
         .dst_id = dst_id,
         .src_id = src_id,
