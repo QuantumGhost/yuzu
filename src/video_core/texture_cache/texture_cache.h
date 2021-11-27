@@ -725,7 +725,11 @@ ImageViewId TextureCache<P>::CreateImageView(const TICEntry& config) {
     }
     const u32 layer_offset = config.BaseLayer() * info.layer_stride;
     const GPUVAddr image_gpu_addr = config.Address() - layer_offset;
-    const ImageId image_id = FindOrInsertImage(info, image_gpu_addr);
+    ImageId image_id{};
+    do {
+        has_deleted_images = false;
+        image_id = FindOrInsertImage(info, image_gpu_addr);
+    } while (has_deleted_images);
     if (!image_id) {
         return NULL_IMAGE_VIEW_ID;
     }
@@ -1137,8 +1141,11 @@ typename TextureCache<P>::BlitImages TextureCache<P>::GetBlitImages(
     } while (has_deleted_images);
     if (GetFormatType(dst_info.format) != SurfaceType::ColorTexture) {
         // Make sure the images are depth and/or stencil textures.
-        src_id = FindOrInsertImage(src_info, src_addr, RelaxedOptions{});
-        dst_id = FindOrInsertImage(dst_info, dst_addr, RelaxedOptions{});
+        do {
+            has_deleted_images = false;
+            src_id = FindOrInsertImage(src_info, src_addr, RelaxedOptions{});
+            dst_id = FindOrInsertImage(dst_info, dst_addr, RelaxedOptions{});
+        } while (has_deleted_images);
     }
     return BlitImages{
         .dst_id = dst_id,
@@ -1196,7 +1203,11 @@ template <class P>
 ImageViewId TextureCache<P>::FindRenderTargetView(const ImageInfo& info, GPUVAddr gpu_addr,
                                                   bool is_clear) {
     const auto options = is_clear ? RelaxedOptions::Samples : RelaxedOptions{};
-    const ImageId image_id = FindOrInsertImage(info, gpu_addr, options);
+    ImageId image_id{};
+    do {
+        has_deleted_images = false;
+        image_id = FindOrInsertImage(info, gpu_addr, options);
+    } while (has_deleted_images);
     if (!image_id) {
         return NULL_IMAGE_VIEW_ID;
     }
