@@ -1103,26 +1103,6 @@ typename TextureCache<P>::BlitImages TextureCache<P>::GetBlitImages(
         dst_info.format == src_info.format && copy.filter == Tegra::Engines::Fermi2D::Filter::Point;
     ImageId dst_id;
     ImageId src_id;
-    const auto convert_depth_format = [](PixelFormat format) {
-        switch (format) {
-        case PixelFormat::R16_UNORM:
-            return PixelFormat::D16_UNORM;
-        case PixelFormat::A8B8G8R8_UNORM:
-            return PixelFormat::S8_UINT_D24_UNORM;
-        case PixelFormat::R32_FLOAT:
-            return PixelFormat::D32_FLOAT;
-        default:
-            return format;
-        }
-    };
-    auto insert_images = [&]() {
-        if (!src_id) {
-            src_id = InsertImage(src_info, src_addr, RelaxedOptions{});
-        }
-        if (!dst_id) {
-            dst_id = InsertImage(dst_info, dst_addr, RelaxedOptions{});
-        }
-    };
     RelaxedOptions try_options = FIND_OPTIONS;
     if (can_be_depth_blit) {
         try_options |= RelaxedOptions::Format;
@@ -1148,9 +1128,15 @@ typename TextureCache<P>::BlitImages TextureCache<P>::GetBlitImages(
                 continue;
             }
         }
-        insert_images();
+        if (!src_id) {
+            src_id = InsertImage(src_info, src_addr, RelaxedOptions{});
+        }
+        if (!dst_id) {
+            dst_id = InsertImage(dst_info, dst_addr, RelaxedOptions{});
+        }
     } while (has_deleted_images);
     if (GetFormatType(dst_info.format) != SurfaceType::ColorTexture) {
+        // Make sure the images are depth and/or stencil textures.
         src_id = FindOrInsertImage(src_info, src_addr, RelaxedOptions{});
         dst_id = FindOrInsertImage(dst_info, dst_addr, RelaxedOptions{});
     }
