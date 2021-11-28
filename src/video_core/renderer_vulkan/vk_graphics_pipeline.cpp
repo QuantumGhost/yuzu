@@ -522,8 +522,9 @@ void GraphicsPipeline::MakePipeline(VkRenderPass render_pass) {
             vertex_attributes.push_back({
                 .location = static_cast<u32>(index),
                 .binding = 0,
-                .format = type == 1 ? VK_FORMAT_R32_SFLOAT
-                                    : type == 2 ? VK_FORMAT_R32_SINT : VK_FORMAT_R32_UINT,
+                .format = type == 1   ? VK_FORMAT_R32_SFLOAT
+                          : type == 2 ? VK_FORMAT_R32_SINT
+                                      : VK_FORMAT_R32_UINT,
                 .offset = 0,
             });
         }
@@ -612,37 +613,35 @@ void GraphicsPipeline::MakePipeline(VkRenderPass render_pass) {
         .flags = 0,
         .patchControlPoints = key.state.patch_control_points_minus_one.Value() + 1,
     };
-
-    void* viewport_next = nullptr;
     std::array<VkViewportSwizzleNV, Maxwell::NumViewports> swizzles;
     std::ranges::transform(key.state.viewport_swizzles, swizzles.begin(), UnpackViewportSwizzle);
     VkPipelineViewportSwizzleStateCreateInfoNV swizzle_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV,
-        .pNext = viewport_next,
+        .pNext = nullptr,
         .flags = 0,
         .viewportCount = Maxwell::NumViewports,
         .pViewportSwizzles = swizzles.data(),
     };
-    if (device.IsNvViewportSwizzleSupported()) {
-        viewport_next = &swizzle_ci;
-    }
     VkPipelineViewportDepthClipControlCreateInfoEXT ndc_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT,
-        .pNext = viewport_next,
+        .pNext = nullptr,
         .negativeOneToOne = key.state.ndc_minus_one_to_one.Value() != 0 ? VK_TRUE : VK_FALSE,
     };
-    if (device.IsExtDepthClipControlSupported()) {
-        viewport_next = &ndc_info;
-    }
-    const VkPipelineViewportStateCreateInfo viewport_ci{
+    VkPipelineViewportStateCreateInfo viewport_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .pNext = viewport_next,
+        .pNext = nullptr,
         .flags = 0,
         .viewportCount = Maxwell::NumViewports,
         .pViewports = nullptr,
         .scissorCount = Maxwell::NumViewports,
         .pScissors = nullptr,
     };
+    if (device.IsNvViewportSwizzleSupported()) {
+        swizzle_ci.pNext = std::exchange(viewport_ci.pNext, &swizzle_ci);
+    }
+    if (device.IsExtDepthClipControlSupported()) {
+        ndc_info.pNext = std::exchange(viewport_ci.pNext, &ndc_info);
+    }
     VkPipelineRasterizationStateCreateInfo rasterization_ci{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .pNext = nullptr,

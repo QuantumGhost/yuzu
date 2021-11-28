@@ -1200,11 +1200,13 @@ ImageViewId TextureCache<P>::FindRenderTargetView(const ImageInfo& info, GPUVAdd
                                                   bool is_clear) {
     const auto options = is_clear ? RelaxedOptions::Samples : RelaxedOptions{};
     ImageId image_id{};
-    bool delete_state = false;
+    bool delete_state = has_deleted_images;
     do {
-        delete_state = has_deleted_images;
+        has_deleted_images = false;
         image_id = FindOrInsertImage(info, gpu_addr, options);
-    } while (delete_state != has_deleted_images);
+        delete_state |= has_deleted_images;
+    } while (has_deleted_images);
+    has_deleted_images = delete_state;
     if (!image_id) {
         return NULL_IMAGE_VIEW_ID;
     }
