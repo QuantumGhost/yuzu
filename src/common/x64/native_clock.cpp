@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 
+#include "common/atomic_ops.h"
 #include "common/uint128.h"
 #include "common/x64/native_clock.h"
 

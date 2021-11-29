@@ -33,6 +33,7 @@ struct EventType {
     TimedCallback callback;
     /// A pointer to the name of the event.
     const std::string name;
+    mutable std::mutex guard;
 };
 
 /**
