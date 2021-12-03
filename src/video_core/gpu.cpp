@@ -185,6 +185,16 @@ struct GPU::Impl {
         return *dma_pusher;
     }
 
+    /// Returns a reference to the GPU CDMA pusher.
+    [[nodiscard]] Tegra::CDmaPusher& CDmaPusher() {
+        return *cdma_pusher;
+    }
+
+    /// Returns a const reference to the GPU CDMA pusher.
+    [[nodiscard]] const Tegra::CDmaPusher& CDmaPusher() const {
+        return *cdma_pusher;
+    }
+
     /// Returns a reference to the underlying renderer.
     [[nodiscard]] VideoCore::RendererBase& Renderer() {
         return *renderer;
@@ -328,26 +338,25 @@ struct GPU::Impl {
     }
 
     /// Push GPU command buffer entries to be processed
-    void PushCommandBuffer(u32 id, Tegra::ChCommandHeaderList& entries) {
+    void PushCommandBuffer(Tegra::ChCommandHeaderList& entries) {
         if (!use_nvdec) {
             return;
         }
 
-        if (cdma_pushers.find(id) == cdma_pushers.end()) {
-            cdma_pushers[id] = std::make_unique<Tegra::CDmaPusher>(gpu);
+        if (!cdma_pusher) {
+            cdma_pusher = std::make_unique<Tegra::CDmaPusher>(gpu);
         }
 
         // SubmitCommandBuffer would make the nvdec operations async, this is not currently working
         // TODO(ameerj): RE proper async nvdec operation
         // gpu_thread.SubmitCommandBuffer(std::move(entries));
-        cdma_pushers[id]->ProcessEntries(std::move(entries));
+
+        cdma_pusher->ProcessEntries(std::move(entries));
     }
 
     /// Frees the CDMAPusher instance to free up resources
-    void ClearCdmaInstance(u32 id) {
-        if (cdma_pushers.find(id) != cdma_pushers.end()) {
-            cdma_pushers.erase(id);
-        }
+    void ClearCdmaInstance() {
+        cdma_pusher.reset();
     }
 
     /// Swap buffers (render frame)
@@ -650,7 +659,7 @@ struct GPU::Impl {
     Core::System& system;
     std::unique_ptr<Tegra::MemoryManager> memory_manager;
     std::unique_ptr<Tegra::DmaPusher> dma_pusher;
-    std::map<u32, std::unique_ptr<Tegra::CDmaPusher>> cdma_pushers;
+    std::unique_ptr<Tegra::CDmaPusher> cdma_pusher;
     std::unique_ptr<VideoCore::RendererBase> renderer;
     VideoCore::RasterizerInterface* rasterizer = nullptr;
     const bool use_nvdec;
@@ -802,6 +811,14 @@ const Tegra::DmaPusher& GPU::DmaPusher() const {
     return impl->DmaPusher();
 }
 
+Tegra::CDmaPusher& GPU::CDmaPusher() {
+    return impl->CDmaPusher();
+}
+
+const Tegra::CDmaPusher& GPU::CDmaPusher() const {
+    return impl->CDmaPusher();
+}
+
 VideoCore::RendererBase& GPU::Renderer() {
     return impl->Renderer();
 }
@@ -870,12 +887,12 @@ void GPU::PushGPUEntries(Tegra::CommandList&& entries) {
     impl->PushGPUEntries(std::move(entries));
 }
 
-void GPU::PushCommandBuffer(u32 id, Tegra::ChCommandHeaderList& entries) {
-    impl->PushCommandBuffer(id, entries);
+void GPU::PushCommandBuffer(Tegra::ChCommandHeaderList& entries) {
+    impl->PushCommandBuffer(entries);
 }
 
-void GPU::ClearCdmaInstance(u32 id) {
-    impl->ClearCdmaInstance(id);
+void GPU::ClearCdmaInstance() {
+    impl->ClearCdmaInstance();
 }
 
 void GPU::SwapBuffers(const Tegra::FramebufferConfig* framebuffer) {
