@@ -14,6 +14,12 @@ find . -name "CMakeLists.txt" ! -path "*/externals/*" -exec sed -i 's/^.*-Werror
 find . -name "CMakeLists.txt" ! -path "*/externals/*" -exec sed -i 's/^.*-Werror=.*$/ /g' {} +
 find . -name "CMakeLists.txt" ! -path "*/externals/*" -exec sed -i 's/-Werror/-W/g' {} +
 
+# Add cache if does not exist
+if [[ ! -e ~/.ccache ]]; then
+	mkdir ~/.ccache 
+fi 
+CACHEDIR=~/.ccache
+ls -al $CACHEDIR
 ###############################################
 # Install SDL
 SDL2VER=2.0.18
@@ -27,7 +33,7 @@ if [[ ! -e SDL2-${SDL2VER} ]]; then
 	make && cd ../
 	rm SDL2-${SDL2VER}.tar.gz
 fi
-sudo make -C SDL2-${SDL2VER} install
+make -C SDL2-${SDL2VER} install
 sdl2-config --version
 cd /yuzu
 ###############################################
@@ -49,7 +55,7 @@ cmake ..                                    \
   -DENABLE_QT_TRANSLATION=ON                \
   -DBUILD_DATE="$build_date"                \
   -DYUZU_USE_QT_WEB_ENGINE=OFF              \
-  -DYUZU_USE_EXTERNAL_SDL2=OFF 		          \
+  -DYUZU_USE_EXTERNAL_SDL2=OFF 		    \
   -G Ninja 
 
 ninja
