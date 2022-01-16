@@ -53,16 +53,16 @@ TextureCache<P>::TextureCache(Runtime& runtime_, VideoCore::RasterizerInterface&
         const s64 device_memory = static_cast<s64>(runtime.GetDeviceLocalMemory());
         const s64 min_spacing_expected = device_memory - 1_GiB - 512_MiB;
         const s64 min_spacing_critical = device_memory - 1_GiB;
-        const s64 mem_tresshold = std::min(device_memory, TARGET_THRESHOLD);
-        const s64 min_vacancy_expected = (6 * mem_tresshold) / 10;
-        const s64 min_vacancy_critical = (3 * mem_tresshold) / 10;
+        const s64 mem_threshold = std::min(device_memory, TARGET_THRESHOLD);
+        const s64 min_vacancy_expected = (6 * mem_threshold) / 10;
+        const s64 min_vacancy_critical = (3 * mem_threshold) / 10;
         expected_memory = static_cast<u64>(
             std::max(std::min(device_memory - min_vacancy_expected, min_spacing_expected),
                      DEFAULT_EXPECTED_MEMORY));
         critical_memory = static_cast<u64>(
             std::max(std::min(device_memory - min_vacancy_critical, min_spacing_critical),
                      DEFAULT_CRITICAL_MEMORY));
-        minimum_memory = static_cast<u64>((device_memory - mem_tresshold) / 2);
+        minimum_memory = static_cast<u64>((device_memory - mem_threshold) / 2);
     } else {
         expected_memory = DEFAULT_EXPECTED_MEMORY + 512_MiB;
         critical_memory = DEFAULT_CRITICAL_MEMORY + 1_GiB;
@@ -85,7 +85,8 @@ void TextureCache<P>::RunGarbageCollector() {
         auto& image = slot_images[image_id];
         const bool must_download =
             image.IsSafeDownload() && False(image.flags & ImageFlagBits::BadOverlap);
-        if (!high_priority_mode && must_download) {
+        if (!high_priority_mode &&
+            (must_download || True(image.flags & ImageFlagBits::CostlyLoad))) {
             return false;
         }
         if (must_download) {

@@ -695,7 +695,7 @@ Image::Image(TextureCacheRuntime& runtime_, const VideoCommon::ImageInfo& info_,
     }
     if (IsConverted(runtime->device, info.format, info.type)) {
         flags |= ImageFlagBits::Converted;
-        flags |= ImageFlagBits::GCProtected;
+        flags |= ImageFlagBits::CostlyLoad;
         gl_internal_format = IsPixelFormatSRGB(info.format) ? GL_SRGB8_ALPHA8 : GL_RGBA8;
         gl_format = GL_RGBA;
         gl_type = GL_UNSIGNED_INT_8_8_8_8_REV;
