@@ -292,10 +292,11 @@ ResultCode KPageTable::MapCodeMemory(VAddr dst_addr, VAddr src_addr, std::size_t
 
     KMemoryState state{};
     KMemoryPermission perm{};
-    CASCADE_CODE(CheckMemoryState(&state, &perm, nullptr, nullptr, src_addr, size,
-                                  KMemoryState::All, KMemoryState::Normal, KMemoryPermission::All,
-                                  KMemoryPermission::UserReadWrite, KMemoryAttribute::Mask,
-                                  KMemoryAttribute::None, KMemoryAttribute::IpcAndDeviceMapped));
+    // CASCADE_CODE(CheckMemoryState(&state, &perm, nullptr, nullptr, src_addr, size,
+    //                               KMemoryState::All, KMemoryState::Normal,
+    //                               KMemoryPermission::All, KMemoryPermission::UserReadWrite,
+    //                               KMemoryAttribute::Mask, KMemoryAttribute::None,
+    //                               KMemoryAttribute::IpcAndDeviceMapped));
 
     if (IsRegionMapped(dst_addr, size)) {
         return ResultInvalidCurrentMemory;
