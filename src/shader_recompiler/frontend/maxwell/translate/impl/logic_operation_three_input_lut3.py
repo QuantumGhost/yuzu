@@ -3,32 +3,25 @@
 # terms of the Do What The Fuck You Want To Public License, Version 2,
 # as published by Sam Hocevar. See http://www.wtfpl.net/ for more details.
 
-# Assume that the negation call is for free on the host GPU.
-# In fact, there are often input or output negation flags for logic operations
-support_neg = True
+from itertools import product
 
 # The primitive instructions
 OPS = {
-    'ir.BitwiseAnd({lhs}, {rhs})' : lambda a,b: a&b,
-    'ir.BitwiseOr({lhs}, {rhs})' : lambda a,b: a|b,
-    'ir.BitwiseXor({lhs}, {rhs})' : lambda a,b: a^b,
+    'ir.BitwiseAnd({}, {})' : (2, 1, lambda a,b: a&b),
+    'ir.BitwiseOr({}, {})' : (2, 1, lambda a,b: a|b),
+    'ir.BitwiseXor({}, {})' : (2, 1, lambda a,b: a^b),
+    'ir.BitwiseNot({})' : (1, 0.1, lambda a: (~a) & 255), # Only tiny cost, as this can often inlined in other instructions
 }
-if support_neg:
-    OPS.update({
-        'ir.BitwiseNot(ir.BitwiseAnd({lhs}, {rhs}))' : lambda a,b: 256 + ~(a&b),
-        'ir.BitwiseNot(ir.BitwiseOr({lhs}, {rhs}))' : lambda a,b: 256 + ~(a|b),
-        'ir.BitwiseNot(ir.BitwiseXor({lhs}, {rhs}))' : lambda a,b: 256 + ~(a^b),
-    })
 
 # Our database of combination of instructions
 optimized_calls = {}
 def register(imm, instruction, count, latency):
-    # Use the sum of instruction count and latency as metrik to evaluate which combination is best
-    metrik = count + latency
+    # Use the sum of instruction count and latency as costs to evaluate which combination is best
+    costs = count + latency + len(instruction) * 0.0001
 
     # Update if new or better
-    if imm not in optimized_calls or optimized_calls[imm][3] > metrik:
-        optimized_calls[imm] = (instruction, count, latency, metrik)
+    if imm not in optimized_calls or optimized_calls[imm][3] > costs:
+        optimized_calls[imm] = (instruction, count, latency, costs)
         return True
 
     return False
@@ -46,12 +39,6 @@ inputs = {
     tb : 'b',
     tc : 'c',
 }
-if support_neg:
-    inputs.update({
-        256 + ~ta : 'ir.BitwiseNot(a)',
-        256 + ~tb : 'ir.BitwiseNot(b)',
-        256 + ~tc : 'ir.BitwiseNot(c)',
-    })
 for imm, instruction in inputs.items():
     register(imm, instruction, 0, 0)
 
@@ -60,14 +47,19 @@ for imm, instruction in inputs.items():
 while True:
     registered = 0
     calls_copy = optimized_calls.copy()
-    for imm_a, (value_a, count_a, latency_a, metrik_a) in calls_copy.items():
-        for imm_b, (value_b, count_b, latency_b, metrik_b) in calls_copy.items():
-            for OP, f in OPS.items():
-                registered += register(
-                    f(imm_a, imm_b), # Updated code
-                    OP.format(lhs=value_a, rhs=value_b), # New instruction string
-                    count_a+count_b+1, # Sum of instructions + 1
-                    max(latency_a, latency_b) + 1) # max latency + 1
+    for OP, (argc, cost, f) in OPS.items():
+        for args in product(calls_copy.items(), repeat=argc):
+            # unpack(transponse) the arrays
+            imm = [arg[0] for arg in args]
+            value = [arg[1][0] for arg in args]
+            count = [arg[1][1] for arg in args]
+            latency = [arg[1][2] for arg in args]
+
+            registered += register(
+                f(*imm),
+                OP.format(*value),
+                sum(count) + cost,
+                max(latency) + cost)
     if registered == 0:
         # No update at all? So terminate
         break
