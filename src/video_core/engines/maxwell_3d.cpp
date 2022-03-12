@@ -407,7 +407,6 @@ void Maxwell3D::FlushMMEInlineDraw() {
     mme_draw.instance_mode = false;
     mme_draw.gl_begin_consume = false;
     mme_draw.gl_end_count = 0;
-    use_topology_override = false;
 }
 
 void Maxwell3D::ProcessMacroUpload(u32 data) {
@@ -571,7 +570,6 @@ void Maxwell3D::DrawArrays() {
     } else {
         regs.vertex_buffer.count = 0;
     }
-    use_topology_override = false;
 }
 
 std::optional<u64> Maxwell3D::GetQueryResult() {
