@@ -38,7 +38,7 @@ if (MSVC)
         /MP
         /Zf
         /Zi
-        /Zm300
+        /Zm200
         /Zo
         /permissive-
         /EHsc
