@@ -998,36 +998,38 @@ void EmulatedController::Connect(bool use_temporary_value) {
         LOG_ERROR(Service_HID, "Controller type {} is not supported", type);
         return;
     }
-    {
-        std::lock_guard lock{mutex};
-        if (is_configuring) {
-            tmp_is_connected = true;
-            TriggerOnChange(ControllerTriggerType::Connected, false);
-            return;
-        }
 
-        if (is_connected) {
-            return;
-        }
-        is_connected = true;
+    std::unique_lock lock{mutex};
+    if (is_configuring) {
+        tmp_is_connected = true;
+        TriggerOnChange(ControllerTriggerType::Connected, false);
+        return;
     }
+
+    if (is_connected) {
+        return;
+    }
+    is_connected = true;
+
+    lock.unlock();
     TriggerOnChange(ControllerTriggerType::Connected, true);
 }
 
 void EmulatedController::Disconnect() {
-    {
-        std::lock_guard lock{mutex};
-        if (is_configuring) {
-            tmp_is_connected = false;
-            TriggerOnChange(ControllerTriggerType::Disconnected, false);
-            return;
-        }
-
-        if (!is_connected) {
-            return;
-        }
-        is_connected = false;
+    std::unique_lock lock{mutex};
+    if (is_configuring) {
+        tmp_is_connected = false;
+        lock.unlock();
+        TriggerOnChange(ControllerTriggerType::Disconnected, false);
+        return;
     }
+
+    if (!is_connected) {
+        return;
+    }
+    is_connected = false;
+
+    lock.unlock();
     TriggerOnChange(ControllerTriggerType::Disconnected, true);
 }
 
@@ -1059,27 +1061,28 @@ NpadStyleIndex EmulatedController::GetNpadStyleIndex(bool get_temporary_value) c
 }
 
 void EmulatedController::SetNpadStyleIndex(NpadStyleIndex npad_type_) {
-    {
-        std::lock_guard lock{mutex};
+    std::unique_lock lock{mutex};
 
-        if (is_configuring) {
-            if (tmp_npad_type == npad_type_) {
-                return;
-            }
-            tmp_npad_type = npad_type_;
-            TriggerOnChange(ControllerTriggerType::Type, false);
+    if (is_configuring) {
+        if (tmp_npad_type == npad_type_) {
             return;
         }
-
-        if (npad_type == npad_type_) {
-            return;
-        }
-        if (is_connected) {
-            LOG_WARNING(Service_HID, "Controller {} type changed while it's connected",
-                        NpadIdTypeToIndex(npad_id_type));
-        }
-        npad_type = npad_type_;
+        tmp_npad_type = npad_type_;
+        lock.unlock();
+        TriggerOnChange(ControllerTriggerType::Type, false);
+        return;
     }
+
+    if (npad_type == npad_type_) {
+        return;
+    }
+    if (is_connected) {
+        LOG_WARNING(Service_HID, "Controller {} type changed while it's connected",
+                    NpadIdTypeToIndex(npad_id_type));
+    }
+    npad_type = npad_type_;
+
+    lock.unlock();
     TriggerOnChange(ControllerTriggerType::Type, true);
 }
 
