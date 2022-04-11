@@ -405,6 +405,9 @@ void KScheduler::EnableScheduling(KernelCore& kernel, u64 cores_needing_scheduli
     } else {
         RescheduleCores(kernel, cores_needing_scheduling);
     }
+
+    // Special case to ensure dummy threads that are waiting block.
+    current_thread->IfDummyThreadTryWait();
 }
 
 u64 KScheduler::UpdateHighestPriorityThreads(KernelCore& kernel) {
@@ -702,7 +705,7 @@ void KScheduler::Unload(KThread* thread) {
         prev_thread = nullptr;
     }
 
-    thread->context_guard.unlock();
+    thread->context_guard.Unlock();
 }
 
 void KScheduler::Reload(KThread* thread) {
@@ -791,13 +794,13 @@ void KScheduler::SwitchToCurrent() {
         do {
             auto next_thread = current_thread.load();
             if (next_thread != nullptr) {
-                const auto locked = next_thread->context_guard.try_lock();
+                const auto locked = next_thread->context_guard.TryLock();
                 if (state.needs_scheduling.load()) {
-                    next_thread->context_guard.unlock();
+                    next_thread->context_guard.Unlock();
                     break;
                 }
                 if (next_thread->GetActiveCore() != core_id) {
-                    next_thread->context_guard.unlock();
+                    next_thread->context_guard.Unlock();
                     break;
                 }
                 if (!locked) {

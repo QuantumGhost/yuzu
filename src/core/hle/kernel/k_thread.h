@@ -15,7 +15,6 @@
 
 #include "common/common_types.h"
 #include "common/intrusive_red_black_tree.h"
-#include "common/spin_lock.h"
 #include "core/arm/arm_interface.h"
 #include "core/hle/kernel/k_affinity_mask.h"
 #include "core/hle/kernel/k_light_lock.h"
@@ -638,6 +637,14 @@ public:
         return condvar_key;
     }
 
+    // Dummy threads (used for HLE host threads) cannot wait based on the guest scheduler, and
+    // therefore will not block on guest kernel synchronization primitives. These methods handle
+    // blocking as needed.
+
+    void IfDummyThreadTryWait();
+    void IfDummyThreadBeginWait();
+    void IfDummyThreadEndWait();
+
 private:
     static constexpr size_t PriorityInheritanceCountMax = 10;
     union SyncObjectBuffer {
@@ -755,7 +762,7 @@ private:
     s8 priority_inheritance_count{};
     bool resource_limit_release_hint{};
     StackParameters stack_parameters{};
-    Common::SpinLock context_guard{};
+    KSpinLock context_guard{};
     KSpinLock dummy_wait_lock{};
 
     // For emulation
