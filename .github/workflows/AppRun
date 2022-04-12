@@ -9,9 +9,9 @@ GITVER=`wget -qO- https://api.github.com/repos/pineappleEA/pineapple-src/release
 APPVER=`cat $APPDIR/version.txt`
 
 if [[ -z "$GITVER" ]]; then
-	$APPDIR/AppRun-patched
+	$APPDIR/AppRun-patched "$@"
 elif [ "$GITVER" = "$APPVER" ]; then
-	$APPDIR/AppRun-patched
+	$APPDIR/AppRun-patched "$@"
 else
-	$APPDIR/update.sh
+	$APPDIR/update.sh "$@"
 fi
