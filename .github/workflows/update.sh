@@ -4,10 +4,10 @@ zenity --question --timeout=10 --title="yuzu updater" --text="New update availab
 answer=$?
 
 if [ "$answer" -eq 0 ]; then 
-	$APPDIR/usr/bin/AppImageUpdate $PWD/yuzu-x86_64.AppImage && $PWD/yuzu-x86_64.AppImage
+	$APPDIR/usr/bin/AppImageUpdate $PWD/yuzu-x86_64.AppImage && $PWD/yuzu-x86_64.AppImage "$@"
 elif [ "$answer" -eq 1 ]; then
-	$APPDIR/AppRun-patched
+	$APPDIR/AppRun-patched "$@"
 elif [ "$answer" -eq 5 ]; then
-	$APPDIR/AppRun-patched
+	$APPDIR/AppRun-patched "$@"
 fi
 exit 0
