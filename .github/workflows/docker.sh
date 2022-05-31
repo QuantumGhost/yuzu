@@ -22,7 +22,7 @@ CACHEDIR=~/.ccache
 ls -al $CACHEDIR
 ###############################################
 # Install SDL
-SDL2VER=2.0.18
+SDL2VER=2.0.22
 #SDL2
 cd $CACHEDIR
 if [[ ! -e SDL2-${SDL2VER} ]]; then
@@ -38,7 +38,8 @@ sdl2-config --version
 cd /yuzu
 ###############################################
 
-pip3 install conan --upgrade 
+pip3 install conan --upgrade --no-cache-dir
+pip3 install wheel
 
 mkdir build && cd build 
 
