@@ -77,10 +77,10 @@ chmod a+x ./squashfs-root/AppRun
 mv /tmp/update/AppImageUpdate $HOME/squashfs-root/usr/bin/
 mv /tmp/update/* $HOME/squashfs-root/usr/lib/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
-	mv yuzu-x86_64.AppImage old.AppImage
-VERSION=pineapple /tmp/mkappimage.AppImage --appimage-extract-and-run $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
+#	mv yuzu-x86_64.AppImage old.AppImage
+#VERSION=pineapple /tmp/mkappimage.AppImage --appimage-extract-and-run $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
 
-mv yuzu-pineapple-x86_64.AppImage yuzu-x86_64.AppImage
+#mv yuzu-pineapple-x86_64.AppImage yuzu-x86_64.AppImage
 mv yuzu-x86_64.AppImage* /yuzu/artifacts
 
 cp -R $HOME/artifacts/ /yuzu/
