@@ -10,8 +10,10 @@ export CXX=${GXX_BINARY}
 cd /tmp
 	curl -sLO "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
 	curl -sLO "https://github.com/$GITHUB_REPOSITORY/raw/$BRANCH/.github/workflows/update.tar.gz"
+	curl -sL https://github.com$(curl https://github.com/probonopd/go-appimage/releases | grep "mkappimage-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2) -o mkappimage.AppImage
 	tar -xzf update.tar.gz
 	chmod a+x linuxdeployqt*.AppImage
+	chmod a+x mkappimage.AppImage
 ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract
 cd $HOME
 mkdir -p squashfs-root/usr/bin
@@ -63,8 +65,9 @@ EOF
 export PATH=$(readlink -f /tmp/squashfs-root/usr/bin/):$PATH
 	mkdir $HOME/squashfs-root/usr/plugins/platformthemes/
 	cp /opt/qt515/plugins/platformthemes/libqgtk3.so $HOME/squashfs-root/usr/plugins/platformthemes/
-/tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root
-mv ./yuzu-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
+	rm $HOME/squashfs-root/usr/lib/libglib-2.0.so.0
+VERSION=pineapple /tmp/mkappimage.AppImage --appimage-extract-and-run $HOME/squashfs-root
+mv ./yuzu-pineapple-x86_64.AppImage /yuzu/artifacts/version/Yuzu-EA-$version.AppImage
 
 # Continuous AppImage
 mv $HOME/squashfs-root/AppRun.wrapped ./squashfs-root/AppRun-patched
@@ -74,7 +77,10 @@ chmod a+x ./squashfs-root/AppRun
 mv /tmp/update/AppImageUpdate $HOME/squashfs-root/usr/bin/
 mv /tmp/update/* $HOME/squashfs-root/usr/lib/
 /tmp/squashfs-root/usr/bin/appimagetool $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
+	mv yuzu-x86_64.AppImage old.AppImage
+VERSION=pineapple /tmp/mkappimage.AppImage --appimage-extract-and-run $HOME/squashfs-root -u "gh-releases-zsync|pineappleEA|pineapple-src|continuous|yuzu-x86_64.AppImage.zsync"
 
+mv yuzu-pineapple-x86_64.AppImage yuzu-x86_64.AppImage
 mv yuzu-x86_64.AppImage* /yuzu/artifacts
 
 cp -R $HOME/artifacts/ /yuzu/
