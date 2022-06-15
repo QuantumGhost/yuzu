@@ -48,17 +48,12 @@ res->status;
 res->body;
 ```
 
-### Try out the examples on Repl.it!
-
-1. Run server at https://repl.it/@yhirose/cpp-httplib-server
-2. Run client at https://repl.it/@yhirose/cpp-httplib-client
-
 SSL Support
 -----------
 
 SSL support is available with `CPPHTTPLIB_OPENSSL_SUPPORT`. `libssl` and `libcrypto` should be linked.
 
-NOTE: cpp-httplib currently supports only version 1.1.1.
+NOTE: cpp-httplib currently supports only version 1.1.1 and 3.0.
 
 ```c++
 #define CPPHTTPLIB_OPENSSL_SUPPORT
@@ -183,6 +178,15 @@ The followings are built-in mappings:
 | webm       | video/webm                  | zip        | application/zip             |
 | mp3        | audio/mp3                   | wasm       | application/wasm            |
 
+### File request handler
+
+```cpp
+// The handler is called right before the response is sent to a client
+svr.set_file_request_handler([](const Request &req, Response &res) {
+  ...
+});
+```
+
 NOTE: These static file server methods are not thread-safe.
 
 ### Logging
@@ -220,7 +224,7 @@ svr.set_exception_handler([](const auto& req, auto& res, std::exception &e) {
 ### Pre routing handler
 
 ```cpp
-svr.set_pre_routing_handler([](const auto& req, auto& res) -> bool {
+svr.set_pre_routing_handler([](const auto& req, auto& res) {
   if (req.path == "/hello") {
     res.set_content("world", "text/html");
     return Server::HandlerResponse::Handled;
@@ -256,6 +260,7 @@ svr.Post("/multipart", [&](const auto& req, auto& res) {
 svr.Post("/content_receiver",
   [&](const Request &req, Response &res, const ContentReader &content_reader) {
     if (req.is_multipart_form_data()) {
+      // NOTE: `content_reader` is blocking until every form data field is read
       MultipartFormDataItems files;
       content_reader(
         [&](const MultipartFormData &file) {
@@ -272,7 +277,6 @@ svr.Post("/content_receiver",
         body.append(data, data_length);
         return true;
       });
-      res.set_content(body, "text/plain");
     }
   });
 ```
@@ -303,7 +307,7 @@ Without content length:
 svr.Get("/stream", [&](const Request &req, Response &res) {
   res.set_content_provider(
     "text/plain", // Content type
-    [&](size_t offset, size_t length, DataSink &sink) {
+    [&](size_t offset, DataSink &sink) {
       if (/* there is still data */) {
         std::vector<char> data;
         // prepare data...
@@ -746,13 +750,29 @@ res = cli.Get("/resource/foo", {{"Accept-Encoding", "gzip, deflate, br"}});
 res->body; // Compressed data
 ```
 
+Use `poll` instead of `select`
+------------------------------
+
+`select` system call is used as default since it's more widely supported. If you want to let cpp-httplib use `poll` instead, you can do so with `CPPHTTPLIB_USE_POLL`.
+
+
 Split httplib.h into .h and .cc
 -------------------------------
 
-```bash
-> python3 split.py
-> ls out
-httplib.h  httplib.cc
+```console
+$ ./split.py -h
+usage: split.py [-h] [-e EXTENSION] [-o OUT]
+
+This script splits httplib.h into .h and .cc parts.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -e EXTENSION, --extension EXTENSION
+                        extension of the implementation file (default: cc)
+  -o OUT, --out OUT     where to write the files (default: out)
+
+$ ./split.py
+Wrote out/httplib.h and out/httplib.cc
 ```
 
 NOTE
@@ -776,6 +796,8 @@ Include `httplib.h` before `Windows.h` or include `Windows.h` by defining `WIN32
 #include <Windows.h>
 #include <httplib.h>
 ```
+
+Note: cpp-httplib officially supports only the latest Visual Studio. It might work with former versions of Visual Studio, but I can no longer verify it. Pull requests are always welcome for the older versions of Visual Studio unless they break the C++11 conformance.
 
 Note: Windows 8 or lower and Cygwin on Windows are not supported.
 
