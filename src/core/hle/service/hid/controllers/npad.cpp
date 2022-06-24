@@ -55,13 +55,13 @@ ResultCode Controller_NPad::IsDeviceHandleValid(
     const bool npad_type = device_handle.npad_type < Core::HID::NpadStyleIndex::MaxNpadType;
     const bool device_index = device_handle.device_index < Core::HID::DeviceIndex::MaxDeviceIndex;
 
-    if (npad_type) {
+    if (!npad_type) {
         return VibrationInvalidStyleIndex;
     }
-    if (npad_id) {
+    if (!npad_id) {
         return VibrationInvalidNpadId;
     }
-    if (device_index) {
+    if (!device_index) {
         return VibrationDeviceIndexOutOfRange;
     }
 
