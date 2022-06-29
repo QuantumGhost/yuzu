@@ -1,6 +1,6 @@
 #!/bin/bash
 
-directory=${APPIMAGE%$ARGV0}
+directory=${APPIMAGE%${ARGV0/*\//}}
 
 if [ -w $directory ] ; then
 	zenity --question --timeout=10 --title="yuzu updater" --text="New update available. Update now?" --icon-name=yuzu --window-icon=yuzu.svg --height=80 --width=400
