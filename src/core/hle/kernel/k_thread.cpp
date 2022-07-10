@@ -258,7 +258,18 @@ Result KThread::InitializeThread(KThread* thread, KThreadFunction func, uintptr_
 }
 
 Result KThread::InitializeDummyThread(KThread* thread) {
-    return thread->Initialize({}, {}, {}, DummyThreadPriority, 3, {}, ThreadType::Dummy);
+    // Initialize the thread.
+    R_TRY(thread->Initialize({}, {}, {}, DummyThreadPriority, 3, {}, ThreadType::Dummy));
+
+    // Initialize emulation parameters.
+    thread->stack_parameters.disable_count = 0;
+
+    return ResultSuccess;
+}
+
+Result KThread::InitializeMainThread(Core::System& system, KThread* thread, s32 virt_core) {
+    return InitializeThread(thread, {}, {}, {}, IdleThreadPriority, virt_core, {}, ThreadType::Main,
+                            system.GetCpuManager().GetGuestActivateFunc());
 }
 
 Result KThread::InitializeIdleThread(Core::System& system, KThread* thread, s32 virt_core) {
@@ -277,7 +288,7 @@ Result KThread::InitializeUserThread(Core::System& system, KThread* thread, KThr
                                      KProcess* owner) {
     system.Kernel().GlobalSchedulerContext().AddThread(thread);
     return InitializeThread(thread, func, arg, user_stack_top, prio, virt_core, owner,
-                            ThreadType::User, system.GetCpuManager().GetGuestThreadStartFunc());
+                            ThreadType::User, system.GetCpuManager().GetGuestThreadFunc());
 }
 
 void KThread::PostDestroy(uintptr_t arg) {
@@ -308,14 +319,20 @@ void KThread::Finalize() {
 
         auto it = waiter_list.begin();
         while (it != waiter_list.end()) {
-            // Clear the lock owner
-            it->SetLockOwner(nullptr);
+            // Get the thread.
+            KThread* const waiter = std::addressof(*it);
+
+            // The thread shouldn't be a kernel waiter.
+            ASSERT(!IsKernelAddressKey(waiter->GetAddressKey()));
+
+            // Clear the lock owner.
+            waiter->SetLockOwner(nullptr);
 
             // Erase the waiter from our list.
             it = waiter_list.erase(it);
 
             // Cancel the thread's wait.
-            it->CancelWait(ResultInvalidState, true);
+            waiter->CancelWait(ResultInvalidState, true);
         }
     }
 
@@ -1052,6 +1069,8 @@ void KThread::Exit() {
         // Register the thread as a work task.
         KWorkerTaskManager::AddTask(kernel, KWorkerTaskManager::WorkerType::Exit, this);
     }
+
+    UNREACHABLE_MSG("KThread::Exit() would return");
 }
 
 Result KThread::Sleep(s64 timeout) {
@@ -1188,11 +1207,6 @@ s32 GetCurrentCoreId(KernelCore& kernel) {
 KScopedDisableDispatch::~KScopedDisableDispatch() {
     // If we are shutting down the kernel, none of this is relevant anymore.
     if (kernel.IsShuttingDown()) {
-        return;
-    }
-
-    // Skip the reschedule if single-core, as dispatch tracking is disabled here.
-    if (!Settings::values.use_multi_core.GetValue()) {
         return;
     }
 
