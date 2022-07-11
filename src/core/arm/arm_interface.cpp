@@ -155,10 +155,9 @@ void ARM_Interface::Run() {
             break;
         }
 
-        // Handle syscalls and scheduling (this may change the current thread/core)
+        // Handle syscalls and scheduling (this may change the current thread)
         if (Has(hr, svc_call)) {
             Kernel::Svc::Call(system, GetSvcNumber());
-            break;
         }
         if (Has(hr, break_loop) || !uses_wall_clock) {
             break;

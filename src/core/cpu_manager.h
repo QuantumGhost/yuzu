@@ -50,10 +50,7 @@ public:
     void Initialize();
     void Shutdown();
 
-    std::function<void()> GetGuestActivateFunc() {
-        return [this] { GuestActivate(); };
-    }
-    std::function<void()> GetGuestThreadFunc() {
+    std::function<void()> GetGuestThreadStartFunc() {
         return [this] { GuestThreadFunction(); };
     }
     std::function<void()> GetIdleThreadStartFunc() {
@@ -71,19 +68,20 @@ public:
 
 private:
     void GuestThreadFunction();
+    void GuestRewindFunction();
     void IdleThreadFunction();
     void ShutdownThreadFunction();
 
     void MultiCoreRunGuestThread();
+    void MultiCoreRunGuestLoop();
     void MultiCoreRunIdleThread();
 
     void SingleCoreRunGuestThread();
+    void SingleCoreRunGuestLoop();
     void SingleCoreRunIdleThread();
 
     static void ThreadStart(std::stop_token stop_token, CpuManager& cpu_manager, std::size_t core);
 
-    void GuestActivate();
-    void HandleInterrupt();
     void ShutdownThread();
     void RunThread(std::size_t core);
 
