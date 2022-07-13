@@ -499,6 +499,7 @@ CubebSink::CubebSink(std::string_view target_device_name) {
         }
     }
 
+    // TODO: Implement upmixing, not all games will provide 6 channel audio.
     cubeb_get_max_channel_count(ctx, &device_channels);
     device_channels = std::clamp(device_channels, 2U, 6U);
 }
