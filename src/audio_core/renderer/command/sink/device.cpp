@@ -24,16 +24,7 @@ void DeviceSinkCommand::Process(const ADSP::CommandListProcessor& processor) {
     constexpr s32 max = std::numeric_limits<s16>::max();
 
     auto stream{processor.GetOutputSinkStream()};
-    const auto num_out_channels{stream->GetDeviceChannels()};
-
-    auto system_channels{6U};
-    for (u32 i = 0; i < inputs.size(); i++) {
-        if (inputs[i] == 0) {
-            system_channels = i;
-            break;
-        }
-    }
-    const auto num_in_channels{std::min(system_channels, stream->GetDeviceChannels())};
+    stream->SetSystemChannels(input_count);
 
     Sink::SinkBuffer out_buffer{
         .frames{TargetSampleCount},
@@ -42,13 +33,13 @@ void DeviceSinkCommand::Process(const ADSP::CommandListProcessor& processor) {
         .consumed{false},
     };
 
-    std::vector<s16> samples(out_buffer.frames * num_out_channels, 0);
+    std::vector<s16> samples(out_buffer.frames * input_count);
 
-    for (u32 channel = 0; channel < num_in_channels; channel++) {
+    for (u32 channel = 0; channel < input_count; channel++) {
         const auto offset{inputs[channel] * out_buffer.frames};
 
         for (u32 index = 0; index < out_buffer.frames; index++) {
-            samples[index * num_out_channels + channel] =
+            samples[index * input_count + channel] =
                 static_cast<s16>(std::clamp(sample_buffer[offset + index], min, max));
         }
     }
