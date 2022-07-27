@@ -1513,5 +1513,4 @@ AVCodec ff_flac_encoder = {
                                                      AV_SAMPLE_FMT_S32,
                                                      AV_SAMPLE_FMT_NONE },
     .priv_class     = &flac_encoder_class,
-    .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };

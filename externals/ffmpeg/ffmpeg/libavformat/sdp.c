@@ -704,8 +704,6 @@ static char *sdp_write_media_attributes(char *buff, int size, AVStream *st, int 
         case AV_CODEC_ID_SPEEX:
             av_strlcatf(buff, size, "a=rtpmap:%d speex/%d\r\n",
                                      payload_type, p->sample_rate);
-#if FF_API_LAVF_AVCTX
-FF_DISABLE_DEPRECATION_WARNINGS
             if (st->codec) {
                 const char *mode;
                 uint64_t vad_option;
@@ -720,8 +718,6 @@ FF_DISABLE_DEPRECATION_WARNINGS
                 av_strlcatf(buff, size, "a=fmtp:%d vbr=%s\r\n",
                                         payload_type, mode);
             }
-FF_ENABLE_DEPRECATION_WARNINGS
-#endif
             break;
         case AV_CODEC_ID_OPUS:
             /* The opus RTP draft says that all opus streams MUST be declared

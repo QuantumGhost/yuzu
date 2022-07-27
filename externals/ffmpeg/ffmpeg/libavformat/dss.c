@@ -219,6 +219,7 @@ static int dss_sp_read_packet(AVFormatContext *s, AVPacket *pkt)
     } else
         read_size = DSS_FRAME_SIZE;
 
+    ctx->counter -= read_size;
     ctx->packet_size = DSS_FRAME_SIZE - 1;
 
     ret = av_new_packet(pkt, DSS_FRAME_SIZE);
@@ -230,16 +231,17 @@ static int dss_sp_read_packet(AVFormatContext *s, AVPacket *pkt)
     pkt->stream_index = 0;
     s->bit_rate = 8LL * ctx->packet_size * st->codecpar->sample_rate * 512 / (506 * pkt->duration);
 
-    if (ctx->counter < read_size) {
-        ret = avio_read(s->pb, ctx->dss_sp_buf + buff_offset,
-                        ctx->counter);
-        if (ret < ctx->counter)
+    if (ctx->counter < 0) {
+        int size2 = ctx->counter + read_size;
+
+        ret = avio_read(s->pb, ctx->dss_sp_buf + offset + buff_offset,
+                        size2 - offset);
+        if (ret < size2 - offset)
             goto error_eof;
 
-        offset = ctx->counter;
         dss_skip_audio_header(s, pkt);
+        offset = size2;
     }
-    ctx->counter -= read_size;
 
     ret = avio_read(s->pb, ctx->dss_sp_buf + offset + buff_offset,
                     read_size - offset);
@@ -276,7 +278,7 @@ static int dss_723_1_read_packet(AVFormatContext *s, AVPacket *pkt)
     size = frame_size[byte & 3];
 
     ctx->packet_size = size;
-    ctx->counter--;
+    ctx->counter -= size;
 
     ret = av_new_packet(pkt, size);
     if (ret < 0)
@@ -286,26 +288,27 @@ static int dss_723_1_read_packet(AVFormatContext *s, AVPacket *pkt)
     pkt->data[0]  = byte;
     offset        = 1;
     pkt->duration = 240;
-    s->bit_rate = 8LL * size-- * st->codecpar->sample_rate * 512 / (506 * pkt->duration);
+    s->bit_rate = 8LL * size * st->codecpar->sample_rate * 512 / (506 * pkt->duration);
 
     pkt->stream_index = 0;
 
-    if (ctx->counter < size) {
+    if (ctx->counter < 0) {
+        int size2 = ctx->counter + size;
+
         ret = avio_read(s->pb, pkt->data + offset,
-                        ctx->counter);
-        if (ret < ctx->counter)
+                        size2 - offset);
+        if (ret < size2 - offset) {
             return ret < 0 ? ret : AVERROR_EOF;
+        }
 
-        offset += ctx->counter;
-        size   -= ctx->counter;
-        ctx->counter = 0;
         dss_skip_audio_header(s, pkt);
+        offset = size2;
     }
-    ctx->counter -= size;
 
-    ret = avio_read(s->pb, pkt->data + offset, size);
-    if (ret < size)
+    ret = avio_read(s->pb, pkt->data + offset, size - offset);
+    if (ret < size - offset) {
         return ret < 0 ? ret : AVERROR_EOF;
+    }
 
     return pkt->size;
 }
