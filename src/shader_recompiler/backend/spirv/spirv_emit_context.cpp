@@ -1308,7 +1308,7 @@ void EmitContext::DefineInputs(const IR::Program& program) {
     }
     if (info.uses_subgroup_invocation_id || info.uses_subgroup_shuffles ||
         (profile.warp_size_potentially_larger_than_guest &&
-         (info.uses_subgroup_vote || info.uses_subgroup_mask))) {
+         (info.uses_subgroup_vote || info.uses_subgroup_mask || info.uses_fswzadd))) {
         subgroup_local_invocation_id =
             DefineInput(*this, U32[1], false, spv::BuiltIn::SubgroupLocalInvocationId);
     }
@@ -1411,7 +1411,8 @@ void EmitContext::DefineInputs(const IR::Program& program) {
 void EmitContext::DefineOutputs(const IR::Program& program) {
     const Info& info{program.info};
     const std::optional<u32> invocations{program.invocations};
-    if (info.stores.AnyComponent(IR::Attribute::PositionX) || stage == Stage::VertexB) {
+    if (runtime_info.convert_depth_mode || info.stores.AnyComponent(IR::Attribute::PositionX) ||
+        stage == Stage::VertexB) {
         output_position = DefineOutput(*this, F32[4], invocations, spv::BuiltIn::Position);
     }
     if (info.stores[IR::Attribute::PointSize] || runtime_info.fixed_state_point_size) {
