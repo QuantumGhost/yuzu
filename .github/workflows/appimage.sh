@@ -10,7 +10,7 @@ export CXX=${GXX_BINARY}
 cd /tmp
 	curl -sLO "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
 	curl -sLO "https://github.com/$GITHUB_REPOSITORY/raw/$BRANCH/.github/workflows/update.tar.gz"
-	curl -sL "https://github.com/probonopd/go-appimage/releases/download/continuous/mkappimage-722-x86_64.AppImage" -o mkappimage.AppImage
+	curl -sL "https://github.com/probonopd/go-appimage/releases/download/continuous/mkappimage-724-x86_64.AppImage" -o mkappimage.AppImage
 	tar -xzf update.tar.gz
 	chmod a+x linuxdeployqt*.AppImage
 	chmod a+x mkappimage.AppImage
