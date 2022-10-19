@@ -40,9 +40,7 @@ struct CoreTiming::Event {
 CoreTiming::CoreTiming()
     : clock{Common::CreateBestMatchingClock(Hardware::BASE_CLOCK_RATE, Hardware::CNTFREQ)} {}
 
-CoreTiming::~CoreTiming() {
-    Reset();
-}
+CoreTiming::~CoreTiming() = default;
 
 void CoreTiming::ThreadEntry(CoreTiming& instance) {
     constexpr char name[] = "HostTiming";
@@ -55,7 +53,6 @@ void CoreTiming::ThreadEntry(CoreTiming& instance) {
 }
 
 void CoreTiming::Initialize(std::function<void()>&& on_thread_init_) {
-    Reset();
     on_thread_init = std::move(on_thread_init_);
     event_fifo_id = 0;
     shutting_down = false;
@@ -68,8 +65,17 @@ void CoreTiming::Initialize(std::function<void()>&& on_thread_init_) {
     }
 }
 
-void CoreTiming::ClearPendingEvents() {
-    event_queue.clear();
+void CoreTiming::Shutdown() {
+    paused = true;
+    shutting_down = true;
+    pause_event.Set();
+    event.Set();
+    if (timer_thread) {
+        timer_thread->join();
+    }
+    ClearPendingEvents();
+    timer_thread.reset();
+    has_started = false;
 }
 
 void CoreTiming::Pause(bool is_paused) {
@@ -190,6 +196,10 @@ u64 CoreTiming::GetClockTicks() const {
     return CpuCyclesToClockCycles(ticks);
 }
 
+void CoreTiming::ClearPendingEvents() {
+    event_queue.clear();
+}
+
 void CoreTiming::RemoveEvent(const std::shared_ptr<EventType>& event_type) {
     std::scoped_lock lock{basic_lock};
 
@@ -295,18 +305,6 @@ void CoreTiming::ThreadLoop() {
         pause_event.Wait();
         clock->Pause(false);
     }
-}
-
-void CoreTiming::Reset() {
-    paused = true;
-    shutting_down = true;
-    pause_event.Set();
-    event.Set();
-    if (timer_thread) {
-        timer_thread->join();
-    }
-    timer_thread.reset();
-    has_started = false;
 }
 
 std::chrono::nanoseconds CoreTiming::GetGlobalTimeNs() const {

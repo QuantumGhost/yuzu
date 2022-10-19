@@ -294,7 +294,6 @@ GMainWindow::GMainWindow(std::unique_ptr<Config> config_, bool has_broken_vulkan
 #ifdef __linux__
     SetupSigInterrupts();
 #endif
-    system->Initialize();
 
     Common::Log::Initialize();
     LoadTranslation();

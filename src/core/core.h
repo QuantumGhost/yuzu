@@ -143,12 +143,6 @@ public:
     System& operator=(System&&) = delete;
 
     /**
-     * Initializes the system
-     * This function will initialize core functionaility used for system emulation
-     */
-    void Initialize();
-
-    /**
      * Run the OS and Application
      * This function will start emulation and run the relevant devices
      */
@@ -172,8 +166,8 @@ public:
 
     void InvalidateCpuInstructionCacheRange(VAddr addr, std::size_t size);
 
-    /// Shutdown the main emulated process.
-    void ShutdownMainProcess();
+    /// Shutdown the emulated system.
+    void Shutdown();
 
     /// Check if the core is shutting down.
     [[nodiscard]] bool IsShuttingDown() const;

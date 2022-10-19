@@ -14,13 +14,8 @@ namespace Kernel::Svc {
 
 using namespace Common::Literals;
 
-enum {
-    HandleWaitMask = (1u << 30),
-};
-
-constexpr inline s32 ArgumentHandleCountMax = 0x40;
-
-constexpr inline s64 WaitInfinite = -1;
+constexpr s32 ArgumentHandleCountMax = 0x40;
+constexpr u32 HandleWaitMask{1u << 30};
 
 constexpr inline std::size_t HeapSizeAlignment = 2_MiB;
 

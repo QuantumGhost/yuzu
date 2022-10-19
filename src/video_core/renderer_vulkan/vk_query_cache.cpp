@@ -59,11 +59,10 @@ void QueryPool::Reserve(std::pair<VkQueryPool, u32> query) {
         std::find_if(pools.begin(), pools.end(), [query_pool = query.first](vk::QueryPool& pool) {
             return query_pool == *pool;
         });
+    ASSERT(it != std::end(pools));
 
-    if (it != std::end(pools)) {
-        const std::ptrdiff_t pool_index = std::distance(std::begin(pools), it);
-        usage[pool_index * GROW_STEP + static_cast<std::ptrdiff_t>(query.second)] = false;
-    }
+    const std::ptrdiff_t pool_index = std::distance(std::begin(pools), it);
+    usage[pool_index * GROW_STEP + static_cast<std::ptrdiff_t>(query.second)] = false;
 }
 
 QueryCache::QueryCache(VideoCore::RasterizerInterface& rasterizer_, const Device& device_,

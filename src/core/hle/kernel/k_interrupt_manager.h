@@ -11,8 +11,6 @@ class KernelCore;
 
 namespace KInterruptManager {
 void HandleInterrupt(KernelCore& kernel, s32 core_id);
-void SendInterProcessorInterrupt(KernelCore& kernel, u64 core_mask);
-
-} // namespace KInterruptManager
+}
 
 } // namespace Kernel

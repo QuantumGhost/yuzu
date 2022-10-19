@@ -72,8 +72,7 @@ Result KProcess::Initialize(KProcess* process, Core::System& system, std::string
 
     process->name = std::move(process_name);
     process->resource_limit = res_limit;
-    process->system_resource_address = 0;
-    process->state = State::Created;
+    process->status = ProcessStatus::Created;
     process->program_id = 0;
     process->process_id = type == ProcessType::KernelInternal ? kernel.CreateNewKernelProcessID()
                                                               : kernel.CreateNewUserProcessID();
@@ -93,12 +92,11 @@ Result KProcess::Initialize(KProcess* process, Core::System& system, std::string
     process->exception_thread = nullptr;
     process->is_suspended = false;
     process->schedule_count = 0;
-    process->is_handle_table_initialized = false;
 
     // Open a reference to the resource limit.
     process->resource_limit->Open();
 
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 void KProcess::DoWorkerTaskImpl() {
@@ -123,9 +121,9 @@ void KProcess::DecrementRunningThreadCount() {
     }
 }
 
-u64 KProcess::GetTotalPhysicalMemoryAvailable() {
+u64 KProcess::GetTotalPhysicalMemoryAvailable() const {
     const u64 capacity{resource_limit->GetFreeValue(LimitableResource::PhysicalMemory) +
-                       page_table.GetNormalMemorySize() + GetSystemResourceSize() + image_size +
+                       page_table->GetNormalMemorySize() + GetSystemResourceSize() + image_size +
                        main_thread_stack_size};
     if (const auto pool_size = kernel.MemoryManager().GetSize(KMemoryManager::Pool::Application);
         capacity != pool_size) {
@@ -137,16 +135,16 @@ u64 KProcess::GetTotalPhysicalMemoryAvailable() {
     return memory_usage_capacity;
 }
 
-u64 KProcess::GetTotalPhysicalMemoryAvailableWithoutSystemResource() {
+u64 KProcess::GetTotalPhysicalMemoryAvailableWithoutSystemResource() const {
     return GetTotalPhysicalMemoryAvailable() - GetSystemResourceSize();
 }
 
-u64 KProcess::GetTotalPhysicalMemoryUsed() {
-    return image_size + main_thread_stack_size + page_table.GetNormalMemorySize() +
+u64 KProcess::GetTotalPhysicalMemoryUsed() const {
+    return image_size + main_thread_stack_size + page_table->GetNormalMemorySize() +
            GetSystemResourceSize();
 }
 
-u64 KProcess::GetTotalPhysicalMemoryUsedWithoutSystemResource() {
+u64 KProcess::GetTotalPhysicalMemoryUsedWithoutSystemResource() const {
     return GetTotalPhysicalMemoryUsed() - GetSystemResourceUsage();
 }
 
@@ -246,7 +244,7 @@ Result KProcess::AddSharedMemory(KSharedMemory* shmem, [[maybe_unused]] VAddr ad
     shmem->Open();
     shemen_info->Open();
 
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 void KProcess::RemoveSharedMemory(KSharedMemory* shmem, [[maybe_unused]] VAddr address,
@@ -291,12 +289,12 @@ Result KProcess::Reset() {
     KScopedSchedulerLock sl{kernel};
 
     // Validate that we're in a state that we can reset.
-    R_UNLESS(state != State::Terminated, ResultInvalidState);
+    R_UNLESS(status != ProcessStatus::Exited, ResultInvalidState);
     R_UNLESS(is_signaled, ResultInvalidState);
 
     // Clear signaled.
     is_signaled = false;
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 Result KProcess::SetActivity(ProcessActivity activity) {
@@ -306,13 +304,15 @@ Result KProcess::SetActivity(ProcessActivity activity) {
     KScopedSchedulerLock sl{kernel};
 
     // Validate our state.
-    R_UNLESS(state != State::Terminating, ResultInvalidState);
-    R_UNLESS(state != State::Terminated, ResultInvalidState);
+    R_UNLESS(status != ProcessStatus::Exiting, ResultInvalidState);
+    R_UNLESS(status != ProcessStatus::Exited, ResultInvalidState);
 
     // Either pause or resume.
     if (activity == ProcessActivity::Paused) {
         // Verify that we're not suspended.
-        R_UNLESS(!is_suspended, ResultInvalidState);
+        if (is_suspended) {
+            return ResultInvalidState;
+        }
 
         // Suspend all threads.
         for (auto* thread : GetThreadList()) {
@@ -325,7 +325,9 @@ Result KProcess::SetActivity(ProcessActivity activity) {
         ASSERT(activity == ProcessActivity::Runnable);
 
         // Verify that we're suspended.
-        R_UNLESS(is_suspended, ResultInvalidState);
+        if (!is_suspended) {
+            return ResultInvalidState;
+        }
 
         // Resume all threads.
         for (auto* thread : GetThreadList()) {
@@ -336,7 +338,7 @@ Result KProcess::SetActivity(ProcessActivity activity) {
         SetSuspended(false);
     }
 
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 Result KProcess::LoadFromMetadata(const FileSys::ProgramMetadata& metadata, std::size_t code_size) {
@@ -346,38 +348,35 @@ Result KProcess::LoadFromMetadata(const FileSys::ProgramMetadata& metadata, std:
     system_resource_size = metadata.GetSystemResourceSize();
     image_size = code_size;
 
-    // We currently do not support process-specific system resource
-    UNIMPLEMENTED_IF(system_resource_size != 0);
-
     KScopedResourceReservation memory_reservation(resource_limit, LimitableResource::PhysicalMemory,
                                                   code_size + system_resource_size);
     if (!memory_reservation.Succeeded()) {
         LOG_ERROR(Kernel, "Could not reserve process memory requirements of size {:X} bytes",
                   code_size + system_resource_size);
-        R_RETURN(ResultLimitReached);
+        return ResultLimitReached;
     }
     // Initialize proces address space
-    if (const Result result{page_table.InitializeForProcess(
-            metadata.GetAddressSpaceType(), false, 0x8000000, code_size,
-            &kernel.GetApplicationMemoryBlockManager(), KMemoryManager::Pool::Application)};
+    if (const Result result{page_table->InitializeForProcess(metadata.GetAddressSpaceType(), false,
+                                                             0x8000000, code_size,
+                                                             KMemoryManager::Pool::Application)};
         result.IsError()) {
-        R_RETURN(result);
+        return result;
     }
 
     // Map process code region
-    if (const Result result{page_table.MapProcessCode(page_table.GetCodeRegionStart(),
-                                                      code_size / PageSize, KMemoryState::Code,
-                                                      KMemoryPermission::None)};
+    if (const Result result{page_table->MapProcessCode(page_table->GetCodeRegionStart(),
+                                                       code_size / PageSize, KMemoryState::Code,
+                                                       KMemoryPermission::None)};
         result.IsError()) {
-        R_RETURN(result);
+        return result;
     }
 
     // Initialize process capabilities
     const auto& caps{metadata.GetKernelCapabilities()};
     if (const Result result{
-            capabilities.InitializeForUserProcess(caps.data(), caps.size(), page_table)};
+            capabilities.InitializeForUserProcess(caps.data(), caps.size(), *page_table)};
         result.IsError()) {
-        R_RETURN(result);
+        return result;
     }
 
     // Set memory usage capacity
@@ -385,12 +384,12 @@ Result KProcess::LoadFromMetadata(const FileSys::ProgramMetadata& metadata, std:
     case FileSys::ProgramAddressSpaceType::Is32Bit:
     case FileSys::ProgramAddressSpaceType::Is36Bit:
     case FileSys::ProgramAddressSpaceType::Is39Bit:
-        memory_usage_capacity = page_table.GetHeapRegionEnd() - page_table.GetHeapRegionStart();
+        memory_usage_capacity = page_table->GetHeapRegionEnd() - page_table->GetHeapRegionStart();
         break;
 
     case FileSys::ProgramAddressSpaceType::Is32BitNoMap:
-        memory_usage_capacity = page_table.GetHeapRegionEnd() - page_table.GetHeapRegionStart() +
-                                page_table.GetAliasRegionEnd() - page_table.GetAliasRegionStart();
+        memory_usage_capacity = page_table->GetHeapRegionEnd() - page_table->GetHeapRegionStart() +
+                                page_table->GetAliasRegionEnd() - page_table->GetAliasRegionStart();
         break;
 
     default:
@@ -398,10 +397,10 @@ Result KProcess::LoadFromMetadata(const FileSys::ProgramMetadata& metadata, std:
     }
 
     // Create TLS region
-    R_TRY(this->CreateThreadLocalRegion(std::addressof(plr_address)));
+    R_TRY(this->CreateThreadLocalRegion(std::addressof(tls_region_address)));
     memory_reservation.Commit();
 
-    R_RETURN(handle_table.Initialize(capabilities.GetHandleTableSize()));
+    return handle_table.Initialize(capabilities.GetHandleTableSize());
 }
 
 void KProcess::Run(s32 main_thread_priority, u64 stack_size) {
@@ -410,15 +409,15 @@ void KProcess::Run(s32 main_thread_priority, u64 stack_size) {
     resource_limit->Reserve(LimitableResource::PhysicalMemory, main_thread_stack_size);
 
     const std::size_t heap_capacity{memory_usage_capacity - (main_thread_stack_size + image_size)};
-    ASSERT(!page_table.SetMaxHeapSize(heap_capacity).IsError());
+    ASSERT(!page_table->SetMaxHeapSize(heap_capacity).IsError());
 
-    ChangeState(State::Running);
+    ChangeStatus(ProcessStatus::Running);
 
     SetupMainThread(kernel.System(), *this, main_thread_priority, main_thread_stack_top);
 }
 
 void KProcess::PrepareForTermination() {
-    ChangeState(State::Terminating);
+    ChangeStatus(ProcessStatus::Exiting);
 
     const auto stop_threads = [this](const std::vector<KThread*>& in_thread_list) {
         for (auto* thread : in_thread_list) {
@@ -438,15 +437,15 @@ void KProcess::PrepareForTermination() {
 
     stop_threads(kernel.System().GlobalSchedulerContext().GetThreadList());
 
-    this->DeleteThreadLocalRegion(plr_address);
-    plr_address = 0;
+    this->DeleteThreadLocalRegion(tls_region_address);
+    tls_region_address = 0;
 
     if (resource_limit) {
         resource_limit->Release(LimitableResource::PhysicalMemory,
                                 main_thread_stack_size + image_size);
     }
 
-    ChangeState(State::Terminated);
+    ChangeStatus(ProcessStatus::Exited);
 }
 
 void KProcess::Finalize() {
@@ -475,7 +474,7 @@ void KProcess::Finalize() {
     }
 
     // Finalize the page table.
-    page_table.Finalize();
+    page_table.reset();
 
     // Perform inherited finalization.
     KAutoObjectWithSlabHeapAndContainer<KProcess, KWorkerTask>::Finalize();
@@ -500,7 +499,7 @@ Result KProcess::CreateThreadLocalRegion(VAddr* out) {
             }
 
             *out = tlr;
-            R_SUCCEED();
+            return ResultSuccess;
         }
     }
 
@@ -529,7 +528,7 @@ Result KProcess::CreateThreadLocalRegion(VAddr* out) {
     // We succeeded!
     tlp_guard.Cancel();
     *out = tlr;
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 Result KProcess::DeleteThreadLocalRegion(VAddr addr) {
@@ -577,7 +576,7 @@ Result KProcess::DeleteThreadLocalRegion(VAddr addr) {
         KThreadLocalPage::Free(kernel, page_to_free);
     }
 
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 bool KProcess::InsertWatchpoint(Core::System& system, VAddr addr, u64 size,
@@ -629,7 +628,7 @@ bool KProcess::RemoveWatchpoint(Core::System& system, VAddr addr, u64 size,
 void KProcess::LoadModule(CodeSet code_set, VAddr base_addr) {
     const auto ReprotectSegment = [&](const CodeSet::Segment& segment,
                                       Svc::MemoryPermission permission) {
-        page_table.SetProcessMemoryPermission(segment.addr + base_addr, segment.size, permission);
+        page_table->SetProcessMemoryPermission(segment.addr + base_addr, segment.size, permission);
     };
 
     kernel.System().Memory().WriteBlock(*this, base_addr, code_set.memory.data(),
@@ -646,18 +645,19 @@ bool KProcess::IsSignaled() const {
 }
 
 KProcess::KProcess(KernelCore& kernel_)
-    : KAutoObjectWithSlabHeapAndContainer{kernel_}, page_table{kernel_.System()},
+    : KAutoObjectWithSlabHeapAndContainer{kernel_}, page_table{std::make_unique<KPageTable>(
+                                                        kernel_.System())},
       handle_table{kernel_}, address_arbiter{kernel_.System()}, condition_var{kernel_.System()},
       state_lock{kernel_}, list_lock{kernel_} {}
 
 KProcess::~KProcess() = default;
 
-void KProcess::ChangeState(State new_state) {
-    if (state == new_state) {
+void KProcess::ChangeStatus(ProcessStatus new_status) {
+    if (status == new_status) {
         return;
     }
 
-    state = new_state;
+    status = new_status;
     is_signaled = true;
     NotifyAvailable();
 }
@@ -668,17 +668,17 @@ Result KProcess::AllocateMainThreadStack(std::size_t stack_size) {
     // The kernel always ensures that the given stack size is page aligned.
     main_thread_stack_size = Common::AlignUp(stack_size, PageSize);
 
-    const VAddr start{page_table.GetStackRegionStart()};
-    const std::size_t size{page_table.GetStackRegionEnd() - start};
+    const VAddr start{page_table->GetStackRegionStart()};
+    const std::size_t size{page_table->GetStackRegionEnd() - start};
 
     CASCADE_RESULT(main_thread_stack_top,
-                   page_table.AllocateAndMapMemory(
+                   page_table->AllocateAndMapMemory(
                        main_thread_stack_size / PageSize, PageSize, false, start, size / PageSize,
                        KMemoryState::Stack, KMemoryPermission::UserReadWrite));
 
     main_thread_stack_top += main_thread_stack_size;
 
-    R_SUCCEED();
+    return ResultSuccess;
 }
 
 } // namespace Kernel

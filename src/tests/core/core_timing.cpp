@@ -40,6 +40,9 @@ struct ScopeInit final {
         core_timing.SetMulticore(true);
         core_timing.Initialize([]() {});
     }
+    ~ScopeInit() {
+        core_timing.Shutdown();
+    }
 
     Core::Timing::CoreTiming core_timing;
 };
