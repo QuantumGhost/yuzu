@@ -67,10 +67,6 @@ elseif(NOT "$ENV{VCPKG_TOOLCHAIN_FILE}" STREQUAL "")
 endif()
 
 if (YUZU_USE_PRECOMPILED_HEADERS)
-    if (MINGW)
-        message(WARNING "MINGW has compilation errors with Precompiled Headers. Disabling PCH")
-        set(YUZU_USE_PRECOMPILED_HEADERS OFF)
-    endif()
     if (MSVC AND CCACHE)
         # buildcache does not properly cache PCH files, leading to compilation errors.
         # See https://github.com/mbitsnbites/buildcache/discussions/230
