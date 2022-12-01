@@ -334,11 +334,11 @@ void ConvertLegacyToGeneric(IR::Program& program, const Shader::RuntimeInfo& run
     }
 }
 
-IR::Program GenerateLayerPassthrough(ObjectPool<IR::Inst>& inst_pool,
-                                     ObjectPool<IR::Block>& block_pool,
-                                     const HostTranslateInfo& host_info,
-                                     IR::Program& source_program,
-                                     Shader::OutputTopology output_topology) {
+IR::Program GenerateGeometryPassthrough(ObjectPool<IR::Inst>& inst_pool,
+                                        ObjectPool<IR::Block>& block_pool,
+                                        const HostTranslateInfo& host_info,
+                                        IR::Program& source_program,
+                                        Shader::OutputTopology output_topology) {
     IR::Program program;
     program.stage = Stage::Geometry;
     program.output_topology = output_topology;
@@ -357,8 +357,8 @@ IR::Program GenerateLayerPassthrough(ObjectPool<IR::Inst>& inst_pool,
     program.is_geometry_passthrough = false;
     program.info.loads.mask = source_program.info.stores.mask;
     program.info.stores.mask = source_program.info.stores.mask;
-    program.info.stores.Set(IR::Attribute::Layer);
-    program.info.stores.Set(source_program.emulated_layer, false);
+    program.info.stores.Set(IR::Attribute::Layer, true);
+    program.info.stores.Set(source_program.info.emulated_layer, false);
 
     IR::Block* current_block = block_pool.Create(inst_pool);
     auto& node{program.syntax_list.emplace_back()};
@@ -388,7 +388,7 @@ IR::Program GenerateLayerPassthrough(ObjectPool<IR::Inst>& inst_pool,
         ir.SetAttribute(attr + 3, ir.GetAttribute(attr + 3, ir.Imm32(i)), ir.Imm32(0));
 
         // Assign layer
-        ir.SetAttribute(IR::Attribute::Layer, ir.GetAttribute(source_program.emulated_layer),
+        ir.SetAttribute(IR::Attribute::Layer, ir.GetAttribute(source_program.info.emulated_layer),
                         ir.Imm32(0));
 
         // Emit vertex

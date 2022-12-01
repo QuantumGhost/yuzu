@@ -46,7 +46,7 @@ MICROPROFILE_DECLARE(Vulkan_PipelineCache);
 namespace {
 using Shader::Backend::SPIRV::EmitSPIRV;
 using Shader::Maxwell::ConvertLegacyToGeneric;
-using Shader::Maxwell::GenerateLayerPassthrough;
+using Shader::Maxwell::GenerateGeometryPassthrough;
 using Shader::Maxwell::MergeDualVertexPrograms;
 using Shader::Maxwell::TranslateProgram;
 using VideoCommon::ComputeEnvironment;
@@ -339,7 +339,7 @@ PipelineCache::PipelineCache(RasterizerVulkan& rasterizer_, const Device& device
         .needs_demote_reorder = driver_id == VK_DRIVER_ID_AMD_PROPRIETARY_KHR ||
                                 driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR,
         .support_snorm_render_buffer = true,
-        .requires_layer_emulation = !device.IsExtShaderViewportIndexLayerSupported(),
+        .support_viewport_index_layer = device.IsExtShaderViewportIndexLayerSupported(),
     };
 }
 
@@ -531,8 +531,8 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
                                        index == static_cast<u32>(Maxwell::ShaderType::Geometry);
         if (key.unique_hashes[index] == 0 && is_emulated_stage) {
             auto topology = MaxwellToOutputTopology(key.state.topology);
-            programs[index] = GenerateLayerPassthrough(pools.inst, pools.block, host_info,
-                                                       *layer_source_program, topology);
+            programs[index] = GenerateGeometryPassthrough(pools.inst, pools.block, host_info,
+                                                          *layer_source_program, topology);
             continue;
         }
         if (key.unique_hashes[index] == 0) {
@@ -556,7 +556,7 @@ std::unique_ptr<GraphicsPipeline> PipelineCache::CreateGraphicsPipeline(
             programs[index] = MergeDualVertexPrograms(program_va, program_vb, env);
         }
 
-        if (programs[index].requires_layer_emulation) {
+        if (programs[index].info.requires_layer_emulation) {
             layer_source_program = &programs[index];
         }
     }

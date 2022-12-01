@@ -39,7 +39,7 @@ using Shader::Backend::GLASM::EmitGLASM;
 using Shader::Backend::GLSL::EmitGLSL;
 using Shader::Backend::SPIRV::EmitSPIRV;
 using Shader::Maxwell::ConvertLegacyToGeneric;
-using Shader::Maxwell::GenerateLayerPassthrough;
+using Shader::Maxwell::GenerateGeometryPassthrough;
 using Shader::Maxwell::MergeDualVertexPrograms;
 using Shader::Maxwell::TranslateProgram;
 using VideoCommon::ComputeEnvironment;
@@ -232,7 +232,7 @@ ShaderCache::ShaderCache(RasterizerOpenGL& rasterizer_, Core::Frontend::EmuWindo
           .support_int64 = device.HasShaderInt64(),
           .needs_demote_reorder = device.IsAmd(),
           .support_snorm_render_buffer = false,
-          .requires_layer_emulation = !device.HasVertexViewportLayer(),
+          .support_viewport_index_layer = device.HasVertexViewportLayer(),
       } {
     if (use_asynchronous_shaders) {
         workers = CreateWorkers();
@@ -435,8 +435,8 @@ std::unique_ptr<GraphicsPipeline> ShaderCache::CreateGraphicsPipeline(
                                        index == static_cast<u32>(Maxwell::ShaderType::Geometry);
         if (key.unique_hashes[index] == 0 && is_emulated_stage) {
             auto topology = MaxwellToOutputTopology(key.gs_input_topology);
-            programs[index] = GenerateLayerPassthrough(pools.inst, pools.block, host_info,
-                                                       *layer_source_program, topology);
+            programs[index] = GenerateGeometryPassthrough(pools.inst, pools.block, host_info,
+                                                          *layer_source_program, topology);
             continue;
         }
         if (key.unique_hashes[index] == 0) {
@@ -467,7 +467,7 @@ std::unique_ptr<GraphicsPipeline> ShaderCache::CreateGraphicsPipeline(
             programs[index] = MergeDualVertexPrograms(program_va, program_vb, env);
         }
 
-        if (programs[index].requires_layer_emulation) {
+        if (programs[index].info.requires_layer_emulation) {
             layer_source_program = &programs[index];
         }
     }

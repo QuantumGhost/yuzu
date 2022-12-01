@@ -39,12 +39,12 @@ static bool PermittedProgramStage(Stage stage) {
 }
 
 void LayerPass(IR::Program& program, const HostTranslateInfo& host_info) {
-    if (!host_info.requires_layer_emulation || !PermittedProgramStage(program.stage)) {
+    if (host_info.support_viewport_index_layer || !PermittedProgramStage(program.stage)) {
         return;
     }
 
     const auto end{program.post_order_blocks.end()};
-    const auto emulated_layer = EmulatedLayerAttribute(program.info.stores);
+    const auto layer_attribute = EmulatedLayerAttribute(program.info.stores);
     bool requires_layer_emulation = false;
 
     for (auto block = program.post_order_blocks.begin(); block != end; ++block) {
@@ -52,16 +52,16 @@ void LayerPass(IR::Program& program, const HostTranslateInfo& host_info) {
             if (inst.GetOpcode() == IR::Opcode::SetAttribute &&
                 inst.Arg(0).Attribute() == IR::Attribute::Layer) {
                 requires_layer_emulation = true;
-                inst.SetArg(0, IR::Value{emulated_layer});
+                inst.SetArg(0, IR::Value{layer_attribute});
             }
         }
     }
 
     if (requires_layer_emulation) {
-        program.requires_layer_emulation = true;
-        program.emulated_layer = emulated_layer;
+        program.info.requires_layer_emulation = true;
+        program.info.emulated_layer = layer_attribute;
         program.info.stores.Set(IR::Attribute::Layer, false);
-        program.info.stores.Set(emulated_layer, true);
+        program.info.stores.Set(layer_attribute, true);
     }
 }
 
