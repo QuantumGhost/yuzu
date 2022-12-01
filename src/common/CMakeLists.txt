@@ -37,7 +37,7 @@ add_library(common STATIC
     cache_management.cpp
     cache_management.h
     common_funcs.h
-    common_headers.h
+    common_precompiled_headers.h
     common_types.h
     concepts.h
     div_ceil.h

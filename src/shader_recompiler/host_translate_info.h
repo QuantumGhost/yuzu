@@ -14,6 +14,7 @@ struct HostTranslateInfo {
     bool support_int64{};        ///< True when the device supports 64-bit integers
     bool needs_demote_reorder{}; ///< True when the device needs DemoteToHelperInvocation reordered
     bool support_snorm_render_buffer{}; ///< True when the device supports SNORM render buffers
+    bool requires_layer_emulation{};    ///< True when the device doesn't support gl_Layer in VS
 };
 
 } // namespace Shader

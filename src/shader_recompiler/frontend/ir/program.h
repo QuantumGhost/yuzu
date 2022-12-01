@@ -27,6 +27,8 @@ struct Program {
     u32 local_memory_size{};
     u32 shared_memory_size{};
     bool is_geometry_passthrough{};
+    bool requires_layer_emulation{};
+    Attribute emulated_layer{};
 };
 
 [[nodiscard]] std::string DumpProgram(const Program& program);
