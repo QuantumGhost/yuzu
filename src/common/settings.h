@@ -458,7 +458,6 @@ struct Values {
 
     // System
     SwitchableSetting<std::optional<u32>> rng_seed{std::optional<u32>(), "rng_seed"};
-    Setting<std::string> device_name{"Yuzu", "device_name"};
     // Measured in seconds since epoch
     std::optional<s64> custom_rtc;
     // Set on game boot, reset on stop. Seconds difference between current time and `custom_rtc`

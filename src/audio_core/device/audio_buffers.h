@@ -91,10 +91,9 @@ public:
      * @param core_timing - The CoreTiming instance
      * @param session     - The device session
      *
-     * @return If any buffer was released.
+     * @return Is the buffer was released.
      */
-    bool ReleaseBuffers(const Core::Timing::CoreTiming& core_timing, const DeviceSession& session,
-                        bool force) {
+    bool ReleaseBuffers(const Core::Timing::CoreTiming& core_timing, const DeviceSession& session) {
         std::scoped_lock l{lock};
         bool buffer_released{false};
         while (registered_count > 0) {
@@ -104,8 +103,7 @@ public:
             }
 
             // Check with the backend if this buffer can be released yet.
-            // If we're shutting down, we don't care if it's been played or not.
-            if (!force && !session.IsBufferConsumed(buffers[index])) {
+            if (!session.IsBufferConsumed(buffers[index])) {
                 break;
             }
 

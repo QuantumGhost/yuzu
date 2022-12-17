@@ -50,7 +50,6 @@ private:
     void GetRegionCode(Kernel::HLERequestContext& ctx);
     void GetKeyCodeMap(Kernel::HLERequestContext& ctx);
     void GetKeyCodeMap2(Kernel::HLERequestContext& ctx);
-    void GetDeviceNickName(Kernel::HLERequestContext& ctx);
 };
 
 } // namespace Service::Set

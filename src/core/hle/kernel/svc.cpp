@@ -784,29 +784,63 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
     LOG_TRACE(Kernel_SVC, "called info_id=0x{:X}, info_sub_id=0x{:X}, handle=0x{:08X}", info_id,
               info_sub_id, handle);
 
-    const auto info_id_type = static_cast<InfoType>(info_id);
+    enum class GetInfoType : u64 {
+        // 1.0.0+
+        AllowedCPUCoreMask = 0,
+        AllowedThreadPriorityMask = 1,
+        MapRegionBaseAddr = 2,
+        MapRegionSize = 3,
+        HeapRegionBaseAddr = 4,
+        HeapRegionSize = 5,
+        TotalPhysicalMemoryAvailable = 6,
+        TotalPhysicalMemoryUsed = 7,
+        IsCurrentProcessBeingDebugged = 8,
+        RegisterResourceLimit = 9,
+        IdleTickCount = 10,
+        RandomEntropy = 11,
+        ThreadTickCount = 0xF0000002,
+        // 2.0.0+
+        ASLRRegionBaseAddr = 12,
+        ASLRRegionSize = 13,
+        StackRegionBaseAddr = 14,
+        StackRegionSize = 15,
+        // 3.0.0+
+        SystemResourceSize = 16,
+        SystemResourceUsage = 17,
+        TitleId = 18,
+        // 4.0.0+
+        PrivilegedProcessId = 19,
+        // 5.0.0+
+        UserExceptionContextAddr = 20,
+        // 6.0.0+
+        TotalPhysicalMemoryAvailableWithoutSystemResource = 21,
+        TotalPhysicalMemoryUsedWithoutSystemResource = 22,
+
+        // Homebrew only
+        MesosphereCurrentProcess = 65001,
+    };
+
+    const auto info_id_type = static_cast<GetInfoType>(info_id);
 
     switch (info_id_type) {
-    case InfoType::CoreMask:
-    case InfoType::PriorityMask:
-    case InfoType::AliasRegionAddress:
-    case InfoType::AliasRegionSize:
-    case InfoType::HeapRegionAddress:
-    case InfoType::HeapRegionSize:
-    case InfoType::AslrRegionAddress:
-    case InfoType::AslrRegionSize:
-    case InfoType::StackRegionAddress:
-    case InfoType::StackRegionSize:
-    case InfoType::TotalMemorySize:
-    case InfoType::UsedMemorySize:
-    case InfoType::SystemResourceSizeTotal:
-    case InfoType::SystemResourceSizeUsed:
-    case InfoType::ProgramId:
-    case InfoType::UserExceptionContextAddress:
-    case InfoType::TotalNonSystemMemorySize:
-    case InfoType::UsedNonSystemMemorySize:
-    case InfoType::IsApplication:
-    case InfoType::FreeThreadCount: {
+    case GetInfoType::AllowedCPUCoreMask:
+    case GetInfoType::AllowedThreadPriorityMask:
+    case GetInfoType::MapRegionBaseAddr:
+    case GetInfoType::MapRegionSize:
+    case GetInfoType::HeapRegionBaseAddr:
+    case GetInfoType::HeapRegionSize:
+    case GetInfoType::ASLRRegionBaseAddr:
+    case GetInfoType::ASLRRegionSize:
+    case GetInfoType::StackRegionBaseAddr:
+    case GetInfoType::StackRegionSize:
+    case GetInfoType::TotalPhysicalMemoryAvailable:
+    case GetInfoType::TotalPhysicalMemoryUsed:
+    case GetInfoType::SystemResourceSize:
+    case GetInfoType::SystemResourceUsage:
+    case GetInfoType::TitleId:
+    case GetInfoType::UserExceptionContextAddr:
+    case GetInfoType::TotalPhysicalMemoryAvailableWithoutSystemResource:
+    case GetInfoType::TotalPhysicalMemoryUsedWithoutSystemResource: {
         if (info_sub_id != 0) {
             LOG_ERROR(Kernel_SVC, "Info sub id is non zero! info_id={}, info_sub_id={}", info_id,
                       info_sub_id);
@@ -822,81 +856,77 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
         }
 
         switch (info_id_type) {
-        case InfoType::CoreMask:
+        case GetInfoType::AllowedCPUCoreMask:
             *result = process->GetCoreMask();
             return ResultSuccess;
 
-        case InfoType::PriorityMask:
+        case GetInfoType::AllowedThreadPriorityMask:
             *result = process->GetPriorityMask();
             return ResultSuccess;
 
-        case InfoType::AliasRegionAddress:
+        case GetInfoType::MapRegionBaseAddr:
             *result = process->PageTable().GetAliasRegionStart();
             return ResultSuccess;
 
-        case InfoType::AliasRegionSize:
+        case GetInfoType::MapRegionSize:
             *result = process->PageTable().GetAliasRegionSize();
             return ResultSuccess;
 
-        case InfoType::HeapRegionAddress:
+        case GetInfoType::HeapRegionBaseAddr:
             *result = process->PageTable().GetHeapRegionStart();
             return ResultSuccess;
 
-        case InfoType::HeapRegionSize:
+        case GetInfoType::HeapRegionSize:
             *result = process->PageTable().GetHeapRegionSize();
             return ResultSuccess;
 
-        case InfoType::AslrRegionAddress:
+        case GetInfoType::ASLRRegionBaseAddr:
             *result = process->PageTable().GetAliasCodeRegionStart();
             return ResultSuccess;
 
-        case InfoType::AslrRegionSize:
+        case GetInfoType::ASLRRegionSize:
             *result = process->PageTable().GetAliasCodeRegionSize();
             return ResultSuccess;
 
-        case InfoType::StackRegionAddress:
+        case GetInfoType::StackRegionBaseAddr:
             *result = process->PageTable().GetStackRegionStart();
             return ResultSuccess;
 
-        case InfoType::StackRegionSize:
+        case GetInfoType::StackRegionSize:
             *result = process->PageTable().GetStackRegionSize();
             return ResultSuccess;
 
-        case InfoType::TotalMemorySize:
+        case GetInfoType::TotalPhysicalMemoryAvailable:
             *result = process->GetTotalPhysicalMemoryAvailable();
             return ResultSuccess;
 
-        case InfoType::UsedMemorySize:
+        case GetInfoType::TotalPhysicalMemoryUsed:
             *result = process->GetTotalPhysicalMemoryUsed();
             return ResultSuccess;
 
-        case InfoType::SystemResourceSizeTotal:
+        case GetInfoType::SystemResourceSize:
             *result = process->GetSystemResourceSize();
             return ResultSuccess;
 
-        case InfoType::SystemResourceSizeUsed:
+        case GetInfoType::SystemResourceUsage:
             LOG_WARNING(Kernel_SVC, "(STUBBED) Attempted to query system resource usage");
             *result = process->GetSystemResourceUsage();
             return ResultSuccess;
 
-        case InfoType::ProgramId:
+        case GetInfoType::TitleId:
             *result = process->GetProgramID();
             return ResultSuccess;
 
-        case InfoType::UserExceptionContextAddress:
+        case GetInfoType::UserExceptionContextAddr:
             *result = process->GetProcessLocalRegionAddress();
             return ResultSuccess;
 
-        case InfoType::TotalNonSystemMemorySize:
+        case GetInfoType::TotalPhysicalMemoryAvailableWithoutSystemResource:
             *result = process->GetTotalPhysicalMemoryAvailableWithoutSystemResource();
             return ResultSuccess;
 
-        case InfoType::UsedNonSystemMemorySize:
+        case GetInfoType::TotalPhysicalMemoryUsedWithoutSystemResource:
             *result = process->GetTotalPhysicalMemoryUsedWithoutSystemResource();
-            return ResultSuccess;
-
-        case InfoType::FreeThreadCount:
-            *result = process->GetFreeThreadCount();
             return ResultSuccess;
 
         default:
@@ -907,11 +937,11 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
         return ResultInvalidEnumValue;
     }
 
-    case InfoType::DebuggerAttached:
+    case GetInfoType::IsCurrentProcessBeingDebugged:
         *result = 0;
         return ResultSuccess;
 
-    case InfoType::ResourceLimit: {
+    case GetInfoType::RegisterResourceLimit: {
         if (handle != 0) {
             LOG_ERROR(Kernel, "Handle is non zero! handle={:08X}", handle);
             return ResultInvalidHandle;
@@ -939,7 +969,7 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
         return ResultSuccess;
     }
 
-    case InfoType::RandomEntropy:
+    case GetInfoType::RandomEntropy:
         if (handle != 0) {
             LOG_ERROR(Kernel_SVC, "Process Handle is non zero, expected 0 result but got {:016X}",
                       handle);
@@ -955,13 +985,13 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
         *result = system.Kernel().CurrentProcess()->GetRandomEntropy(info_sub_id);
         return ResultSuccess;
 
-    case InfoType::InitialProcessIdRange:
+    case GetInfoType::PrivilegedProcessId:
         LOG_WARNING(Kernel_SVC,
                     "(STUBBED) Attempted to query privileged process id bounds, returned 0");
         *result = 0;
         return ResultSuccess;
 
-    case InfoType::ThreadTickCount: {
+    case GetInfoType::ThreadTickCount: {
         constexpr u64 num_cpus = 4;
         if (info_sub_id != 0xFFFFFFFFFFFFFFFF && info_sub_id >= num_cpus) {
             LOG_ERROR(Kernel_SVC, "Core count is out of range, expected {} but got {}", num_cpus,
@@ -996,7 +1026,7 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
         *result = out_ticks;
         return ResultSuccess;
     }
-    case InfoType::IdleTickCount: {
+    case GetInfoType::IdleTickCount: {
         // Verify the input handle is invalid.
         R_UNLESS(handle == InvalidHandle, ResultInvalidHandle);
 
@@ -1010,7 +1040,7 @@ static Result GetInfo(Core::System& system, u64* result, u64 info_id, Handle han
         *result = system.Kernel().CurrentScheduler()->GetIdleThread()->GetCpuTime();
         return ResultSuccess;
     }
-    case InfoType::MesosphereCurrentProcess: {
+    case GetInfoType::MesosphereCurrentProcess: {
         // Verify the input handle is invalid.
         R_UNLESS(handle == InvalidHandle, ResultInvalidHandle);
 
