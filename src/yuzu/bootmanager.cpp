@@ -78,6 +78,7 @@ void EmuThread::run() {
     gpu.Start();
 
     m_system.GetCpuManager().OnGpuReady();
+    m_system.RegisterExitCallback([this] { m_stop_source.request_stop(); });
 
     if (m_system.DebuggerEnabled()) {
         m_system.InitializeDebugger();
