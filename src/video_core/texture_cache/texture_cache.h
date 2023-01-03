@@ -1531,8 +1531,6 @@ void TextureCache<P>::BubbleUpImages(VAddr cpu_addr, size_t size) {
             if (slot_images[bottom_map.image_id].modification_tick <
                 slot_images[top_map.image_id].modification_tick) {
                 std::swap(map_vector[i - 1], map_vector[i]);
-            } else {
-                return;
             }
         }
     });
