@@ -440,6 +440,7 @@ void Config::ReadControlValues() {
     ReadBasicSetting(Settings::values.emulate_analog_keyboard);
     Settings::values.mouse_panning = false;
     ReadBasicSetting(Settings::values.mouse_panning_sensitivity);
+    ReadBasicSetting(Settings::values.enable_joycon_driver);
 
     ReadBasicSetting(Settings::values.tas_enable);
     ReadBasicSetting(Settings::values.tas_loop);
@@ -690,6 +691,7 @@ void Config::ReadRendererValues() {
     qt_config->beginGroup(QStringLiteral("Renderer"));
 
     ReadGlobalSetting(Settings::values.renderer_backend);
+    ReadGlobalSetting(Settings::values.renderer_force_max_clock);
     ReadGlobalSetting(Settings::values.vulkan_device);
     ReadGlobalSetting(Settings::values.fullscreen_mode);
     ReadGlobalSetting(Settings::values.aspect_ratio);
@@ -709,6 +711,7 @@ void Config::ReadRendererValues() {
     ReadGlobalSetting(Settings::values.use_asynchronous_shaders);
     ReadGlobalSetting(Settings::values.use_fast_gpu_time);
     ReadGlobalSetting(Settings::values.use_pessimistic_flushes);
+    ReadGlobalSetting(Settings::values.use_vulkan_driver_pipeline_cache);
     ReadGlobalSetting(Settings::values.bg_red);
     ReadGlobalSetting(Settings::values.bg_green);
     ReadGlobalSetting(Settings::values.bg_blue);
@@ -1137,6 +1140,7 @@ void Config::SaveControlValues() {
     WriteGlobalSetting(Settings::values.enable_accurate_vibrations);
     WriteGlobalSetting(Settings::values.motion_enabled);
     WriteBasicSetting(Settings::values.enable_raw_input);
+    WriteBasicSetting(Settings::values.enable_joycon_driver);
     WriteBasicSetting(Settings::values.keyboard_enabled);
     WriteBasicSetting(Settings::values.emulate_analog_keyboard);
     WriteBasicSetting(Settings::values.mouse_panning_sensitivity);
@@ -1305,6 +1309,9 @@ void Config::SaveRendererValues() {
                  static_cast<u32>(Settings::values.renderer_backend.GetValue(global)),
                  static_cast<u32>(Settings::values.renderer_backend.GetDefault()),
                  Settings::values.renderer_backend.UsingGlobal());
+    WriteSetting(QString::fromStdString(Settings::values.renderer_force_max_clock.GetLabel()),
+                 static_cast<u32>(Settings::values.renderer_force_max_clock.GetValue(global)),
+                 static_cast<u32>(Settings::values.renderer_force_max_clock.GetDefault()));
     WriteGlobalSetting(Settings::values.vulkan_device);
     WriteSetting(QString::fromStdString(Settings::values.fullscreen_mode.GetLabel()),
                  static_cast<u32>(Settings::values.fullscreen_mode.GetValue(global)),
@@ -1348,6 +1355,7 @@ void Config::SaveRendererValues() {
     WriteGlobalSetting(Settings::values.use_asynchronous_shaders);
     WriteGlobalSetting(Settings::values.use_fast_gpu_time);
     WriteGlobalSetting(Settings::values.use_pessimistic_flushes);
+    WriteGlobalSetting(Settings::values.use_vulkan_driver_pipeline_cache);
     WriteGlobalSetting(Settings::values.bg_red);
     WriteGlobalSetting(Settings::values.bg_green);
     WriteGlobalSetting(Settings::values.bg_blue);

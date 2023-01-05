@@ -186,6 +186,7 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, Func&& draw_func) {
 
     SCOPE_EXIT({ gpu.TickWork(); });
     FlushWork();
+    gpu_memory->FlushCaching();
 
     query_cache.UpdateCounters();
 
@@ -263,6 +264,34 @@ void RasterizerVulkan::DrawIndirect() {
         });
     });
     buffer_cache.SetDrawIndirect(nullptr);
+}
+
+void RasterizerVulkan::DrawTexture() {
+    MICROPROFILE_SCOPE(Vulkan_Drawing);
+
+    SCOPE_EXIT({ gpu.TickWork(); });
+    FlushWork();
+
+    query_cache.UpdateCounters();
+
+    texture_cache.SynchronizeGraphicsDescriptors();
+    texture_cache.UpdateRenderTargets(false);
+
+    UpdateDynamicStates();
+
+    const auto& draw_texture_state = maxwell3d->draw_manager->GetDrawTextureState();
+    const auto& sampler = texture_cache.GetGraphicsSampler(draw_texture_state.src_sampler);
+    const auto& texture = texture_cache.GetImageView(draw_texture_state.src_texture);
+    Region2D dst_region = {Offset2D{.x = static_cast<s32>(draw_texture_state.dst_x0),
+                                    .y = static_cast<s32>(draw_texture_state.dst_y0)},
+                           Offset2D{.x = static_cast<s32>(draw_texture_state.dst_x1),
+                                    .y = static_cast<s32>(draw_texture_state.dst_y1)}};
+    Region2D src_region = {Offset2D{.x = static_cast<s32>(draw_texture_state.src_x0),
+                                    .y = static_cast<s32>(draw_texture_state.src_y0)},
+                           Offset2D{.x = static_cast<s32>(draw_texture_state.src_x1),
+                                    .y = static_cast<s32>(draw_texture_state.src_y1)}};
+    blit_image.BlitColor(texture_cache.GetFramebuffer(), texture.RenderTarget(), sampler->Handle(),
+                         dst_region, src_region, texture.size);
 }
 
 void RasterizerVulkan::Clear(u32 layer_count) {
@@ -393,6 +422,7 @@ void RasterizerVulkan::Clear(u32 layer_count) {
 
 void RasterizerVulkan::DispatchCompute() {
     FlushWork();
+    gpu_memory->FlushCaching();
 
     ComputePipeline* const pipeline{pipeline_cache.CurrentComputePipeline()};
     if (!pipeline) {
@@ -478,6 +508,27 @@ void RasterizerVulkan::InvalidateRegion(VAddr addr, u64 size, VideoCommon::Cache
     }
     if ((True(which & VideoCommon::CacheType::ShaderCache))) {
         pipeline_cache.InvalidateRegion(addr, size);
+    }
+}
+
+void RasterizerVulkan::InnerInvalidation(std::span<const std::pair<VAddr, std::size_t>> sequences) {
+    {
+        std::scoped_lock lock{texture_cache.mutex};
+        for (const auto& [addr, size] : sequences) {
+            texture_cache.WriteMemory(addr, size);
+        }
+    }
+    {
+        std::scoped_lock lock{buffer_cache.mutex};
+        for (const auto& [addr, size] : sequences) {
+            buffer_cache.WriteMemory(addr, size);
+        }
+    }
+    {
+        for (const auto& [addr, size] : sequences) {
+            query_cache.InvalidateRegion(addr, size);
+            pipeline_cache.InvalidateRegion(addr, size);
+        }
     }
 }
 
