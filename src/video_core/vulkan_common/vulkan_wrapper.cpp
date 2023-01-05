@@ -152,7 +152,6 @@ void Load(VkDevice device, DeviceDispatch& dld) noexcept {
     X(vkCreateGraphicsPipelines);
     X(vkCreateImage);
     X(vkCreateImageView);
-    X(vkCreatePipelineCache);
     X(vkCreatePipelineLayout);
     X(vkCreateQueryPool);
     X(vkCreateRenderPass);
@@ -172,7 +171,6 @@ void Load(VkDevice device, DeviceDispatch& dld) noexcept {
     X(vkDestroyImage);
     X(vkDestroyImageView);
     X(vkDestroyPipeline);
-    X(vkDestroyPipelineCache);
     X(vkDestroyPipelineLayout);
     X(vkDestroyQueryPool);
     X(vkDestroyRenderPass);
@@ -190,7 +188,6 @@ void Load(VkDevice device, DeviceDispatch& dld) noexcept {
     X(vkGetEventStatus);
     X(vkGetFenceStatus);
     X(vkGetImageMemoryRequirements);
-    X(vkGetPipelineCacheData);
     X(vkGetMemoryFdKHR);
 #ifdef _WIN32
     X(vkGetMemoryWin32HandleKHR);
@@ -434,10 +431,6 @@ void Destroy(VkDevice device, VkPipeline handle, const DeviceDispatch& dld) noex
     dld.vkDestroyPipeline(device, handle, nullptr);
 }
 
-void Destroy(VkDevice device, VkPipelineCache handle, const DeviceDispatch& dld) noexcept {
-    dld.vkDestroyPipelineCache(device, handle, nullptr);
-}
-
 void Destroy(VkDevice device, VkPipelineLayout handle, const DeviceDispatch& dld) noexcept {
     dld.vkDestroyPipelineLayout(device, handle, nullptr);
 }
@@ -658,10 +651,6 @@ void ShaderModule::SetObjectNameEXT(const char* name) const {
     SetObjectName(dld, owner, handle, VK_OBJECT_TYPE_SHADER_MODULE, name);
 }
 
-void PipelineCache::SetObjectNameEXT(const char* name) const {
-    SetObjectName(dld, owner, handle, VK_OBJECT_TYPE_PIPELINE_CACHE, name);
-}
-
 void Semaphore::SetObjectNameEXT(const char* name) const {
     SetObjectName(dld, owner, handle, VK_OBJECT_TYPE_SEMAPHORE, name);
 }
@@ -757,29 +746,21 @@ DescriptorSetLayout Device::CreateDescriptorSetLayout(
     return DescriptorSetLayout(object, handle, *dld);
 }
 
-PipelineCache Device::CreatePipelineCache(const VkPipelineCacheCreateInfo& ci) const {
-    VkPipelineCache cache;
-    Check(dld->vkCreatePipelineCache(handle, &ci, nullptr, &cache));
-    return PipelineCache(cache, handle, *dld);
-}
-
 PipelineLayout Device::CreatePipelineLayout(const VkPipelineLayoutCreateInfo& ci) const {
     VkPipelineLayout object;
     Check(dld->vkCreatePipelineLayout(handle, &ci, nullptr, &object));
     return PipelineLayout(object, handle, *dld);
 }
 
-Pipeline Device::CreateGraphicsPipeline(const VkGraphicsPipelineCreateInfo& ci,
-                                        VkPipelineCache cache) const {
+Pipeline Device::CreateGraphicsPipeline(const VkGraphicsPipelineCreateInfo& ci) const {
     VkPipeline object;
-    Check(dld->vkCreateGraphicsPipelines(handle, cache, 1, &ci, nullptr, &object));
+    Check(dld->vkCreateGraphicsPipelines(handle, nullptr, 1, &ci, nullptr, &object));
     return Pipeline(object, handle, *dld);
 }
 
-Pipeline Device::CreateComputePipeline(const VkComputePipelineCreateInfo& ci,
-                                       VkPipelineCache cache) const {
+Pipeline Device::CreateComputePipeline(const VkComputePipelineCreateInfo& ci) const {
     VkPipeline object;
-    Check(dld->vkCreateComputePipelines(handle, cache, 1, &ci, nullptr, &object));
+    Check(dld->vkCreateComputePipelines(handle, nullptr, 1, &ci, nullptr, &object));
     return Pipeline(object, handle, *dld);
 }
 
