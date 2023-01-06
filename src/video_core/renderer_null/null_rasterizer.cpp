@@ -21,7 +21,6 @@ RasterizerNull::RasterizerNull(Core::Memory::Memory& cpu_memory_, Tegra::GPU& gp
 RasterizerNull::~RasterizerNull() = default;
 
 void RasterizerNull::Draw(bool is_indexed, u32 instance_count) {}
-void RasterizerNull::DrawTexture() {}
 void RasterizerNull::Clear(u32 layer_count) {}
 void RasterizerNull::DispatchCompute() {}
 void RasterizerNull::ResetCounter(VideoCore::QueryType type) {}
