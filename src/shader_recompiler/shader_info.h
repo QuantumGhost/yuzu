@@ -65,8 +65,6 @@ enum class Interpolation {
 struct ConstantBufferDescriptor {
     u32 index;
     u32 count;
-
-    auto operator<=>(const ConstantBufferDescriptor&) const = default;
 };
 
 struct StorageBufferDescriptor {
@@ -74,8 +72,6 @@ struct StorageBufferDescriptor {
     u32 cbuf_offset;
     u32 count;
     bool is_written;
-
-    auto operator<=>(const StorageBufferDescriptor&) const = default;
 };
 
 struct TextureBufferDescriptor {
@@ -88,8 +84,6 @@ struct TextureBufferDescriptor {
     u32 secondary_shift_left;
     u32 count;
     u32 size_shift;
-
-    auto operator<=>(const TextureBufferDescriptor&) const = default;
 };
 using TextureBufferDescriptors = boost::container::small_vector<TextureBufferDescriptor, 6>;
 
@@ -101,8 +95,6 @@ struct ImageBufferDescriptor {
     u32 cbuf_offset;
     u32 count;
     u32 size_shift;
-
-    auto operator<=>(const ImageBufferDescriptor&) const = default;
 };
 using ImageBufferDescriptors = boost::container::small_vector<ImageBufferDescriptor, 2>;
 
@@ -118,8 +110,6 @@ struct TextureDescriptor {
     u32 secondary_shift_left;
     u32 count;
     u32 size_shift;
-
-    auto operator<=>(const TextureDescriptor&) const = default;
 };
 using TextureDescriptors = boost::container::small_vector<TextureDescriptor, 12>;
 
@@ -132,8 +122,6 @@ struct ImageDescriptor {
     u32 cbuf_offset;
     u32 count;
     u32 size_shift;
-
-    auto operator<=>(const ImageDescriptor&) const = default;
 };
 using ImageDescriptors = boost::container::small_vector<ImageDescriptor, 4>;
 

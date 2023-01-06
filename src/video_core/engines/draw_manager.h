@@ -32,19 +32,6 @@ public:
         std::vector<u8> inline_index_draw_indexes;
     };
 
-    struct DrawTextureState {
-        f32 dst_x0;
-        f32 dst_y0;
-        f32 dst_x1;
-        f32 dst_y1;
-        f32 src_x0;
-        f32 src_y0;
-        f32 src_x1;
-        f32 src_y1;
-        u32 src_sampler;
-        u32 src_texture;
-    };
-
     struct IndirectParams {
         bool is_indexed;
         bool include_count;
@@ -77,10 +64,6 @@ public:
         return draw_state;
     }
 
-    const DrawTextureState& GetDrawTextureState() const {
-        return draw_texture_state;
-    }
-
     IndirectParams& GetIndirectParams() {
         return indirect_state;
     }
@@ -98,8 +81,6 @@ private:
 
     void DrawIndexSmall(u32 argument);
 
-    void DrawTexture();
-
     void UpdateTopology();
 
     void ProcessDraw(bool draw_indexed, u32 instance_count);
@@ -108,7 +89,6 @@ private:
 
     Maxwell3D* maxwell3d{};
     State draw_state{};
-    DrawTextureState draw_texture_state{};
     IndirectParams indirect_state{};
 };
 } // namespace Tegra::Engines
