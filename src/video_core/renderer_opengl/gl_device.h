@@ -4,8 +4,6 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
-
 #include "common/common_types.h"
 #include "core/frontend/emu_window.h"
 #include "shader_recompiler/stage.h"
@@ -148,10 +146,6 @@ public:
         return has_sparse_texture_2;
     }
 
-    bool HasDrawTexture() const {
-        return has_draw_texture;
-    }
-
     bool IsWarpSizePotentiallyLargerThanGuest() const {
         return warp_size_potentially_larger_than_guest;
     }
@@ -222,7 +216,6 @@ private:
     bool has_shader_int64{};
     bool has_amd_shader_half_float{};
     bool has_sparse_texture_2{};
-    bool has_draw_texture{};
     bool warp_size_potentially_larger_than_guest{};
     bool need_fastmath_off{};
     bool has_cbuf_ftou_bug{};

@@ -149,7 +149,6 @@ bool Maxwell3D::IsMethodExecutable(u32 method) {
     case MAXWELL3D_REG_INDEX(inline_index_4x8.index0):
     case MAXWELL3D_REG_INDEX(vertex_array_instance_first):
     case MAXWELL3D_REG_INDEX(vertex_array_instance_subsequent):
-    case MAXWELL3D_REG_INDEX(draw_texture.src_y0):
     case MAXWELL3D_REG_INDEX(wait_for_idle):
     case MAXWELL3D_REG_INDEX(shadow_ram_control):
     case MAXWELL3D_REG_INDEX(load_mme.instruction_ptr):
@@ -486,6 +485,11 @@ void Maxwell3D::StampQueryResult(u64 payload, bool long_query) {
 }
 
 void Maxwell3D::ProcessQueryGet() {
+    // TODO(Subv): Support the other query units.
+    if (regs.report_semaphore.query.location != Regs::ReportSemaphore::Location::All) {
+        LOG_DEBUG(HW_GPU, "Locations other than ALL are unimplemented");
+    }
+
     switch (regs.report_semaphore.query.operation) {
     case Regs::ReportSemaphore::Operation::Release:
         if (regs.report_semaphore.query.short_query != 0) {
@@ -645,7 +649,7 @@ void Maxwell3D::ProcessCBMultiData(const u32* start_base, u32 amount) {
 
     const GPUVAddr address{buffer_address + regs.const_buffer.offset};
     const size_t copy_size = amount * sizeof(u32);
-    memory_manager.WriteBlockCached(address, start_base, copy_size);
+    memory_manager.WriteBlock(address, start_base, copy_size);
 
     // Increment the current buffer position.
     regs.const_buffer.offset += static_cast<u32>(copy_size);

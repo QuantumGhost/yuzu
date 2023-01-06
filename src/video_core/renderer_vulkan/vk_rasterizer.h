@@ -66,7 +66,6 @@ public:
 
     void Draw(bool is_indexed, u32 instance_count) override;
     void DrawIndirect() override;
-    void DrawTexture() override;
     void Clear(u32 layer_count) override;
     void DispatchCompute() override;
     void ResetCounter(VideoCore::QueryType type) override;
@@ -80,7 +79,6 @@ public:
                          VideoCommon::CacheType which = VideoCommon::CacheType::All) override;
     void InvalidateRegion(VAddr addr, u64 size,
                           VideoCommon::CacheType which = VideoCommon::CacheType::All) override;
-    void InnerInvalidation(std::span<const std::pair<VAddr, std::size_t>> sequences) override;
     void OnCPUWrite(VAddr addr, u64 size) override;
     void InvalidateGPUCache() override;
     void UnmapMemory(VAddr addr, u64 size) override;

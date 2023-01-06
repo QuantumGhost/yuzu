@@ -69,7 +69,7 @@ void MaxwellDMA::Launch() {
     if (launch.multi_line_enable) {
         const bool is_src_pitch = launch.src_memory_layout == LaunchDMA::MemoryLayout::PITCH;
         const bool is_dst_pitch = launch.dst_memory_layout == LaunchDMA::MemoryLayout::PITCH;
-        memory_manager.FlushCaching();
+
         if (!is_src_pitch && !is_dst_pitch) {
             // If both the source and the destination are in block layout, assert.
             CopyBlockLinearToBlockLinear();
@@ -104,7 +104,6 @@ void MaxwellDMA::Launch() {
                                             reinterpret_cast<u8*>(tmp_buffer.data()),
                                             regs.line_length_in * sizeof(u32));
         } else {
-            memory_manager.FlushCaching();
             const auto convert_linear_2_blocklinear_addr = [](u64 address) {
                 return (address & ~0x1f0ULL) | ((address & 0x40) >> 2) | ((address & 0x10) << 1) |
                        ((address & 0x180) >> 1) | ((address & 0x20) << 3);
@@ -122,8 +121,8 @@ void MaxwellDMA::Launch() {
                     memory_manager.ReadBlockUnsafe(
                         convert_linear_2_blocklinear_addr(regs.offset_in + offset),
                         tmp_buffer.data(), tmp_buffer.size());
-                    memory_manager.WriteBlockCached(regs.offset_out + offset, tmp_buffer.data(),
-                                                    tmp_buffer.size());
+                    memory_manager.WriteBlock(regs.offset_out + offset, tmp_buffer.data(),
+                                              tmp_buffer.size());
                 }
             } else if (is_src_pitch && !is_dst_pitch) {
                 UNIMPLEMENTED_IF(regs.line_length_in % 16 != 0);
@@ -133,7 +132,7 @@ void MaxwellDMA::Launch() {
                 for (u32 offset = 0; offset < regs.line_length_in; offset += 16) {
                     memory_manager.ReadBlockUnsafe(regs.offset_in + offset, tmp_buffer.data(),
                                                    tmp_buffer.size());
-                    memory_manager.WriteBlockCached(
+                    memory_manager.WriteBlock(
                         convert_linear_2_blocklinear_addr(regs.offset_out + offset),
                         tmp_buffer.data(), tmp_buffer.size());
                 }
@@ -142,8 +141,8 @@ void MaxwellDMA::Launch() {
                     std::vector<u8> tmp_buffer(regs.line_length_in);
                     memory_manager.ReadBlockUnsafe(regs.offset_in, tmp_buffer.data(),
                                                    regs.line_length_in);
-                    memory_manager.WriteBlockCached(regs.offset_out, tmp_buffer.data(),
-                                                    regs.line_length_in);
+                    memory_manager.WriteBlock(regs.offset_out, tmp_buffer.data(),
+                                              regs.line_length_in);
                 }
             }
         }
@@ -205,7 +204,7 @@ void MaxwellDMA::CopyBlockLinearToPitch() {
                      src_params.origin.y, x_elements, regs.line_count, block_height, block_depth,
                      regs.pitch_out);
 
-    memory_manager.WriteBlockCached(regs.offset_out, write_buffer.data(), dst_size);
+    memory_manager.WriteBlock(regs.offset_out, write_buffer.data(), dst_size);
 }
 
 void MaxwellDMA::CopyPitchToBlockLinear() {
@@ -257,7 +256,7 @@ void MaxwellDMA::CopyPitchToBlockLinear() {
                    dst_params.origin.y, x_elements, regs.line_count, block_height, block_depth,
                    regs.pitch_in);
 
-    memory_manager.WriteBlockCached(regs.offset_out, write_buffer.data(), dst_size);
+    memory_manager.WriteBlock(regs.offset_out, write_buffer.data(), dst_size);
 }
 
 void MaxwellDMA::FastCopyBlockLinearToPitch() {
@@ -288,7 +287,7 @@ void MaxwellDMA::FastCopyBlockLinearToPitch() {
                      regs.src_params.block_size.height, regs.src_params.block_size.depth,
                      regs.pitch_out);
 
-    memory_manager.WriteBlockCached(regs.offset_out, write_buffer.data(), dst_size);
+    memory_manager.WriteBlock(regs.offset_out, write_buffer.data(), dst_size);
 }
 
 void MaxwellDMA::CopyBlockLinearToBlockLinear() {
@@ -348,7 +347,7 @@ void MaxwellDMA::CopyBlockLinearToBlockLinear() {
                    dst.depth, dst_x_offset, dst.origin.y, x_elements, regs.line_count,
                    dst.block_size.height, dst.block_size.depth, pitch);
 
-    memory_manager.WriteBlockCached(regs.offset_out, write_buffer.data(), dst_size);
+    memory_manager.WriteBlock(regs.offset_out, write_buffer.data(), dst_size);
 }
 
 void MaxwellDMA::ReleaseSemaphore() {
