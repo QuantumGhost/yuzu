@@ -991,6 +991,18 @@ std::string Device::GetDriverName() const {
     }
 }
 
+bool Device::ShouldBoostClocks() const {
+    const bool validated_driver =
+        driver_id == VK_DRIVER_ID_AMD_PROPRIETARY || driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
+        driver_id == VK_DRIVER_ID_MESA_RADV || driver_id == VK_DRIVER_ID_NVIDIA_PROPRIETARY ||
+        driver_id == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS ||
+        driver_id == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA;
+
+    const bool is_steam_deck = properties.vendorID == 0x1002 && properties.deviceID == 0x163F;
+
+    return validated_driver && !is_steam_deck;
+}
+
 static std::vector<const char*> ExtensionsRequiredForInstanceVersion(u32 available_version) {
     std::vector<const char*> extensions{REQUIRED_EXTENSIONS.begin(), REQUIRED_EXTENSIONS.end()};
 
@@ -1520,8 +1532,12 @@ void Device::SetupFamilies(VkSurfaceKHR surface) {
         LOG_ERROR(Render_Vulkan, "Device lacks a present queue");
         throw vk::Exception(VK_ERROR_FEATURE_NOT_PRESENT);
     }
-    graphics_family = *graphics;
-    present_family = *present;
+    if (graphics) {
+        graphics_family = *graphics;
+    }
+    if (present) {
+        present_family = *present;
+    }
 }
 
 void Device::SetupFeatures() {
