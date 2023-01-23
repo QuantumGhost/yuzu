@@ -60,10 +60,10 @@
             <item>
              <widget class="QLineEdit" name="ip">
               <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IPv4 address of the host&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the host&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="maxLength">
-               <number>16</number>
+               <number>253</number>
               </property>
              </widget>
             </item>

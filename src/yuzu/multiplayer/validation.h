@@ -38,11 +38,11 @@ private:
         QRegularExpression(QStringLiteral("^[a-zA-Z0-9._ -]{4,20}"));
     QRegularExpressionValidator nickname;
 
-    /// ipv4 address only
-    // TODO remove this when we support hostnames in direct connect
+    /// ipv4 / ipv6 / hostnames
     QRegularExpression ip_regex = QRegularExpression(QStringLiteral(
-        "(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|"
-        "2[0-4][0-9]|25[0-5])"));
+        "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|"
+        "^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|"
+        "^([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\\.)+[a-zA-Z]{2,}$"));
     QRegularExpressionValidator ip;
 
     /// port must be between 0 and 65535
