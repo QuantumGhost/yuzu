@@ -355,21 +355,21 @@ TextureInst MakeInst(Environment& env, IR::Block* block, IR::Inst& inst) {
     };
 }
 
-u32 GetTextureHandle(Environment& env, const ConstBufferAddr& cbuf) {
+TextureType ReadTextureType(Environment& env, const ConstBufferAddr& cbuf) {
     const u32 secondary_index{cbuf.has_secondary ? cbuf.secondary_index : cbuf.index};
     const u32 secondary_offset{cbuf.has_secondary ? cbuf.secondary_offset : cbuf.offset};
     const u32 lhs_raw{env.ReadCbufValue(cbuf.index, cbuf.offset) << cbuf.shift_left};
     const u32 rhs_raw{env.ReadCbufValue(secondary_index, secondary_offset)
                       << cbuf.secondary_shift_left};
-    return lhs_raw | rhs_raw;
-}
-
-TextureType ReadTextureType(Environment& env, const ConstBufferAddr& cbuf) {
-    return env.ReadTextureType(GetTextureHandle(env, cbuf));
+    return env.ReadTextureType(lhs_raw | rhs_raw);
 }
 
 TexturePixelFormat ReadTexturePixelFormat(Environment& env, const ConstBufferAddr& cbuf) {
-    return env.ReadTexturePixelFormat(GetTextureHandle(env, cbuf));
+    const u32 secondary_index{cbuf.has_secondary ? cbuf.secondary_index : cbuf.index};
+    const u32 secondary_offset{cbuf.has_secondary ? cbuf.secondary_offset : cbuf.offset};
+    const u32 lhs_raw{env.ReadCbufValue(cbuf.index, cbuf.offset)};
+    const u32 rhs_raw{env.ReadCbufValue(secondary_index, secondary_offset)};
+    return env.ReadTexturePixelFormat(lhs_raw | rhs_raw);
 }
 
 class Descriptors {
@@ -386,10 +386,8 @@ public:
         return Add(texture_buffer_descriptors, desc, [&desc](const auto& existing) {
             return desc.cbuf_index == existing.cbuf_index &&
                    desc.cbuf_offset == existing.cbuf_offset &&
-                   desc.shift_left == existing.shift_left &&
                    desc.secondary_cbuf_index == existing.secondary_cbuf_index &&
                    desc.secondary_cbuf_offset == existing.secondary_cbuf_offset &&
-                   desc.secondary_shift_left == existing.secondary_shift_left &&
                    desc.count == existing.count && desc.size_shift == existing.size_shift &&
                    desc.has_secondary == existing.has_secondary;
         });
@@ -407,20 +405,15 @@ public:
     }
 
     u32 Add(const TextureDescriptor& desc) {
-        const u32 index{Add(texture_descriptors, desc, [&desc](const auto& existing) {
+        return Add(texture_descriptors, desc, [&desc](const auto& existing) {
             return desc.type == existing.type && desc.is_depth == existing.is_depth &&
                    desc.has_secondary == existing.has_secondary &&
                    desc.cbuf_index == existing.cbuf_index &&
                    desc.cbuf_offset == existing.cbuf_offset &&
-                   desc.shift_left == existing.shift_left &&
                    desc.secondary_cbuf_index == existing.secondary_cbuf_index &&
                    desc.secondary_cbuf_offset == existing.secondary_cbuf_offset &&
-                   desc.secondary_shift_left == existing.secondary_shift_left &&
                    desc.count == existing.count && desc.size_shift == existing.size_shift;
-        })};
-        // TODO: Read this from TIC
-        texture_descriptors[index].is_multisample |= desc.is_multisample;
-        return index;
+        });
     }
 
     u32 Add(const ImageDescriptor& desc) {
@@ -459,8 +452,7 @@ void PatchImageSampleImplicitLod(IR::Block& block, IR::Inst& inst) {
     const IR::Value coord(inst.Arg(1));
     const IR::Value handle(ir.Imm32(0));
     const IR::U32 lod{ir.Imm32(0)};
-    const IR::U1 skip_mips{ir.Imm1(true)};
-    const IR::Value texture_size = ir.ImageQueryDimension(handle, lod, skip_mips, info);
+    const IR::Value texture_size = ir.ImageQueryDimension(handle, lod, info);
     inst.SetArg(
         1, ir.CompositeConstruct(
                ir.FPMul(IR::F32(ir.CompositeExtract(coord, 0)),
