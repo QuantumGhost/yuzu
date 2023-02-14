@@ -150,9 +150,9 @@ NvResult nvhost_ctrl::IocCtrlEventWait(std::span<const u8> input, std::vector<u8
     const auto check_failing = [&]() {
         if (events[slot].fails > 2) {
             {
-                auto lk = system.StallApplication();
+                auto lk = system.StallProcesses();
                 host1x_syncpoint_manager.WaitHost(fence_id, target_value);
-                system.UnstallApplication();
+                system.UnstallProcesses();
             }
             params.value.raw = target_value;
             return true;

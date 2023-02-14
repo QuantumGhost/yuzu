@@ -393,7 +393,7 @@ void WebBrowser::InitializeOffline() {
     switch (document_kind) {
     case DocumentKind::OfflineHtmlPage:
     default:
-        title_id = system.GetApplicationProcessProgramID();
+        title_id = system.GetCurrentProcessProgramID();
         nca_type = FileSys::ContentRecordType::HtmlDocument;
         additional_paths = "html-document";
         break;

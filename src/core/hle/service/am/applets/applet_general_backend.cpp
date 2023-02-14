@@ -186,7 +186,7 @@ void PhotoViewer::Execute() {
     const auto callback = [this] { ViewFinished(); };
     switch (mode) {
     case PhotoViewerAppletMode::CurrentApp:
-        frontend.ShowPhotosForApplication(system.GetApplicationProcessProgramID(), callback);
+        frontend.ShowPhotosForApplication(system.GetCurrentProcessProgramID(), callback);
         break;
     case PhotoViewerAppletMode::AllApps:
         frontend.ShowAllPhotos(callback);

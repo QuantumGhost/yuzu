@@ -328,7 +328,7 @@ u64 KScheduler::UpdateHighestPriorityThreadsImpl(KernelCore& kernel) {
 }
 
 void KScheduler::SwitchThread(KThread* next_thread) {
-    KProcess* const cur_process = GetCurrentProcessPointer(kernel);
+    KProcess* const cur_process = kernel.CurrentProcess();
     KThread* const cur_thread = GetCurrentThreadPointer(kernel);
 
     // We never want to schedule a null thread, so use the idle thread if we don't have a next.
@@ -689,11 +689,11 @@ void KScheduler::RotateScheduledQueue(KernelCore& kernel, s32 core_id, s32 prior
 void KScheduler::YieldWithoutCoreMigration(KernelCore& kernel) {
     // Validate preconditions.
     ASSERT(CanSchedule(kernel));
-    ASSERT(GetCurrentProcessPointer(kernel) != nullptr);
+    ASSERT(kernel.CurrentProcess() != nullptr);
 
     // Get the current thread and process.
     KThread& cur_thread = GetCurrentThread(kernel);
-    KProcess& cur_process = GetCurrentProcess(kernel);
+    KProcess& cur_process = *kernel.CurrentProcess();
 
     // If the thread's yield count matches, there's nothing for us to do.
     if (cur_thread.GetYieldScheduleCount() == cur_process.GetScheduledCount()) {
@@ -728,11 +728,11 @@ void KScheduler::YieldWithoutCoreMigration(KernelCore& kernel) {
 void KScheduler::YieldWithCoreMigration(KernelCore& kernel) {
     // Validate preconditions.
     ASSERT(CanSchedule(kernel));
-    ASSERT(GetCurrentProcessPointer(kernel) != nullptr);
+    ASSERT(kernel.CurrentProcess() != nullptr);
 
     // Get the current thread and process.
     KThread& cur_thread = GetCurrentThread(kernel);
-    KProcess& cur_process = GetCurrentProcess(kernel);
+    KProcess& cur_process = *kernel.CurrentProcess();
 
     // If the thread's yield count matches, there's nothing for us to do.
     if (cur_thread.GetYieldScheduleCount() == cur_process.GetScheduledCount()) {
@@ -816,11 +816,11 @@ void KScheduler::YieldWithCoreMigration(KernelCore& kernel) {
 void KScheduler::YieldToAnyThread(KernelCore& kernel) {
     // Validate preconditions.
     ASSERT(CanSchedule(kernel));
-    ASSERT(GetCurrentProcessPointer(kernel) != nullptr);
+    ASSERT(kernel.CurrentProcess() != nullptr);
 
     // Get the current thread and process.
     KThread& cur_thread = GetCurrentThread(kernel);
-    KProcess& cur_process = GetCurrentProcess(kernel);
+    KProcess& cur_process = *kernel.CurrentProcess();
 
     // If the thread's yield count matches, there's nothing for us to do.
     if (cur_thread.GetYieldScheduleCount() == cur_process.GetScheduledCount()) {

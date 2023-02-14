@@ -16,7 +16,7 @@ KTransferMemory::~KTransferMemory() = default;
 Result KTransferMemory::Initialize(VAddr address_, std::size_t size_,
                                    Svc::MemoryPermission owner_perm_) {
     // Set members.
-    owner = GetCurrentProcessPointer(kernel);
+    owner = kernel.CurrentProcess();
 
     // TODO(bunnei): Lock for transfer memory
 

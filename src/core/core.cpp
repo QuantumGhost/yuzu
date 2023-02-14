@@ -186,7 +186,7 @@ struct System::Impl {
     void Run() {
         std::unique_lock<std::mutex> lk(suspend_guard);
 
-        kernel.SuspendApplication(false);
+        kernel.Suspend(false);
         core_timing.SyncPause(false);
         is_paused.store(false, std::memory_order_relaxed);
     }
@@ -195,7 +195,7 @@ struct System::Impl {
         std::unique_lock<std::mutex> lk(suspend_guard);
 
         core_timing.SyncPause(true);
-        kernel.SuspendApplication(true);
+        kernel.Suspend(true);
         is_paused.store(true, std::memory_order_relaxed);
     }
 
@@ -203,17 +203,17 @@ struct System::Impl {
         return is_paused.load(std::memory_order_relaxed);
     }
 
-    std::unique_lock<std::mutex> StallApplication() {
+    std::unique_lock<std::mutex> StallProcesses() {
         std::unique_lock<std::mutex> lk(suspend_guard);
-        kernel.SuspendApplication(true);
+        kernel.Suspend(true);
         core_timing.SyncPause(true);
         return lk;
     }
 
-    void UnstallApplication() {
+    void UnstallProcesses() {
         if (!IsPaused()) {
             core_timing.SyncPause(false);
-            kernel.SuspendApplication(false);
+            kernel.Suspend(false);
         }
     }
 
@@ -221,7 +221,7 @@ struct System::Impl {
         debugger = std::make_unique<Debugger>(system, port);
     }
 
-    SystemResultStatus SetupForApplicationProcess(System& system, Frontend::EmuWindow& emu_window) {
+    SystemResultStatus SetupForMainProcess(System& system, Frontend::EmuWindow& emu_window) {
         LOG_DEBUG(Core, "initialized OK");
 
         // Setting changes may require a full system reinitialization (e.g., disabling multicore).
@@ -273,7 +273,7 @@ struct System::Impl {
             return SystemResultStatus::ErrorGetLoader;
         }
 
-        SystemResultStatus init_result{SetupForApplicationProcess(system, emu_window)};
+        SystemResultStatus init_result{SetupForMainProcess(system, emu_window)};
         if (init_result != SystemResultStatus::Success) {
             LOG_CRITICAL(Core, "Failed to initialize system (Error {})!",
                          static_cast<int>(init_result));
@@ -302,7 +302,7 @@ struct System::Impl {
                 static_cast<u32>(SystemResultStatus::ErrorLoader) + static_cast<u32>(load_result));
         }
         AddGlueRegistrationForProcess(*app_loader, *main_process);
-        kernel.MakeApplicationProcess(main_process);
+        kernel.MakeCurrentProcess(main_process);
         kernel.InitializeCores();
 
         // Initialize cheat engine
@@ -585,12 +585,12 @@ void System::DetachDebugger() {
     }
 }
 
-std::unique_lock<std::mutex> System::StallApplication() {
-    return impl->StallApplication();
+std::unique_lock<std::mutex> System::StallProcesses() {
+    return impl->StallProcesses();
 }
 
-void System::UnstallApplication() {
-    impl->UnstallApplication();
+void System::UnstallProcesses() {
+    impl->UnstallProcesses();
 }
 
 void System::InitializeDebugger() {
@@ -648,8 +648,8 @@ const Kernel::GlobalSchedulerContext& System::GlobalSchedulerContext() const {
     return impl->kernel.GlobalSchedulerContext();
 }
 
-Kernel::KProcess* System::ApplicationProcess() {
-    return impl->kernel.ApplicationProcess();
+Kernel::KProcess* System::CurrentProcess() {
+    return impl->kernel.CurrentProcess();
 }
 
 Core::DeviceMemory& System::DeviceMemory() {
@@ -660,8 +660,8 @@ const Core::DeviceMemory& System::DeviceMemory() const {
     return *impl->device_memory;
 }
 
-const Kernel::KProcess* System::ApplicationProcess() const {
-    return impl->kernel.ApplicationProcess();
+const Kernel::KProcess* System::CurrentProcess() const {
+    return impl->kernel.CurrentProcess();
 }
 
 ARM_Interface& System::ArmInterface(std::size_t core_index) {
@@ -760,8 +760,8 @@ const Core::SpeedLimiter& System::SpeedLimiter() const {
     return impl->speed_limiter;
 }
 
-u64 System::GetApplicationProcessProgramID() const {
-    return impl->kernel.ApplicationProcess()->GetProgramID();
+u64 System::GetCurrentProcessProgramID() const {
+    return impl->kernel.CurrentProcess()->GetProgramID();
 }
 
 Loader::ResultStatus System::GetGameName(std::string& out) const {
@@ -880,11 +880,11 @@ bool System::GetExitLock() const {
     return impl->exit_lock;
 }
 
-void System::SetApplicationProcessBuildID(const CurrentBuildProcessID& id) {
+void System::SetCurrentProcessBuildID(const CurrentBuildProcessID& id) {
     impl->build_id = id;
 }
 
-const System::CurrentBuildProcessID& System::GetApplicationProcessBuildID() const {
+const System::CurrentBuildProcessID& System::GetCurrentProcessBuildID() const {
     return impl->build_id;
 }
 

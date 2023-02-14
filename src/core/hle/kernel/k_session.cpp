@@ -33,8 +33,7 @@ void KSession::Initialize(KClientPort* port_, const std::string& name_) {
     name = name_;
 
     // Set our owner process.
-    //! FIXME: this is the wrong process!
-    process = kernel.ApplicationProcess();
+    process = kernel.CurrentProcess();
     process->Open();
 
     // Set our port.

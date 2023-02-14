@@ -176,8 +176,8 @@ private:
     void RequestSyncDeliveryCache(Kernel::HLERequestContext& ctx) {
         LOG_DEBUG(Service_BCAT, "called");
 
-        backend.Synchronize({system.GetApplicationProcessProgramID(),
-                             GetCurrentBuildID(system.GetApplicationProcessBuildID())},
+        backend.Synchronize({system.GetCurrentProcessProgramID(),
+                             GetCurrentBuildID(system.GetCurrentProcessBuildID())},
                             GetProgressBackend(SyncType::Normal));
 
         IPC::ResponseBuilder rb{ctx, 2, 0, 1};
@@ -193,8 +193,8 @@ private:
 
         LOG_DEBUG(Service_BCAT, "called, name={}", name);
 
-        backend.SynchronizeDirectory({system.GetApplicationProcessProgramID(),
-                                      GetCurrentBuildID(system.GetApplicationProcessBuildID())},
+        backend.SynchronizeDirectory({system.GetCurrentProcessProgramID(),
+                                      GetCurrentBuildID(system.GetCurrentProcessBuildID())},
                                      name, GetProgressBackend(SyncType::Directory));
 
         IPC::ResponseBuilder rb{ctx, 2, 0, 1};
@@ -554,7 +554,7 @@ private:
 void Module::Interface::CreateDeliveryCacheStorageService(Kernel::HLERequestContext& ctx) {
     LOG_DEBUG(Service_BCAT, "called");
 
-    const auto title_id = system.GetApplicationProcessProgramID();
+    const auto title_id = system.GetCurrentProcessProgramID();
     IPC::ResponseBuilder rb{ctx, 2, 0, 1};
     rb.Push(ResultSuccess);
     rb.PushIpcInterface<IDeliveryCacheStorageService>(system, fsc.GetBCATDirectory(title_id));
