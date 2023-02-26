@@ -57,7 +57,7 @@ void ConfigureInputPerGame::ApplyConfiguration() {
 }
 
 void ConfigureInputPerGame::LoadConfiguration() {
-    static constexpr size_t HANDHELD_INDEX = 0;
+    static constexpr size_t HANDHELD_INDEX = 8;
 
     auto& hid_core = system.HIDCore();
     for (size_t player_index = 0; player_index < profile_comboboxes.size(); ++player_index) {
@@ -69,6 +69,9 @@ void ConfigureInputPerGame::LoadConfiguration() {
         const auto selection_index = player_combobox->currentIndex();
         if (selection_index == 0) {
             Settings::values.players.GetValue()[player_index].profile_name = "";
+            if (player_index == 0) {
+                Settings::values.players.GetValue()[HANDHELD_INDEX] = {};
+            }
             Settings::values.players.SetGlobal(true);
             emulated_controller->ReloadFromSettings();
             continue;
@@ -86,12 +89,17 @@ void ConfigureInputPerGame::LoadConfiguration() {
 
         emulated_controller->ReloadFromSettings();
 
-        if (player_index != HANDHELD_INDEX) {
+        if (player_index > 0) {
             continue;
         }
-
         // Handle Handheld cases
-        auto handheld_controller = hid_core.GetEmulatedController(Core::HID::NpadIdType::Handheld);
+        auto& handheld_player = Settings::values.players.GetValue()[HANDHELD_INDEX];
+        auto* handheld_controller = hid_core.GetEmulatedController(Core::HID::NpadIdType::Handheld);
+        if (player.controller_type == Settings::ControllerType::Handheld) {
+            handheld_player = player;
+        } else {
+            handheld_player = {};
+        }
         handheld_controller->ReloadFromSettings();
     }
 }
