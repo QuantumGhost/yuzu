@@ -39,6 +39,9 @@ public:
     /// Sends the current execution context to the GPU and waits for it to complete.
     void Finish(VkSemaphore signal_semaphore = nullptr, VkSemaphore wait_semaphore = nullptr);
 
+    /// Waits for the worker thread to begin executing everything.
+    void DrainRequests();
+
     /// Waits for the worker thread to finish executing everything. After this function returns it's
     /// safe to touch worker resources.
     void WaitWorker();
@@ -232,10 +235,10 @@ private:
 
     std::queue<std::unique_ptr<CommandChunk>> work_queue;
     std::vector<std::unique_ptr<CommandChunk>> chunk_reserve;
+    std::mutex execution_mutex;
     std::mutex reserve_mutex;
-    std::mutex work_mutex;
-    std::condition_variable_any work_cv;
-    std::condition_variable wait_cv;
+    std::mutex queue_mutex;
+    std::condition_variable_any event_cv;
     std::jthread worker_thread;
 };
 
