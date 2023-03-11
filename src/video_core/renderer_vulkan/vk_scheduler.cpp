@@ -47,41 +47,24 @@ Scheduler::Scheduler(const Device& device_, StateTracker& state_tracker_)
 Scheduler::~Scheduler() = default;
 
 void Scheduler::Flush(VkSemaphore signal_semaphore, VkSemaphore wait_semaphore) {
-    // When flushing, we only send data to the worker thread; no waiting is necessary.
     SubmitExecution(signal_semaphore, wait_semaphore);
     AllocateNewContext();
 }
 
 void Scheduler::Finish(VkSemaphore signal_semaphore, VkSemaphore wait_semaphore) {
-    // When finishing, we need to wait for the submission to have executed on the device.
     const u64 presubmit_tick = CurrentTick();
     SubmitExecution(signal_semaphore, wait_semaphore);
-    DrainRequests();
+    WaitWorker();
     Wait(presubmit_tick);
     AllocateNewContext();
-}
-
-void Scheduler::DrainRequests() {
-    MICROPROFILE_SCOPE(Vulkan_WaitForWorker);
-    DispatchWork();
-
-    // Wait until the queue is empty and the queue lock can be held.
-    // This drains the queue.
-    std::unique_lock ql{queue_mutex};
-    event_cv.wait(ql, [this] { return work_queue.empty(); });
 }
 
 void Scheduler::WaitWorker() {
     MICROPROFILE_SCOPE(Vulkan_WaitForWorker);
     DispatchWork();
 
-    // Wait until the queue is empty and the execution lock can be held.
-    // This ensures Vulkan is aware of everything we have done when we return.
-    std::unique_lock el{execution_mutex};
-    event_cv.wait(el, [this] {
-        std::scoped_lock ql{queue_mutex};
-        return work_queue.empty();
-    });
+    std::unique_lock lock{work_mutex};
+    wait_cv.wait(lock, [this] { return work_queue.empty(); });
 }
 
 void Scheduler::DispatchWork() {
@@ -89,10 +72,10 @@ void Scheduler::DispatchWork() {
         return;
     }
     {
-        std::scoped_lock ql{queue_mutex};
+        std::scoped_lock lock{work_mutex};
         work_queue.push(std::move(chunk));
     }
-    event_cv.notify_all();
+    work_cv.notify_one();
     AcquireNewChunk();
 }
 
@@ -154,59 +137,30 @@ bool Scheduler::UpdateRescaling(bool is_rescaling) {
 
 void Scheduler::WorkerThread(std::stop_token stop_token) {
     Common::SetCurrentThreadName("VulkanWorker");
-
-    const auto TryPopQueue{[this](auto& work) -> bool {
-        std::scoped_lock ql{queue_mutex};
-        if (work_queue.empty()) {
-            return false;
-        }
-
-        work = std::move(work_queue.front());
-        work_queue.pop();
-        event_cv.notify_all();
-        return true;
-    }};
-
-    while (!stop_token.stop_requested()) {
+    do {
         std::unique_ptr<CommandChunk> work;
-
+        bool has_submit{false};
         {
-            std::unique_lock el{execution_mutex};
-
-            // Wait for work.
-            Common::CondvarWait(event_cv, el, stop_token, [&] {
-                std::scoped_lock ql{queue_mutex};
-                return !work_queue.empty();
-            });
-
-            // If we've been asked to stop, we're done.
-            if (stop_token.stop_requested()) {
-                return;
+            std::unique_lock lock{work_mutex};
+            if (work_queue.empty()) {
+                wait_cv.notify_all();
             }
-
-            // If we don't have any work, restart from the top.
-            if (!TryPopQueue(work)) {
+            Common::CondvarWait(work_cv, lock, stop_token, [&] { return !work_queue.empty(); });
+            if (stop_token.stop_requested()) {
                 continue;
             }
+            work = std::move(work_queue.front());
+            work_queue.pop();
 
-            // Perform the work, tracking whether the chunk was a submission
-            // before executing.
-            const bool has_submit = work->HasSubmit();
+            has_submit = work->HasSubmit();
             work->ExecuteAll(current_cmdbuf);
-
-            // If the chunk was a submission, reallocate the command buffer.
-            if (has_submit) {
-                AllocateWorkerCommandBuffer();
-            }
         }
-
-        {
-            std::scoped_lock rl{reserve_mutex};
-
-            // Recycle the chunk back to the reserve.
-            chunk_reserve.emplace_back(std::move(work));
+        if (has_submit) {
+            AllocateWorkerCommandBuffer();
         }
-    }
+        std::scoped_lock reserve_lock{reserve_mutex};
+        chunk_reserve.push_back(std::move(work));
+    } while (!stop_token.stop_requested());
 }
 
 void Scheduler::AllocateWorkerCommandBuffer() {
@@ -335,16 +289,13 @@ void Scheduler::EndRenderPass() {
 }
 
 void Scheduler::AcquireNewChunk() {
-    std::scoped_lock rl{reserve_mutex};
-
+    std::scoped_lock lock{reserve_mutex};
     if (chunk_reserve.empty()) {
-        // If we don't have anything reserved, we need to make a new chunk.
         chunk = std::make_unique<CommandChunk>();
-    } else {
-        // Otherwise, we can just take from the reserve.
-        chunk = std::make_unique<CommandChunk>();
-        chunk_reserve.pop_back();
+        return;
     }
+    chunk = std::move(chunk_reserve.back());
+    chunk_reserve.pop_back();
 }
 
 } // namespace Vulkan
