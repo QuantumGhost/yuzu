@@ -481,9 +481,9 @@ Result NfpDevice::SetRegisterInfoPrivate(const AmiiboName& amiibo_name) {
 
     SetAmiiboName(settings, amiibo_name);
     tag_data.owner_mii = manager.BuildFromStoreData(mii);
-    tag_data.unknown = 0;
     tag_data.mii_extension = manager.SetFromStoreData(mii);
-    tag_data.unknown2[4] = 0;
+    tag_data.unknown = 0;
+    tag_data.unknown2 = {};
     settings.country_code_id = 0;
     settings.settings.font_region.Assign(0);
     settings.settings.amiibo_initialized.Assign(1);
