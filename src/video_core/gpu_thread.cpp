@@ -59,9 +59,6 @@ static void RunThread(std::stop_token stop_token, Core::System& system,
             state.cv.notify_all();
         }
     }
-
-    // Drain the queue.
-    state.queue.Clear();
 }
 
 ThreadManager::ThreadManager(Core::System& system_, bool is_async_)
