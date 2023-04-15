@@ -29,12 +29,6 @@ struct DescriptorUpdateEntry {
 };
 
 class UpdateDescriptorQueue final {
-    // This should be plenty for the vast majority of cases. Most desktop platforms only
-    // provide up to 3 swapchain images.
-    static constexpr size_t FRAMES_IN_FLIGHT = 5;
-    static constexpr size_t FRAME_PAYLOAD_SIZE = 0x10000;
-    static constexpr size_t PAYLOAD_SIZE = FRAME_PAYLOAD_SIZE * FRAMES_IN_FLIGHT;
-
 public:
     explicit UpdateDescriptorQueue(const Device& device_, Scheduler& scheduler_);
     ~UpdateDescriptorQueue();
@@ -79,11 +73,9 @@ private:
     const Device& device;
     Scheduler& scheduler;
 
-    size_t frame_index{0};
     DescriptorUpdateEntry* payload_cursor = nullptr;
-    DescriptorUpdateEntry* payload_start = nullptr;
     const DescriptorUpdateEntry* upload_start = nullptr;
-    std::array<DescriptorUpdateEntry, PAYLOAD_SIZE> payload;
+    std::array<DescriptorUpdateEntry, 0x10000> payload;
 };
 
 } // namespace Vulkan

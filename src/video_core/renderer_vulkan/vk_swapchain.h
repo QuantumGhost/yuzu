@@ -27,7 +27,7 @@ public:
     void Create(u32 width, u32 height, bool srgb);
 
     /// Acquires the next image in the swapchain, waits as needed.
-    bool AcquireNextImage();
+    void AcquireNextImage();
 
     /// Presents the rendered image to the swapchain.
     void Present(VkSemaphore render_semaphore);
@@ -52,11 +52,6 @@ public:
         return is_suboptimal;
     }
 
-    /// Returns true when the swapchain format is in the srgb color space
-    bool IsSrgb() const {
-        return current_srgb;
-    }
-
     VkExtent2D GetSize() const {
         return extent;
     }
@@ -69,32 +64,20 @@ public:
         return image_index;
     }
 
-    std::size_t GetFrameIndex() const {
-        return frame_index;
-    }
-
     VkImage GetImageIndex(std::size_t index) const {
         return images[index];
     }
 
-    VkImage CurrentImage() const {
-        return images[image_index];
+    VkImageView GetImageViewIndex(std::size_t index) const {
+        return *image_views[index];
     }
 
     VkFormat GetImageViewFormat() const {
         return image_view_format;
     }
 
-    VkFormat GetImageFormat() const {
-        return surface_format.format;
-    }
-
     VkSemaphore CurrentPresentSemaphore() const {
         return *present_semaphores[frame_index];
-    }
-
-    VkSemaphore CurrentRenderSemaphore() const {
-        return *render_semaphores[frame_index];
     }
 
     u32 GetWidth() const {
@@ -103,10 +86,6 @@ public:
 
     u32 GetHeight() const {
         return height;
-    }
-
-    VkExtent2D GetExtent() const {
-        return extent;
     }
 
 private:
@@ -128,9 +107,10 @@ private:
 
     std::size_t image_count{};
     std::vector<VkImage> images;
+    std::vector<vk::ImageView> image_views;
+    std::vector<vk::Framebuffer> framebuffers;
     std::vector<u64> resource_ticks;
     std::vector<vk::Semaphore> present_semaphores;
-    std::vector<vk::Semaphore> render_semaphores;
 
     u32 width;
     u32 height;
@@ -141,7 +121,6 @@ private:
     VkFormat image_view_format{};
     VkExtent2D extent{};
     VkPresentModeKHR present_mode{};
-    VkSurfaceFormatKHR surface_format{};
 
     bool current_srgb{};
     bool current_fps_unlocked{};

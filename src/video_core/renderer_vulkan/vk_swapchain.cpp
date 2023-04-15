@@ -65,6 +65,18 @@ VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, u32 wi
     return extent;
 }
 
+VkCompositeAlphaFlagBitsKHR ChooseAlphaFlags(const VkSurfaceCapabilitiesKHR& capabilities) {
+    if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) {
+        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    } else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+        return VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    } else {
+        LOG_ERROR(Render_Vulkan, "Unknown composite alpha flags value {:#x}",
+                  capabilities.supportedCompositeAlpha);
+        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    }
+}
+
 } // Anonymous namespace
 
 Swapchain::Swapchain(VkSurfaceKHR surface_, const Device& device_, Scheduler& scheduler_,
@@ -87,16 +99,18 @@ void Swapchain::Create(u32 width_, u32 height_, bool srgb) {
         return;
     }
 
+    device.GetLogical().WaitIdle();
     Destroy();
 
     CreateSwapchain(capabilities, srgb);
     CreateSemaphores();
+    CreateImageViews();
 
     resource_ticks.clear();
     resource_ticks.resize(image_count);
 }
 
-bool Swapchain::AcquireNextImage() {
+void Swapchain::AcquireNextImage() {
     const VkResult result = device.GetLogical().AcquireNextImageKHR(
         *swapchain, std::numeric_limits<u64>::max(), *present_semaphores[frame_index],
         VK_NULL_HANDLE, &image_index);
@@ -113,11 +127,8 @@ bool Swapchain::AcquireNextImage() {
         LOG_ERROR(Render_Vulkan, "vkAcquireNextImageKHR returned {}", vk::ToString(result));
         break;
     }
-
     scheduler.Wait(resource_ticks[image_index]);
     resource_ticks[image_index] = scheduler.CurrentTick();
-
-    return is_suboptimal || is_outdated;
 }
 
 void Swapchain::Present(VkSemaphore render_semaphore) {
@@ -132,7 +143,6 @@ void Swapchain::Present(VkSemaphore render_semaphore) {
         .pImageIndices = &image_index,
         .pResults = nullptr,
     };
-    std::scoped_lock lock{scheduler.submit_mutex};
     switch (const VkResult result = present_queue.Present(present_info)) {
     case VK_SUCCESS:
         break;
@@ -157,7 +167,8 @@ void Swapchain::CreateSwapchain(const VkSurfaceCapabilitiesKHR& capabilities, bo
     const auto formats{physical_device.GetSurfaceFormatsKHR(surface)};
     const auto present_modes{physical_device.GetSurfacePresentModesKHR(surface)};
 
-    surface_format = ChooseSwapSurfaceFormat(formats);
+    const VkCompositeAlphaFlagBitsKHR alpha_flags{ChooseAlphaFlags(capabilities)};
+    const VkSurfaceFormatKHR surface_format{ChooseSwapSurfaceFormat(formats)};
     present_mode = ChooseSwapPresentMode(present_modes);
 
     u32 requested_image_count{capabilities.minImageCount + 1};
@@ -182,12 +193,12 @@ void Swapchain::CreateSwapchain(const VkSurfaceCapabilitiesKHR& capabilities, bo
         .imageColorSpace = surface_format.colorSpace,
         .imageExtent = {},
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices = nullptr,
         .preTransform = capabilities.currentTransform,
-        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .compositeAlpha = alpha_flags,
         .presentMode = present_mode,
         .clipped = VK_FALSE,
         .oldSwapchain = nullptr,
@@ -230,14 +241,45 @@ void Swapchain::CreateSemaphores() {
     present_semaphores.resize(image_count);
     std::ranges::generate(present_semaphores,
                           [this] { return device.GetLogical().CreateSemaphore(); });
-    render_semaphores.resize(image_count);
-    std::ranges::generate(render_semaphores,
-                          [this] { return device.GetLogical().CreateSemaphore(); });
+}
+
+void Swapchain::CreateImageViews() {
+    VkImageViewCreateInfo ci{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .image = {},
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = image_view_format,
+        .components =
+            {
+                .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+
+    image_views.resize(image_count);
+    for (std::size_t i = 0; i < image_count; i++) {
+        ci.image = images[i];
+        image_views[i] = device.GetLogical().CreateImageView(ci);
+    }
 }
 
 void Swapchain::Destroy() {
     frame_index = 0;
     present_semaphores.clear();
+    framebuffers.clear();
+    image_views.clear();
     swapchain.reset();
 }
 

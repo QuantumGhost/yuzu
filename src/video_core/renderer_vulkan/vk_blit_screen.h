@@ -5,7 +5,6 @@
 
 #include <memory>
 
-#include "core/frontend/framebuffer_layout.h"
 #include "video_core/vulkan_common/vulkan_memory_allocator.h"
 #include "video_core/vulkan_common/vulkan_wrapper.h"
 
@@ -43,9 +42,6 @@ class RasterizerVulkan;
 class Scheduler;
 class SMAA;
 class Swapchain;
-class PresentManager;
-
-struct Frame;
 
 struct ScreenInfo {
     VkImage image{};
@@ -59,17 +55,18 @@ class BlitScreen {
 public:
     explicit BlitScreen(Core::Memory::Memory& cpu_memory, Core::Frontend::EmuWindow& render_window,
                         const Device& device, MemoryAllocator& memory_manager, Swapchain& swapchain,
-                        PresentManager& present_manager, Scheduler& scheduler,
-                        const ScreenInfo& screen_info);
+                        Scheduler& scheduler, const ScreenInfo& screen_info);
     ~BlitScreen();
 
     void Recreate();
 
-    void Draw(const Tegra::FramebufferConfig& framebuffer, const VkFramebuffer& host_framebuffer,
-              const Layout::FramebufferLayout layout, VkExtent2D render_area, bool use_accelerated);
+    [[nodiscard]] VkSemaphore Draw(const Tegra::FramebufferConfig& framebuffer,
+                                   const VkFramebuffer& host_framebuffer,
+                                   const Layout::FramebufferLayout layout, VkExtent2D render_area,
+                                   bool use_accelerated);
 
-    void DrawToSwapchain(Frame* frame, const Tegra::FramebufferConfig& framebuffer,
-                         bool use_accelerated, bool is_srgb);
+    [[nodiscard]] VkSemaphore DrawToSwapchain(const Tegra::FramebufferConfig& framebuffer,
+                                              bool use_accelerated);
 
     [[nodiscard]] vk::Framebuffer CreateFramebuffer(const VkImageView& image_view,
                                                     VkExtent2D extent);
@@ -82,9 +79,10 @@ private:
 
     void CreateStaticResources();
     void CreateShaders();
+    void CreateSemaphores();
     void CreateDescriptorPool();
     void CreateRenderPass();
-    vk::RenderPass CreateRenderPassImpl(VkFormat format);
+    vk::RenderPass CreateRenderPassImpl(VkFormat, bool is_present = true);
     void CreateDescriptorSetLayout();
     void CreateDescriptorSets();
     void CreatePipelineLayout();
@@ -92,14 +90,15 @@ private:
     void CreateSampler();
 
     void CreateDynamicResources();
+    void CreateFramebuffers();
 
     void RefreshResources(const Tegra::FramebufferConfig& framebuffer);
     void ReleaseRawImages();
     void CreateStagingBuffer(const Tegra::FramebufferConfig& framebuffer);
     void CreateRawImages(const Tegra::FramebufferConfig& framebuffer);
 
-    void UpdateDescriptorSet(VkImageView image_view, bool nn) const;
-    void UpdateAADescriptorSet(VkImageView image_view, bool nn) const;
+    void UpdateDescriptorSet(std::size_t image_index, VkImageView image_view, bool nn) const;
+    void UpdateAADescriptorSet(std::size_t image_index, VkImageView image_view, bool nn) const;
     void SetUniformData(BufferData& data, const Layout::FramebufferLayout layout) const;
     void SetVertexData(BufferData& data, const Tegra::FramebufferConfig& framebuffer,
                        const Layout::FramebufferLayout layout) const;
@@ -108,17 +107,16 @@ private:
     void CreateFSR();
 
     u64 CalculateBufferSize(const Tegra::FramebufferConfig& framebuffer) const;
-    u64 GetRawImageOffset(const Tegra::FramebufferConfig& framebuffer) const;
+    u64 GetRawImageOffset(const Tegra::FramebufferConfig& framebuffer,
+                          std::size_t image_index) const;
 
     Core::Memory::Memory& cpu_memory;
     Core::Frontend::EmuWindow& render_window;
     const Device& device;
     MemoryAllocator& memory_allocator;
     Swapchain& swapchain;
-    PresentManager& present_manager;
     Scheduler& scheduler;
     std::size_t image_count;
-    std::size_t image_index{};
     const ScreenInfo& screen_info;
 
     vk::ShaderModule vertex_shader;
@@ -137,6 +135,7 @@ private:
     vk::Pipeline gaussian_pipeline;
     vk::Pipeline scaleforce_pipeline;
     vk::RenderPass renderpass;
+    std::vector<vk::Framebuffer> framebuffers;
     vk::DescriptorSets descriptor_sets;
     vk::Sampler nn_sampler;
     vk::Sampler sampler;
@@ -146,6 +145,7 @@ private:
 
     std::vector<u64> resource_ticks;
 
+    std::vector<vk::Semaphore> semaphores;
     std::vector<vk::Image> raw_images;
     std::vector<vk::ImageView> raw_image_views;
     std::vector<MemoryCommit> raw_buffer_commits;
@@ -164,8 +164,6 @@ private:
     u32 raw_width = 0;
     u32 raw_height = 0;
     Service::android::PixelFormat pixel_format{};
-    bool current_srgb;
-    VkFormat image_view_format;
 
     std::unique_ptr<FSR> fsr;
     std::unique_ptr<SMAA> smaa;
