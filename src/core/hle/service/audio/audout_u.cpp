@@ -284,6 +284,7 @@ void AudOutU::OpenAudioOut(HLERequestContext& ctx) {
     result = audio_out->GetImpl()->GetSystem().Initialize(device_name, in_params, handle,
                                                           applet_resource_user_id);
     if (result.IsError()) {
+        LOG_ERROR(Service_Audio, "Failed to initialize the AudioOut System!");
         IPC::ResponseBuilder rb{ctx, 2};
         rb.Push(result);
         return;
