@@ -267,7 +267,7 @@ size_t Maxwell3D::EstimateIndexBufferSize() {
                                                         std::numeric_limits<u16>::max(),
                                                         std::numeric_limits<u32>::max()};
     const size_t byte_size = regs.index_buffer.FormatSizeInBytes();
-    const size_t log2_byte_size = Common::Log2Floor64(byte_size);
+    const size_t log2_byte_size = Common::Log2Ceil64(byte_size);
     return std::min<size_t>(
         memory_manager.GetMemoryLayoutSize(start_address, byte_size * max_sizes[log2_byte_size]) /
             byte_size,

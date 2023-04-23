@@ -13,7 +13,6 @@
 #include "common/thread.h"
 #include "core/core.h"
 #include "core/core_timing.h"
-#include "core/core_timing_util.h"
 
 MICROPROFILE_DEFINE(Audio_Renderer, "Audio", "DSP", MP_RGB(60, 19, 97));
 
@@ -144,6 +143,7 @@ void AudioRenderer::ThreadFunc() {
 
     mailbox->ADSPSendMessage(RenderMessage::AudioRenderer_InitializeOK);
 
+    // 0.12 seconds (2304000 / 19200000)
     constexpr u64 max_process_time{2'304'000ULL};
 
     while (true) {
@@ -179,8 +179,7 @@ void AudioRenderer::ThreadFunc() {
                     u64 max_time{max_process_time};
                     if (index == 1 && command_buffer.applet_resource_user_id ==
                                           mailbox->GetCommandBuffer(0).applet_resource_user_id) {
-                        max_time = max_process_time -
-                                   Core::Timing::CyclesToNs(render_times_taken[0]).count();
+                        max_time = max_process_time - render_times_taken[0];
                         if (render_times_taken[0] > max_process_time) {
                             max_time = 0;
                         }

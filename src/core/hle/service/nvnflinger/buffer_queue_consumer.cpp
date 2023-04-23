@@ -92,6 +92,14 @@ Status BufferQueueConsumer::AcquireBuffer(BufferItem* out_buffer,
 
     LOG_DEBUG(Service_Nvnflinger, "acquiring slot={}", slot);
 
+    // If the front buffer is still being tracked, update its slot state
+    if (core->StillTracking(*front)) {
+        slots[slot].acquire_called = true;
+        slots[slot].needs_cleanup_on_release = false;
+        slots[slot].buffer_state = BufferState::Acquired;
+        slots[slot].fence = Fence::NoFence();
+    }
+
     // If the buffer has previously been acquired by the consumer, set graphic_buffer to nullptr to
     // avoid unnecessarily remapping this buffer on the consumer side.
     if (out_buffer->acquire_called) {
@@ -134,13 +142,29 @@ Status BufferQueueConsumer::ReleaseBuffer(s32 slot, u64 frame_number, const Fenc
             ++current;
         }
 
-        slots[slot].buffer_state = BufferState::Free;
+        if (slots[slot].buffer_state == BufferState::Acquired) {
+            slots[slot].fence = release_fence;
+            slots[slot].buffer_state = BufferState::Free;
 
-        nvmap.FreeHandle(slots[slot].graphic_buffer->BufferId(), true);
+            nvmap.FreeHandle(slots[slot].graphic_buffer->BufferId(), true);
 
-        listener = core->connected_producer_listener;
+            listener = core->connected_producer_listener;
 
-        LOG_DEBUG(Service_Nvnflinger, "releasing slot {}", slot);
+            LOG_DEBUG(Service_Nvnflinger, "releasing slot {}", slot);
+        } else if (slots[slot].needs_cleanup_on_release) {
+            LOG_DEBUG(Service_Nvnflinger, "releasing a stale buffer slot {} (state = {})", slot,
+                      slots[slot].buffer_state);
+
+            slots[slot].needs_cleanup_on_release = false;
+
+            return Status::StaleBufferSlot;
+        } else {
+            LOG_ERROR(Service_Nvnflinger,
+                      "attempted to release buffer slot {} but its state was {}", slot,
+                      slots[slot].buffer_state);
+
+            return Status::BadValue;
+        }
 
         core->SignalDequeueCondition();
     }
