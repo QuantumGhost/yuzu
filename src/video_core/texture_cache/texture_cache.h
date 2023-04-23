@@ -139,6 +139,13 @@ void TextureCache<P>::TickFrame() {
     runtime.TickFrame();
     critical_gc = 0;
     ++frame_tick;
+
+    if constexpr (IMPLEMENTS_ASYNC_DOWNLOADS) {
+        for (auto& buffer : async_buffers_death_ring) {
+            runtime.FreeDeferredStagingBuffer(buffer);
+        }
+        async_buffers_death_ring.clear();
+    }
 }
 
 template <class P>
@@ -688,10 +695,10 @@ void TextureCache<P>::CommitAsyncFlushes() {
             }
             uncommitted_async_buffers.emplace_back(download_map);
         }
+        async_buffers.emplace_back(std::move(uncommitted_async_buffers));
+        uncommitted_async_buffers.clear();
     }
     committed_downloads.emplace_back(std::move(uncommitted_downloads));
-    async_buffers.emplace_back(std::move(uncommitted_async_buffers));
-    uncommitted_async_buffers.clear();
     uncommitted_downloads.clear();
 }
 
@@ -729,7 +736,7 @@ void TextureCache<P>::PopAsyncFlushes() {
             }
         }
         for (auto& download_buffer : download_map) {
-            runtime.FreeDeferredStagingBuffer(download_buffer);
+            async_buffers_death_ring.emplace_back(download_buffer);
         }
         committed_downloads.pop_front();
         async_buffers.pop_front();
