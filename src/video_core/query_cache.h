@@ -137,7 +137,7 @@ public:
             query = Register(type, *cpu_addr, host_ptr, timestamp.has_value());
         }
 
-        auto result = query->BindCounter(Stream(type).Current());
+        auto result = query->BindCounter(Stream(type).Current(), timestamp);
         if (result) {
             auto async_job_id = query->GetAsyncJob();
             auto& async_job = slot_async_jobs[async_job_id];
@@ -411,11 +411,19 @@ public:
         // When counter is nullptr it means that it's just been reset. We are supposed to write a
         // zero in these cases.
         const u64 value = counter ? counter->Query(async) : 0;
+        if (async) {
+            return value;
+        }
+        std::memcpy(host_ptr, &value, sizeof(u64));
+
+        if (timestamp) {
+            std::memcpy(host_ptr + TIMESTAMP_OFFSET, &*timestamp, sizeof(u64));
+        }
         return value;
     }
 
     /// Binds a counter to this query.
-    std::optional<u64> BindCounter(std::shared_ptr<HostCounter> counter_) {
+    std::optional<u64> BindCounter(std::shared_ptr<HostCounter> counter_, std::optional<u64> timestamp_) {
         std::optional<u64> result{};
         if (counter) {
             // If there's an old counter set it means the query is being rewritten by the game.
@@ -423,6 +431,7 @@ public:
             result = std::make_optional(Flush());
         }
         counter = std::move(counter_);
+        timestamp = timestamp_;
         return result;
     }
 

@@ -46,8 +46,11 @@ void Nvnflinger::SplitVSync(std::stop_token stop_token) {
         vsync_signal.wait(false);
         vsync_signal.store(false);
 
-        const auto lock_guard = Lock();
+        guard->lock();
+
         Compose();
+
+        guard->unlock();
     }
 }
 
@@ -67,9 +70,8 @@ Nvnflinger::Nvnflinger(Core::System& system_, HosBinderDriverServer& hos_binder_
         [this](std::uintptr_t, s64 time,
                std::chrono::nanoseconds ns_late) -> std::optional<std::chrono::nanoseconds> {
             vsync_signal.store(true);
-            const auto lock_guard = Lock();
+            { const auto lock_guard = Lock(); }
             vsync_signal.notify_one();
-
             return std::chrono::nanoseconds(GetNextTicks());
         });
 
@@ -266,9 +268,8 @@ void Nvnflinger::Compose() {
         SCOPE_EXIT({ display.SignalVSyncEvent(); });
 
         // Don't do anything for displays without layers.
-        if (!display.HasLayers()) {
+        if (!display.HasLayers())
             continue;
-        }
 
         // TODO(Subv): Support more than 1 layer.
         VI::Layer& layer = display.GetLayer(0);
