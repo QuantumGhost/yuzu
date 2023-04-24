@@ -423,7 +423,8 @@ public:
     }
 
     /// Binds a counter to this query.
-    std::optional<u64> BindCounter(std::shared_ptr<HostCounter> counter_, std::optional<u64> timestamp_) {
+    std::optional<u64> BindCounter(std::shared_ptr<HostCounter> counter_,
+                                   std::optional<u64> timestamp_) {
         std::optional<u64> result{};
         if (counter) {
             // If there's an old counter set it means the query is being rewritten by the game.
