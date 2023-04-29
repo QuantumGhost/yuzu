@@ -1342,6 +1342,17 @@ void Image::UploadMemory(const StagingBufferRef& map, std::span<const BufferImag
     UploadMemory(map.buffer, map.offset, copies);
 }
 
+void Image::DownloadMemory(VkBuffer buffer, VkDeviceSize offset,
+                           std::span<const VideoCommon::BufferImageCopy> copies) {
+    std::array buffer_handles{
+        buffer,
+    };
+    std::array buffer_offsets{
+        offset,
+    };
+    DownloadMemory(buffer_handles, buffer_offsets, copies);
+}
+
 void Image::DownloadMemory(std::span<VkBuffer> buffers_span, std::span<VkDeviceSize> offsets_span,
                            std::span<const VideoCommon::BufferImageCopy> copies) {
     const bool is_rescaled = True(flags & ImageFlagBits::Rescaled);

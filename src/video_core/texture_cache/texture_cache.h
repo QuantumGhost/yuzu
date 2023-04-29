@@ -755,7 +755,7 @@ void TextureCache<P>::PopAsyncFlushes() {
         auto download_map = runtime.DownloadStagingBuffer(total_size_bytes);
         const size_t original_offset = download_map.offset;
         for (const PendingDownload& download_info : download_ids) {
-            if (download_info.is_swizzle) {
+            if (!download_info.is_swizzle) {
                 continue;
             }
             Image& image = slot_images[download_info.object_id];
@@ -768,7 +768,7 @@ void TextureCache<P>::PopAsyncFlushes() {
         download_map.offset = original_offset;
         std::span<u8> download_span = download_map.mapped_span;
         for (const PendingDownload& download_info : download_ids) {
-            if (download_info.is_swizzle) {
+            if (!download_info.is_swizzle) {
                 continue;
             }
             const ImageBase& image = slot_images[download_info.object_id];
@@ -894,10 +894,7 @@ void TextureCache<P>::DownloadImageIntoBuffer(typename TextureCache<P>::Image* i
         };
         image->DownloadMemory(buffers, buffer_offsets, copies);
     } else {
-        std::array buffers{
-            buffer,
-        };
-        image->DownloadMemory(buffers, buffer_offset, copies);
+        image->DownloadMemory(buffer, buffer_offset, copies);
     }
 }
 

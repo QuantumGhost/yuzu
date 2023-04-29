@@ -21,6 +21,7 @@ BufferCache<P>::BufferCache(VideoCore::RasterizerInterface& rasterizer_,
     // Ensure the first slot is used for the null buffer
     void(slot_buffers.insert(runtime, NullBufferParams{}));
     common_ranges.clear();
+    inline_buffer_id = NULL_BUFFER_ID;
 
     active_async_buffers = !Settings::IsGPULevelHigh();
 
@@ -442,9 +443,6 @@ template <class P>
 void BufferCache<P>::FlushCachedWrites() {
     cached_write_buffer_ids.clear();
     memory_tracker.FlushCachedWrites();
-    for (auto& interval : cached_ranges) {
-        ClearDownload(interval);
-    }
     cached_ranges.clear();
 }
 
@@ -689,7 +687,7 @@ void BufferCache<P>::BindHostIndexBuffer() {
     const u32 offset = buffer.Offset(index_buffer.cpu_addr);
     const u32 size = index_buffer.size;
     const auto& draw_state = maxwell3d->draw_manager->GetDrawState();
-    if (!draw_state.inline_index_draw_indexes.empty()) {
+    if (!draw_state.inline_index_draw_indexes.empty()) [[unlikely]] {
         if constexpr (USE_MEMORY_MAPS) {
             auto upload_staging = runtime.UploadStagingBuffer(size);
             std::array<BufferCopy, 1> copies{
@@ -1001,12 +999,20 @@ void BufferCache<P>::UpdateIndexBuffer() {
         return;
     }
     flags[Dirty::IndexBuffer] = false;
-    if (!draw_state.inline_index_draw_indexes.empty()) {
+    if (!draw_state.inline_index_draw_indexes.empty()) [[unlikely]] {
         auto inline_index_size = static_cast<u32>(draw_state.inline_index_draw_indexes.size());
+        u32 buffer_size = Common::AlignUp(inline_index_size, PAGE_SIZE);
+        if (inline_buffer_id == NULL_BUFFER_ID) [[unlikely]] {
+            inline_buffer_id = CreateBuffer(0, buffer_size);
+        }
+        if (slot_buffers[inline_buffer_id].SizeBytes() < buffer_size) [[unlikely]] {
+            slot_buffers.erase(inline_buffer_id);
+            inline_buffer_id = CreateBuffer(0, buffer_size);
+        }
         index_buffer = Binding{
             .cpu_addr = 0,
             .size = inline_index_size,
-            .buffer_id = FindBuffer(0, inline_index_size),
+            .buffer_id = inline_buffer_id,
         };
         return;
     }
@@ -1317,6 +1323,9 @@ void BufferCache<P>::JoinOverlap(BufferId new_buffer_id, BufferId overlap_id,
 
 template <class P>
 BufferId BufferCache<P>::CreateBuffer(VAddr cpu_addr, u32 wanted_size) {
+    VAddr cpu_addr_end = Common::AlignUp(cpu_addr + wanted_size, PAGE_SIZE);
+    cpu_addr = Common::AlignDown(cpu_addr, PAGE_SIZE);
+    wanted_size = static_cast<u32>(cpu_addr_end - cpu_addr);
     const OverlapResult overlap = ResolveOverlaps(cpu_addr, wanted_size);
     const u32 size = static_cast<u32>(overlap.end - overlap.begin);
     const BufferId new_buffer_id = slot_buffers.insert(runtime, rasterizer, overlap.begin, size);

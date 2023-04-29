@@ -112,6 +112,10 @@ class BufferCache : public VideoCommon::ChannelSetupCaches<VideoCommon::ChannelI
     static constexpr s64 DEFAULT_CRITICAL_MEMORY = 1_GiB;
     static constexpr s64 TARGET_THRESHOLD = 4_GiB;
 
+    // Debug Flags.
+
+    static constexpr bool DISABLE_DOWNLOADS = true;
+
     using Maxwell = Tegra::Engines::Maxwell3D::Regs;
 
     using Runtime = typename P::Runtime;
@@ -568,6 +572,7 @@ private:
     u64 total_used_memory = 0;
     u64 minimum_memory = 0;
     u64 critical_memory = 0;
+    BufferId inline_buffer_id;
 
     bool active_async_buffers = false;
 
