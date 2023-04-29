@@ -815,7 +815,7 @@ void Image::DownloadMemory(std::span<GLuint> buffer_handles, std::span<size_t> b
         ScaleDown();
     }
     glMemoryBarrier(GL_PIXEL_BUFFER_BARRIER_BIT); // TODO: Move this to its own API
-    for (size_t i = 0; buffer_handles.size(); i++) {
+    for (size_t i = 0; i < buffer_handles.size(); i++) {
         auto& buffer_handle = buffer_handles[i];
         glBindBuffer(GL_PIXEL_PACK_BUFFER, buffer_handle);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
