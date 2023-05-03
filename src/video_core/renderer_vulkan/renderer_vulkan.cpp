@@ -88,7 +88,7 @@ RendererVulkan::RendererVulkan(Core::TelemetrySession& telemetry_session_,
       instance(CreateInstance(library, dld, VK_API_VERSION_1_1, render_window.GetWindowInfo().type,
                               Settings::values.renderer_debug.GetValue())),
       debug_callback(Settings::values.renderer_debug ? CreateDebugCallback(instance) : nullptr),
-      surface(CreateSurface(instance, render_window)),
+      surface(CreateSurface(instance, render_window.GetWindowInfo())),
       device(CreateDevice(instance, dld, *surface)), memory_allocator(device, false),
       state_tracker(), scheduler(device, state_tracker),
       swapchain(*surface, device, scheduler, render_window.GetFramebufferLayout().width,
@@ -134,7 +134,7 @@ void RendererVulkan::SwapBuffers(const Tegra::FramebufferConfig* framebuffer) {
     Frame* frame = present_manager.GetRenderFrame();
     blit_screen.DrawToSwapchain(frame, *framebuffer, use_accelerated, is_srgb);
     scheduler.Flush(*frame->render_ready);
-    scheduler.Record([this, frame](vk::CommandBuffer) { present_manager.PushFrame(frame); });
+    present_manager.Present(frame);
 
     gpu.RendererFrameEndNotify();
     rasterizer.TickFrame();
