@@ -16,13 +16,6 @@
 
 namespace Settings {
 
-enum class VSyncMode : u32 {
-    Immediate = 0,
-    Mailbox = 1,
-    FIFO = 2,
-    FIFORelaxed = 3,
-};
-
 enum class RendererBackend : u32 {
     OpenGL = 0,
     Vulkan = 1,
@@ -463,8 +456,8 @@ struct Values {
     SwitchableSetting<NvdecEmulation> nvdec_emulation{NvdecEmulation::GPU, "nvdec_emulation"};
     SwitchableSetting<bool> accelerate_astc{true, "accelerate_astc"};
     SwitchableSetting<bool> async_astc{false, "async_astc"};
-    Setting<VSyncMode, true> vsync_mode{VSyncMode::FIFO, VSyncMode::Immediate,
-                                        VSyncMode::FIFORelaxed, "use_vsync"};
+    SwitchableSetting<bool> use_vsync{true, "use_vsync"};
+    SwitchableSetting<bool> use_reactive_flushing{true, "use_reactive_flushing"};
     SwitchableSetting<ShaderBackend, true> shader_backend{ShaderBackend::GLSL, ShaderBackend::GLSL,
                                                           ShaderBackend::SPIRV, "shader_backend"};
     SwitchableSetting<bool> use_asynchronous_shaders{false, "use_asynchronous_shaders"};

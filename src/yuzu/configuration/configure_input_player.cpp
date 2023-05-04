@@ -8,7 +8,6 @@
 #include <QInputDialog>
 #include <QMenu>
 #include <QMessageBox>
-#include <QMouseEvent>
 #include <QTimer>
 #include "common/assert.h"
 #include "common/param_package.h"

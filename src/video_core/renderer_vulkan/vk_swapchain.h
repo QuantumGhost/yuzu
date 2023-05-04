@@ -116,6 +116,8 @@ private:
 
     void Destroy();
 
+    bool HasFpsUnlockChanged() const;
+
     bool NeedsPresentModeUpdate() const;
 
     const VkSurfaceKHR surface;
@@ -140,11 +142,9 @@ private:
     VkExtent2D extent{};
     VkPresentModeKHR present_mode{};
     VkSurfaceFormatKHR surface_format{};
-    bool has_imm{false};
-    bool has_mailbox{false};
-    bool has_fifo_relaxed{false};
 
     bool current_srgb{};
+    bool current_fps_unlocked{};
     bool is_outdated{};
     bool is_suboptimal{};
 };

@@ -502,6 +502,29 @@ bool RasterizerVulkan::MustFlushRegion(VAddr addr, u64 size, VideoCommon::CacheT
     return false;
 }
 
+VideoCore::RasterizerDownloadArea RasterizerVulkan::GetFlushArea(VAddr addr, u64 size) {
+    {
+        std::scoped_lock lock{texture_cache.mutex};
+        auto area = texture_cache.GetFlushArea(addr, size);
+        if (area) {
+            return *area;
+        }
+    }
+    {
+        std::scoped_lock lock{buffer_cache.mutex};
+        auto area = buffer_cache.GetFlushArea(addr, size);
+        if (area) {
+            return *area;
+        }
+    }
+    VideoCore::RasterizerDownloadArea new_area{
+        .start_address = Common::AlignDown(addr, Core::Memory::YUZU_PAGESIZE),
+        .end_address = Common::AlignUp(addr + size, Core::Memory::YUZU_PAGESIZE),
+        .preemtive = true,
+    };
+    return new_area;
+}
+
 void RasterizerVulkan::InvalidateRegion(VAddr addr, u64 size, VideoCommon::CacheType which) {
     if (addr == 0 || size == 0) {
         return;
@@ -598,7 +621,7 @@ void RasterizerVulkan::SignalSyncPoint(u32 value) {
 }
 
 void RasterizerVulkan::SignalReference() {
-    fence_manager.SignalOrdering();
+    fence_manager.SignalReference();
 }
 
 void RasterizerVulkan::ReleaseFences() {
@@ -631,7 +654,7 @@ void RasterizerVulkan::WaitForIdle() {
         cmdbuf.SetEvent(event, flags);
         cmdbuf.WaitEvents(event, flags, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, {}, {}, {});
     });
-    SignalReference();
+    fence_manager.SignalOrdering();
 }
 
 void RasterizerVulkan::FragmentBarrier() {
