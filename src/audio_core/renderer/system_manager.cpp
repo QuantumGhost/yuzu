@@ -15,9 +15,14 @@ MICROPROFILE_DEFINE(Audio_RenderSystemManager, "Audio", "Render System Manager",
                     MP_RGB(60, 19, 97));
 
 namespace AudioCore::AudioRenderer {
+constexpr std::chrono::nanoseconds RENDER_TIME{5'000'000UL};
 
 SystemManager::SystemManager(Core::System& core_)
-    : core{core_}, adsp{core.AudioCore().GetADSP()}, mailbox{adsp.GetRenderMailbox()} {}
+    : core{core_}, adsp{core.AudioCore().GetADSP()}, mailbox{adsp.GetRenderMailbox()},
+      thread_event{Core::Timing::CreateEvent(
+          "AudioRendererSystemManager", [this](std::uintptr_t, s64 time, std::chrono::nanoseconds) {
+              return ThreadFunc2(time);
+          })} {}
 
 SystemManager::~SystemManager() {
     Stop();
@@ -27,7 +32,9 @@ bool SystemManager::InitializeUnsafe() {
     if (!active) {
         if (adsp.Start()) {
             active = true;
-            thread = std::jthread([this](std::stop_token stop_token) { ThreadFunc(); });
+            thread = std::jthread([this](std::stop_token stop_token) { ThreadFunc(stop_token); });
+            core.CoreTiming().ScheduleLoopingEvent(std::chrono::nanoseconds(0), RENDER_TIME,
+                                                   thread_event);
         }
     }
 
@@ -38,9 +45,13 @@ void SystemManager::Stop() {
     if (!active) {
         return;
     }
+    core.CoreTiming().UnscheduleEvent(thread_event, {});
     active = false;
-    update.store(true);
-    update.notify_all();
+    {
+        std::scoped_lock l{cv_mutex};
+        do_update = false;
+    }
+    thread.request_stop();
     thread.join();
     adsp.Stop();
 }
@@ -85,12 +96,12 @@ bool SystemManager::Remove(System& system_) {
     return true;
 }
 
-void SystemManager::ThreadFunc() {
+void SystemManager::ThreadFunc(std::stop_token stop_token) {
     static constexpr char name[]{"AudioRenderSystemManager"};
     MicroProfileOnThreadCreate(name);
     Common::SetCurrentThreadName(name);
     Common::SetCurrentThreadPriority(Common::ThreadPriority::High);
-    while (active) {
+    while (active && !stop_token.stop_requested()) {
         {
             std::scoped_lock l{mutex1};
 
@@ -103,7 +114,20 @@ void SystemManager::ThreadFunc() {
 
         adsp.Signal();
         adsp.Wait();
+
+        std::unique_lock l{cv_mutex};
+        Common::CondvarWait(update_cv, l, stop_token, [this]() { return do_update; });
+        do_update = false;
     }
+}
+
+std::optional<std::chrono::nanoseconds> SystemManager::ThreadFunc2(s64 time) {
+    {
+        std::scoped_lock l{cv_mutex};
+        do_update = true;
+    }
+    update_cv.notify_all();
+    return std::nullopt;
 }
 
 } // namespace AudioCore::AudioRenderer

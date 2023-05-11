@@ -188,8 +188,6 @@ void AudioRenderer::ThreadFunc() {
                     max_time = std::min(command_buffer.time_limit, max_time);
                     command_list_processor.SetProcessTimeMax(max_time);
 
-                    streams[index]->WaitFreeSpace();
-
                     // Process the command list
                     {
                         MICROPROFILE_SCOPE(Audio_Renderer);

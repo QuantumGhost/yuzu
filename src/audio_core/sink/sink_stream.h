@@ -207,11 +207,6 @@ public:
      */
     u64 GetExpectedPlayedSampleCount();
 
-    /**
-     * Waits for free space in the sample ring buffer
-     */
-    void WaitFreeSpace();
-
 protected:
     /// Core system
     Core::System& system;
