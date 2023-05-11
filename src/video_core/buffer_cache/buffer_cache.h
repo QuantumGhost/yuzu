@@ -1297,10 +1297,10 @@ typename BufferCache<P>::OverlapResult BufferCache<P>::ResolveOverlaps(VAddr cpu
             // as a stream buffer. Increase the size to skip constantly recreating buffers.
             has_stream_leap = true;
             if (expands_right) {
-                begin -= YUZU_PAGESIZE * 256;
+                begin -= CACHING_PAGESIZE * 256;
                 // We're about to increment cpu_addr by YUZU_PAGESIZE, but have not yet checked for
                 // a buffer at the new begin.
-                cpu_addr = begin - YUZU_PAGESIZE;
+                cpu_addr = begin - CACHING_PAGESIZE;
             }
             if (expands_left) {
                 end += CACHING_PAGESIZE * 256;

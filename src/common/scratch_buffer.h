@@ -90,13 +90,7 @@ public:
         return buffer_capacity;
     }
 
-    void swap(ScratchBuffer& other) {
-        std::swap(last_requested_size, other.last_requested_size);
-        std::swap(buffer_capacity, other.buffer_capacity);
-        std::swap(buffer, other.buffer);
-    }
-
-    void swap(ScratchBuffer&& other) {
+    void swap(ScratchBuffer& other) noexcept {
         std::swap(last_requested_size, other.last_requested_size);
         std::swap(buffer_capacity, other.buffer_capacity);
         std::swap(buffer, other.buffer);
