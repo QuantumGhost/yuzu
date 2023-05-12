@@ -1663,8 +1663,6 @@ typename BufferCache<P>::Binding BufferCache<P>::StorageBufferBinding(GPUVAddr s
         // cbufs, which do not store the sizes adjacent to the addresses, so use the fully
         // mapped buffer size for now.
         const u32 memory_layout_size = static_cast<u32>(gpu_memory->GetMemoryLayoutSize(gpu_addr));
-        LOG_INFO(HW_GPU, "Binding storage buffer for cbuf index {}, MemoryLayoutSize 0x{:X}",
-                 cbuf_index, memory_layout_size);
         return memory_layout_size;
     }();
     const std::optional<VAddr> cpu_addr = gpu_memory->GpuToCpuAddress(gpu_addr);
