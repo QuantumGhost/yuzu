@@ -1657,7 +1657,10 @@ typename BufferCache<P>::Binding BufferCache<P>::StorageBufferBinding(GPUVAddr s
         const bool is_nvn_cbuf = cbuf_index == 0;
         // The NVN driver buffer (index 0) is known to pack the SSBO address followed by its size.
         if (is_nvn_cbuf) {
-            return gpu_memory->Read<u32>(ssbo_addr + 8);
+            const u32 ssbo_size = gpu_memory->Read<u32>(ssbo_addr + 8);
+            if (ssbo_size != 0) {
+                return ssbo_size;
+            }
         }
         // Other titles (notably Doom Eternal) may use STG/LDG on buffer addresses in custom defined
         // cbufs, which do not store the sizes adjacent to the addresses, so use the fully
