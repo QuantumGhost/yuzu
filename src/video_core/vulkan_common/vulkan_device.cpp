@@ -406,6 +406,14 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
         features.extended_dynamic_state3.extendedDynamicState3ColorBlendEnable = false;
         features.extended_dynamic_state3.extendedDynamicState3ColorBlendEquation = false;
         dynamic_state3_blending = false;
+
+        const u32 version = (properties.properties.driverVersion << 3) >> 3;
+        if (version < VK_MAKE_API_VERSION(0, 23, 1, 0)) {
+            LOG_WARNING(Render_Vulkan,
+                        "RADV versions older than 23.1.0 have broken depth clamp dynamic state");
+            features.extended_dynamic_state3.extendedDynamicState3DepthClampEnable = false;
+            dynamic_state3_enables = false;
+        }
     }
     if (extensions.vertex_input_dynamic_state && is_radv) {
         // TODO(ameerj): Blacklist only offending driver versions
@@ -1009,6 +1017,8 @@ void Device::CollectPhysicalMemoryInfo() {
         device_access_memory += mem_properties.memoryHeaps[element].size;
     }
     if (!is_integrated) {
+        const u64 reserve_memory = std::min<u64>(device_access_memory / 8, 2_GiB);
+        device_access_memory -= reserve_memory;
         return;
     }
     const s64 available_memory = static_cast<s64>(device_access_memory - device_initial_usage);

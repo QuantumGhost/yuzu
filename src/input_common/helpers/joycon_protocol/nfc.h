@@ -32,6 +32,8 @@ public:
     bool IsEnabled() const;
 
 private:
+    static constexpr std::size_t AMIIBO_UPDATE_DELAY = 15;
+
     struct TagFoundData {
         u8 type;
         std::vector<u8> uuid;
@@ -39,7 +41,7 @@ private:
 
     DriverResult WaitUntilNfcIsReady();
 
-    DriverResult StartPolling(TagFoundData& data);
+    DriverResult StartPolling(TagFoundData& data, std::size_t timeout_limit = 1);
 
     DriverResult ReadTag(const TagFoundData& data);
 
@@ -56,6 +58,7 @@ private:
     NFCReadBlockCommand GetReadBlockCommand(NFCPages pages) const;
 
     bool is_enabled{};
+    std::size_t update_counter{};
 };
 
 } // namespace InputCommon::Joycon
