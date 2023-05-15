@@ -5,7 +5,6 @@
 
 #include <optional>
 #include <span>
-#include <boost/container/small_vector.hpp>
 
 #include "common/common_types.h"
 #include "common/scratch_buffer.h"
@@ -74,8 +73,7 @@ struct OverlapResult {
 void ConvertImage(std::span<const u8> input, const ImageInfo& info, std::span<u8> output,
                   std::span<BufferImageCopy> copies);
 
-[[nodiscard]] boost::container::small_vector<BufferImageCopy, 16> FullDownloadCopies(
-    const ImageInfo& info);
+[[nodiscard]] std::vector<BufferImageCopy> FullDownloadCopies(const ImageInfo& info);
 
 [[nodiscard]] Extent3D MipSize(Extent3D size, u32 level);
 
