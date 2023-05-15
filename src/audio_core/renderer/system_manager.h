@@ -66,12 +66,13 @@ private:
     /**
      * Main thread responsible for command generation.
      */
-    void ThreadFunc(std::stop_token stop_token);
+    void ThreadFunc();
 
-    /**
-     * Signalling core timing thread to run ThreadFunc.
-     */
-    std::optional<std::chrono::nanoseconds> ThreadFunc2(s64 time);
+    enum class StreamState {
+        Filling,
+        Steady,
+        Draining,
+    };
 
     /// Core system
     Core::System& core;
@@ -89,12 +90,8 @@ private:
     ADSP::ADSP& adsp;
     /// AudioRenderer mailbox for communication
     ADSP::AudioRenderer_Mailbox* mailbox{};
-    /// Core timing event to signal main thread
-    std::shared_ptr<Core::Timing::EventType> thread_event;
     /// Atomic for main thread to wait on
-    std::mutex cv_mutex{};
-    bool do_update{};
-    std::condition_variable_any update_cv{};
+    std::atomic<bool> update{};
 };
 
 } // namespace AudioCore::AudioRenderer

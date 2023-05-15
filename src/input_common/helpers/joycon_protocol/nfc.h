@@ -32,6 +32,7 @@ public:
     bool IsEnabled() const;
 
 private:
+    // Number of times the function will be delayed until it outputs valid data
     static constexpr std::size_t AMIIBO_UPDATE_DELAY = 15;
 
     struct TagFoundData {
