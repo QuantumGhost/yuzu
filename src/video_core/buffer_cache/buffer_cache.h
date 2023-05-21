@@ -30,11 +30,11 @@ BufferCache<P>::BufferCache(VideoCore::RasterizerInterface& rasterizer_,
     }
 
     const s64 device_memory = static_cast<s64>(runtime.GetDeviceLocalMemory());
-    const s64 min_spacing_expected = device_memory - 1_GiB - 512_MiB;
-    const s64 min_spacing_critical = device_memory - 1_GiB;
+    const s64 min_spacing_expected = device_memory - 1_GiB;
+    const s64 min_spacing_critical = device_memory - 512_MiB;
     const s64 mem_threshold = std::min(device_memory, TARGET_THRESHOLD);
     const s64 min_vacancy_expected = (6 * mem_threshold) / 10;
-    const s64 min_vacancy_critical = (3 * mem_threshold) / 10;
+    const s64 min_vacancy_critical = (2 * mem_threshold) / 10;
     minimum_memory = static_cast<u64>(
         std::max(std::min(device_memory - min_vacancy_expected, min_spacing_expected),
                  DEFAULT_EXPECTED_MEMORY));
@@ -1666,7 +1666,7 @@ typename BufferCache<P>::Binding BufferCache<P>::StorageBufferBinding(GPUVAddr s
         // cbufs, which do not store the sizes adjacent to the addresses, so use the fully
         // mapped buffer size for now.
         const u32 memory_layout_size = static_cast<u32>(gpu_memory->GetMemoryLayoutSize(gpu_addr));
-        return memory_layout_size;
+        return std::min(memory_layout_size, static_cast<u32>(8_MiB));
     }();
     const std::optional<VAddr> cpu_addr = gpu_memory->GpuToCpuAddress(gpu_addr);
     if (!cpu_addr || size == 0) {

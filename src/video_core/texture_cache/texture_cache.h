@@ -49,11 +49,11 @@ TextureCache<P>::TextureCache(Runtime& runtime_, VideoCore::RasterizerInterface&
 
     if constexpr (HAS_DEVICE_MEMORY_INFO) {
         const s64 device_memory = static_cast<s64>(runtime.GetDeviceLocalMemory());
-        const s64 min_spacing_expected = device_memory - 1_GiB - 512_MiB;
-        const s64 min_spacing_critical = device_memory - 1_GiB;
+        const s64 min_spacing_expected = device_memory - 1_GiB;
+        const s64 min_spacing_critical = device_memory - 512_MiB;
         const s64 mem_threshold = std::min(device_memory, TARGET_THRESHOLD);
         const s64 min_vacancy_expected = (6 * mem_threshold) / 10;
-        const s64 min_vacancy_critical = (3 * mem_threshold) / 10;
+        const s64 min_vacancy_critical = (2 * mem_threshold) / 10;
         expected_memory = static_cast<u64>(
             std::max(std::min(device_memory - min_vacancy_expected, min_spacing_expected),
                      DEFAULT_EXPECTED_MEMORY));
@@ -88,8 +88,7 @@ void TextureCache<P>::RunGarbageCollector() {
         }
         const bool must_download =
             image.IsSafeDownload() && False(image.flags & ImageFlagBits::BadOverlap);
-        if (!high_priority_mode &&
-            (must_download || True(image.flags & ImageFlagBits::CostlyLoad))) {
+        if (!aggressive_mode && (must_download || True(image.flags & ImageFlagBits::CostlyLoad))) {
             return false;
         }
         if (must_download) {
