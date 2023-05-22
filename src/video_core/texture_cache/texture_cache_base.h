@@ -224,6 +224,9 @@ public:
 
     [[nodiscard]] bool IsRescaling(const ImageViewBase& image_view) const noexcept;
 
+    /// Handle feedback loops during draws.
+    void CheckFeedbackLoop(ImageView& image_view);
+
     /// Create channel state.
     void CreateChannel(Tegra::Control::ChannelState& channel) final override;
 

@@ -2375,6 +2375,11 @@ bool TextureCache<P>::IsFullClear(ImageViewId id) {
 }
 
 template <class P>
+void TextureCache<P>::CheckFeedbackLoop(ImageView& image_view) {
+    runtime.CheckFeedbackLoop(image_view);
+}
+
+template <class P>
 void TextureCache<P>::CreateChannel(struct Tegra::Control::ChannelState& channel) {
     VideoCommon::ChannelSetupCaches<TextureCacheChannelInfo>::CreateChannel(channel);
     const auto it = channel_map.find(channel.bind_id);

@@ -861,6 +861,12 @@ VkBuffer TextureCacheRuntime::GetTemporaryBuffer(size_t needed_size) {
     return *buffers[level];
 }
 
+void TextureCacheRuntime::CheckFeedbackLoop(ImageView& image_view) {
+    if (scheduler.IsRenderpassImage(image_view.ImageHandle())) {
+        scheduler.RequestOutsideRenderPassOperationContext();
+    }
+}
+
 void TextureCacheRuntime::ReinterpretImage(Image& dst, Image& src,
                                            std::span<const VideoCommon::ImageCopy> copies) {
     std::vector<VkBufferImageCopy> vk_in_copies(copies.size());
