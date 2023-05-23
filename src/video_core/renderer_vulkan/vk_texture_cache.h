@@ -103,7 +103,7 @@ public:
 
     [[nodiscard]] VkBuffer GetTemporaryBuffer(size_t needed_size);
 
-    void CheckFeedbackLoop(ImageView& image_view);
+    void BarrierFeedbackLoop();
 
     const Device& device;
     Scheduler& scheduler;

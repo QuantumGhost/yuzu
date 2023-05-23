@@ -148,6 +148,9 @@ public:
     /// Fill image_view_ids with the compute images in indices
     void FillComputeImageViews(std::span<ImageViewInOut> views);
 
+    /// Handle feedback loops during draws.
+    void CheckFeedbackLoop(std::span<const ImageViewInOut> views);
+
     /// Get the sampler from the graphics descriptor table in the specified index
     Sampler* GetGraphicsSampler(u32 index);
 
@@ -223,9 +226,6 @@ public:
     [[nodiscard]] bool IsRescaling() const noexcept;
 
     [[nodiscard]] bool IsRescaling(const ImageViewBase& image_view) const noexcept;
-
-    /// Handle feedback loops during draws.
-    void CheckFeedbackLoop(ImageView& image_view);
 
     /// Create channel state.
     void CreateChannel(Tegra::Control::ChannelState& channel) final override;

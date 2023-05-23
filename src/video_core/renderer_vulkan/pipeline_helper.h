@@ -175,7 +175,6 @@ public:
     std::array<f32, 4> words{};
 };
 
-template <bool CheckFeedbackLoop = false>
 inline void PushImageDescriptors(TextureCache& texture_cache,
                                  GuestDescriptorQueue& guest_descriptor_queue,
                                  const Shader::Info& info, RescalingPushConstant& rescaling,
@@ -193,9 +192,6 @@ inline void PushImageDescriptors(TextureCache& texture_cache,
             const VkImageView vk_image_view{image_view.Handle(desc.type)};
             guest_descriptor_queue.AddSampledImage(vk_image_view, sampler);
             rescaling.PushTexture(texture_cache.IsRescaling(image_view));
-            if constexpr (CheckFeedbackLoop) {
-                texture_cache.CheckFeedbackLoop(image_view);
-            }
         }
     }
     for (const auto& desc : info.image_descriptors) {
@@ -207,9 +203,6 @@ inline void PushImageDescriptors(TextureCache& texture_cache,
             const VkImageView vk_image_view{image_view.StorageView(desc.type, desc.format)};
             guest_descriptor_queue.AddImage(vk_image_view);
             rescaling.PushImage(texture_cache.IsRescaling(image_view));
-            if constexpr (CheckFeedbackLoop) {
-                texture_cache.CheckFeedbackLoop(image_view);
-            }
         }
     }
 }

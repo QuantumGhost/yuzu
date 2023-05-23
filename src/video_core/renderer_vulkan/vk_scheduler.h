@@ -106,15 +106,6 @@ public:
         return *master_semaphore;
     }
 
-    [[nodiscard]] bool IsRenderpassImage(VkImage image) const noexcept {
-        for (u32 i = 0; i < num_renderpass_images; i++) {
-            if (image == renderpass_images[i]) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     std::mutex submit_mutex;
 
 private:

@@ -457,8 +457,8 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
     const VideoCommon::ImageViewInOut* views_it{views.data()};
     const auto prepare_stage{[&](size_t stage) LAMBDA_FORCEINLINE {
         buffer_cache.BindHostStageBuffers(stage);
-        PushImageDescriptors<true>(texture_cache, guest_descriptor_queue, stage_infos[stage],
-                                   rescaling, samplers_it, views_it);
+        PushImageDescriptors(texture_cache, guest_descriptor_queue, stage_infos[stage], rescaling,
+                             samplers_it, views_it);
         const auto& info{stage_infos[0]};
         if (info.uses_render_area) {
             render_area.uses_render_area = true;
@@ -481,12 +481,13 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
     if constexpr (Spec::enabled_stages[4]) {
         prepare_stage(4);
     }
+    texture_cache.UpdateRenderTargets(false);
+    texture_cache.CheckFeedbackLoop(views);
     ConfigureDraw(rescaling, render_area);
 }
 
 void GraphicsPipeline::ConfigureDraw(const RescalingPushConstant& rescaling,
                                      const RenderAreaPushConstant& render_area) {
-    texture_cache.UpdateRenderTargets(false);
     scheduler.RequestRenderpass(texture_cache.GetFramebuffer());
 
     if (!is_built.load(std::memory_order::relaxed)) {
