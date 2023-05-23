@@ -86,9 +86,12 @@ void TextureCache<P>::RunGarbageCollector() {
             // used by the async decoder thread.
             return false;
         }
+        if (!aggressive_mode && True(image.flags & ImageFlagBits::CostlyLoad)) {
+            return false;
+        }
         const bool must_download =
             image.IsSafeDownload() && False(image.flags & ImageFlagBits::BadOverlap);
-        if (!aggressive_mode && (must_download || True(image.flags & ImageFlagBits::CostlyLoad))) {
+        if (!high_priority_mode && must_download) {
             return false;
         }
         if (must_download) {
