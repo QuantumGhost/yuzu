@@ -1459,10 +1459,12 @@ ImageId TextureCache<P>::JoinImages(const ImageInfo& info, GPUVAddr gpu_addr, VA
         ImageBase& aliased = slot_images[aliased_id];
         aliased.overlapping_images.push_back(new_image_id);
         new_image.overlapping_images.push_back(aliased_id);
-        if (aliased.info.resources.levels == 1 && aliased.overlapping_images.size() > 1) {
+        if (aliased.info.resources.levels == 1 && aliased.info.block.depth == 0 &&
+            aliased.overlapping_images.size() > 1) {
             aliased.flags |= ImageFlagBits::BadOverlap;
         }
-        if (new_image.info.resources.levels == 1 && new_image.overlapping_images.size() > 1) {
+        if (new_image.info.resources.levels == 1 && new_image.info.block.depth == 0 &&
+            new_image.overlapping_images.size() > 1) {
             new_image.flags |= ImageFlagBits::BadOverlap;
         }
     }
@@ -1470,7 +1472,7 @@ ImageId TextureCache<P>::JoinImages(const ImageInfo& info, GPUVAddr gpu_addr, VA
     for (const auto& copy_object : join_copies_to_do) {
         Image& overlap = slot_images[copy_object.id];
         if (copy_object.is_alias) {
-            if (False(overlap.flags & ImageFlagBits::GpuModified)) {
+            if (!overlap.IsSafeDownload()) {
                 continue;
             }
             const auto alias_pointer = join_alias_indices.find(copy_object.id);
