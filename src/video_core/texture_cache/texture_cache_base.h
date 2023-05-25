@@ -429,7 +429,6 @@ private:
     u64 minimum_memory;
     u64 expected_memory;
     u64 critical_memory;
-    size_t critical_gc;
 
     struct BufferDownload {
         GPUVAddr address;
