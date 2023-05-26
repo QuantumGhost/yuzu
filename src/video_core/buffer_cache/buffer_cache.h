@@ -1276,8 +1276,6 @@ typename BufferCache<P>::OverlapResult BufferCache<P>::ResolveOverlaps(VAddr cpu
             has_stream_leap = true;
             if (expands_right) {
                 begin -= CACHING_PAGESIZE * 256;
-                // We're about to increment cpu_addr by YUZU_PAGESIZE, but have not yet checked for
-                // a buffer at the new begin.
                 cpu_addr = begin - CACHING_PAGESIZE;
             }
             if (expands_left) {
