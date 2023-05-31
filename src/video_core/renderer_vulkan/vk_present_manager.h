@@ -37,9 +37,8 @@ struct Frame {
 
 class PresentManager {
 public:
-    PresentManager(const vk::Instance& instance, Core::Frontend::EmuWindow& render_window,
-                   const Device& device, MemoryAllocator& memory_allocator, Scheduler& scheduler,
-                   Swapchain& swapchain, vk::SurfaceKHR& surface);
+    PresentManager(Core::Frontend::EmuWindow& render_window, const Device& device,
+                   MemoryAllocator& memory_allocator, Scheduler& scheduler, Swapchain& swapchain);
     ~PresentManager();
 
     /// Returns the last used presentation frame
@@ -61,13 +60,11 @@ private:
     void CopyToSwapchain(Frame* frame);
 
 private:
-    const vk::Instance& instance;
     Core::Frontend::EmuWindow& render_window;
     const Device& device;
     MemoryAllocator& memory_allocator;
     Scheduler& scheduler;
     Swapchain& swapchain;
-    vk::SurfaceKHR& surface;
     vk::CommandPool cmdpool;
     std::vector<Frame> frames;
     std::queue<Frame*> present_queue;
@@ -80,8 +77,7 @@ private:
     std::jthread present_thread;
     bool blit_supported;
     bool use_present_thread;
-    std::size_t image_count{};
-    void* last_render_surface{};
+    std::size_t image_count;
 };
 
 } // namespace Vulkan

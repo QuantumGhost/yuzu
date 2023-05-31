@@ -569,10 +569,6 @@ std::optional<std::pair<Key128, Key128>> ParseTicket(const Ticket& ticket,
 }
 
 KeyManager::KeyManager() {
-    ReloadKeys();
-}
-
-void KeyManager::ReloadKeys() {
     // Initialize keys
     const auto yuzu_keys_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::KeysDir);
 
@@ -704,10 +700,6 @@ void KeyManager::LoadFromFile(const std::filesystem::path& file_path, bool is_ti
             }
         }
     }
-}
-
-bool KeyManager::AreKeysLoaded() const {
-    return !s128_keys.empty() && !s256_keys.empty();
 }
 
 bool KeyManager::BaseDeriveNecessary() const {

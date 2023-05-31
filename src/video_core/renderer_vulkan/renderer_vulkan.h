@@ -63,7 +63,7 @@ private:
     Core::Memory::Memory& cpu_memory;
     Tegra::GPU& gpu;
 
-    std::shared_ptr<Common::DynamicLibrary> library;
+    Common::DynamicLibrary library;
     vk::InstanceDispatch dld;
 
     vk::Instance instance;

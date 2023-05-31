@@ -9,7 +9,7 @@
 
 #include "common/common_funcs.h"
 #include "common/common_types.h"
-#include "core/frontend/framebuffer_layout.h"
+#include "core/frontend/emu_window.h"
 #include "video_core/gpu.h"
 #include "video_core/rasterizer_interface.h"
 

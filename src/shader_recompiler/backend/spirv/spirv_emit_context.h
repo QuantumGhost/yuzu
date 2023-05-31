@@ -95,20 +95,6 @@ struct StorageDefinitions {
     Id U32x4{};
 };
 
-enum class InputGenericLoadOp {
-    None,
-    Bitcast,
-    SToF,
-    UToF,
-};
-
-struct InputGenericInfo {
-    Id id;
-    Id pointer_type;
-    Id component_type;
-    InputGenericLoadOp load_op;
-};
-
 struct GenericElementInfo {
     Id id{};
     u32 first_element{};
@@ -297,7 +283,7 @@ public:
 
     bool need_input_position_indirect{};
     Id input_position{};
-    std::array<InputGenericInfo, 32> input_generics{};
+    std::array<Id, 32> input_generics{};
 
     Id output_point_size{};
     Id output_position{};

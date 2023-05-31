@@ -24,7 +24,7 @@ public:
     ~Swapchain();
 
     /// Creates (or recreates) the swapchain with a given size.
-    void Create(VkSurfaceKHR surface, u32 width, u32 height, bool srgb);
+    void Create(u32 width, u32 height, bool srgb);
 
     /// Acquires the next image in the swapchain, waits as needed.
     bool AcquireNextImage();
@@ -118,7 +118,7 @@ private:
 
     bool NeedsPresentModeUpdate() const;
 
-    VkSurfaceKHR surface;
+    const VkSurfaceKHR surface;
     const Device& device;
     Scheduler& scheduler;
 

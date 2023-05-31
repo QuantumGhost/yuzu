@@ -139,7 +139,7 @@ private:
     vk::Buffer null_buffer;
     MemoryCommit null_buffer_commit;
 
-    std::unique_ptr<Uint8Pass> uint8_pass;
+    Uint8Pass uint8_pass;
     QuadIndexedPass quad_index_pass;
 };
 

@@ -568,10 +568,8 @@ private:
     // Virtual gamepad related variables
     ButtonParams virtual_button_params;
     StickParams virtual_stick_params;
-    ControllerMotionParams virtual_motion_params;
     ButtonDevices virtual_button_devices;
     StickDevices virtual_stick_devices;
-    ControllerMotionDevices virtual_motion_devices;
 
     mutable std::mutex mutex;
     mutable std::mutex callback_mutex;

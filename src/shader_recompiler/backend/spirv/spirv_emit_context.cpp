@@ -25,6 +25,12 @@ enum class Operation {
     FPMax,
 };
 
+struct AttrInfo {
+    Id pointer;
+    Id id;
+    bool needs_cast;
+};
+
 Id ImageType(EmitContext& ctx, const TextureDescriptor& desc) {
     const spv::ImageFormat format{spv::ImageFormat::Unknown};
     const Id type{ctx.F32[1]};
@@ -200,37 +206,23 @@ Id GetAttributeType(EmitContext& ctx, AttributeType type) {
         return ctx.TypeVector(ctx.TypeInt(32, true), 4);
     case AttributeType::UnsignedInt:
         return ctx.U32[4];
-    case AttributeType::SignedScaled:
-        return ctx.profile.support_scaled_attributes ? ctx.F32[4]
-                                                     : ctx.TypeVector(ctx.TypeInt(32, true), 4);
-    case AttributeType::UnsignedScaled:
-        return ctx.profile.support_scaled_attributes ? ctx.F32[4] : ctx.U32[4];
     case AttributeType::Disabled:
         break;
     }
     throw InvalidArgument("Invalid attribute type {}", type);
 }
 
-InputGenericInfo GetAttributeInfo(EmitContext& ctx, AttributeType type, Id id) {
+std::optional<AttrInfo> AttrTypes(EmitContext& ctx, u32 index) {
+    const AttributeType type{ctx.runtime_info.generic_input_types.at(index)};
     switch (type) {
     case AttributeType::Float:
-        return InputGenericInfo{id, ctx.input_f32, ctx.F32[1], InputGenericLoadOp::None};
+        return AttrInfo{ctx.input_f32, ctx.F32[1], false};
     case AttributeType::UnsignedInt:
-        return InputGenericInfo{id, ctx.input_u32, ctx.U32[1], InputGenericLoadOp::Bitcast};
+        return AttrInfo{ctx.input_u32, ctx.U32[1], true};
     case AttributeType::SignedInt:
-        return InputGenericInfo{id, ctx.input_s32, ctx.TypeInt(32, true),
-                                InputGenericLoadOp::Bitcast};
-    case AttributeType::SignedScaled:
-        return ctx.profile.support_scaled_attributes
-                   ? InputGenericInfo{id, ctx.input_f32, ctx.F32[1], InputGenericLoadOp::None}
-                   : InputGenericInfo{id, ctx.input_s32, ctx.TypeInt(32, true),
-                                      InputGenericLoadOp::SToF};
-    case AttributeType::UnsignedScaled:
-        return ctx.profile.support_scaled_attributes
-                   ? InputGenericInfo{id, ctx.input_f32, ctx.F32[1], InputGenericLoadOp::None}
-                   : InputGenericInfo{id, ctx.input_u32, ctx.U32[1], InputGenericLoadOp::UToF};
+        return AttrInfo{ctx.input_s32, ctx.TypeInt(32, true), true};
     case AttributeType::Disabled:
-        return InputGenericInfo{};
+        return std::nullopt;
     }
     throw InvalidArgument("Invalid attribute type {}", type);
 }
@@ -754,29 +746,18 @@ void EmitContext::DefineAttributeMemAccess(const Info& info) {
                 continue;
             }
             AddLabel(labels[label_index]);
-            const auto& generic{input_generics.at(index)};
-            const Id generic_id{generic.id};
-            if (!ValidId(generic_id)) {
+            const auto type{AttrTypes(*this, static_cast<u32>(index))};
+            if (!type) {
                 OpReturnValue(Const(0.0f));
                 ++label_index;
                 continue;
             }
-            const Id pointer{
-                is_array ? OpAccessChain(generic.pointer_type, generic_id, vertex, masked_index)
-                         : OpAccessChain(generic.pointer_type, generic_id, masked_index)};
-            const Id value{OpLoad(generic.component_type, pointer)};
-            const Id result{[this, generic, value]() {
-                switch (generic.load_op) {
-                case InputGenericLoadOp::Bitcast:
-                    return OpBitcast(F32[1], value);
-                case InputGenericLoadOp::SToF:
-                    return OpConvertSToF(F32[1], value);
-                case InputGenericLoadOp::UToF:
-                    return OpConvertUToF(F32[1], value);
-                default:
-                    return value;
-                };
-            }()};
+            const Id generic_id{input_generics.at(index)};
+            const Id pointer{is_array
+                                 ? OpAccessChain(type->pointer, generic_id, vertex, masked_index)
+                                 : OpAccessChain(type->pointer, generic_id, masked_index)};
+            const Id value{OpLoad(type->id, pointer)};
+            const Id result{type->needs_cast ? OpBitcast(F32[1], value) : value};
             OpReturnValue(result);
             ++label_index;
         }
@@ -1476,7 +1457,7 @@ void EmitContext::DefineInputs(const IR::Program& program) {
         const Id id{DefineInput(*this, type, true)};
         Decorate(id, spv::Decoration::Location, static_cast<u32>(index));
         Name(id, fmt::format("in_attr{}", index));
-        input_generics[index] = GetAttributeInfo(*this, input_type, id);
+        input_generics[index] = id;
 
         if (info.passthrough.Generic(index) && profile.support_geometry_shader_passthrough) {
             Decorate(id, spv::Decoration::PassthroughNV);

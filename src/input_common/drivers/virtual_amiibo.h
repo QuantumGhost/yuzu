@@ -4,7 +4,6 @@
 #pragma once
 
 #include <array>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -48,7 +47,6 @@ public:
     State GetCurrentState() const;
 
     Info LoadAmiibo(const std::string& amiibo_file);
-    Info LoadAmiibo(std::span<u8> data);
     Info ReloadAmiibo();
     Info CloseAmiibo();
 
