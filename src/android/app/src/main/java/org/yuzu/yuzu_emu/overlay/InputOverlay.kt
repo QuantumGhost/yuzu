@@ -9,6 +9,7 @@ import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Point
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.VectorDrawable
@@ -47,9 +48,6 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
     private var buttonBeingConfigured: InputOverlayDrawableButton? = null
     private var dpadBeingConfigured: InputOverlayDrawableDpad? = null
     private var joystickBeingConfigured: InputOverlayDrawableJoystick? = null
-
-    private val preferences: SharedPreferences =
-        PreferenceManager.getDefaultSharedPreferences(YuzuApplication.appContext)
 
     private lateinit var windowInsets: WindowInsets
 
@@ -343,10 +341,12 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
     }
 
     private fun addOverlayControls(orientation: String) {
+        val windowSize = getSafeScreenSize(context)
         if (preferences.getBoolean(Settings.PREF_BUTTON_TOGGLE_0, true)) {
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_a,
                     R.drawable.facebutton_a_depressed,
                     ButtonType.BUTTON_A,
@@ -358,6 +358,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_b,
                     R.drawable.facebutton_b_depressed,
                     ButtonType.BUTTON_B,
@@ -369,6 +370,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_x,
                     R.drawable.facebutton_x_depressed,
                     ButtonType.BUTTON_X,
@@ -380,6 +382,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_y,
                     R.drawable.facebutton_y_depressed,
                     ButtonType.BUTTON_Y,
@@ -391,6 +394,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.l_shoulder,
                     R.drawable.l_shoulder_depressed,
                     ButtonType.TRIGGER_L,
@@ -402,6 +406,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.r_shoulder,
                     R.drawable.r_shoulder_depressed,
                     ButtonType.TRIGGER_R,
@@ -413,6 +418,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.zl_trigger,
                     R.drawable.zl_trigger_depressed,
                     ButtonType.TRIGGER_ZL,
@@ -424,6 +430,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.zr_trigger,
                     R.drawable.zr_trigger_depressed,
                     ButtonType.TRIGGER_ZR,
@@ -435,6 +442,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_plus,
                     R.drawable.facebutton_plus_depressed,
                     ButtonType.BUTTON_PLUS,
@@ -446,6 +454,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_minus,
                     R.drawable.facebutton_minus_depressed,
                     ButtonType.BUTTON_MINUS,
@@ -457,6 +466,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayDpads.add(
                 initializeOverlayDpad(
                     context,
+                    windowSize,
                     R.drawable.dpad_standard,
                     R.drawable.dpad_standard_cardinal_depressed,
                     R.drawable.dpad_standard_diagonal_depressed,
@@ -468,6 +478,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayJoysticks.add(
                 initializeOverlayJoystick(
                     context,
+                    windowSize,
                     R.drawable.joystick_range,
                     R.drawable.joystick,
                     R.drawable.joystick_depressed,
@@ -481,6 +492,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayJoysticks.add(
                 initializeOverlayJoystick(
                     context,
+                    windowSize,
                     R.drawable.joystick_range,
                     R.drawable.joystick,
                     R.drawable.joystick_depressed,
@@ -494,6 +506,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_home,
                     R.drawable.facebutton_home_depressed,
                     ButtonType.BUTTON_HOME,
@@ -505,6 +518,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             overlayButtons.add(
                 initializeOverlayButton(
                     context,
+                    windowSize,
                     R.drawable.facebutton_screenshot,
                     R.drawable.facebutton_screenshot_depressed,
                     ButtonType.BUTTON_CAPTURE,
@@ -530,9 +544,12 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
     }
 
     private fun saveControlPosition(sharedPrefsId: Int, x: Int, y: Int, orientation: String) {
+        val windowSize = getSafeScreenSize(context)
+        val min = windowSize.first
+        val max = windowSize.second
         PreferenceManager.getDefaultSharedPreferences(YuzuApplication.appContext).edit()
-            .putFloat("$sharedPrefsId$orientation-X", x.toFloat())
-            .putFloat("$sharedPrefsId$orientation-Y", y.toFloat())
+            .putFloat("$sharedPrefsId$orientation-X", (x - min.x).toFloat() / max.x)
+            .putFloat("$sharedPrefsId$orientation-Y", (y - min.y).toFloat() / max.y)
             .apply()
     }
 
@@ -557,170 +574,129 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
     }
 
     private fun defaultOverlayLandscape() {
-        // Get screen size
-        val windowMetrics =
-            WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(context as Activity)
-        var maxY = windowMetrics.bounds.height().toFloat()
-        var maxX = windowMetrics.bounds.width().toFloat()
-        var minY = 0
-        var minX = 0
-
-        // If we have API access, calculate the safe area to draw the overlay
-        var cutoutLeft = 0
-        var cutoutBottom = 0
-        val insets = windowInsets.displayCutout
-        if (insets != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            maxY =
-                if (insets.boundingRectTop.bottom != 0) insets.boundingRectTop.bottom.toFloat() else maxY
-            maxX =
-                if (insets.boundingRectRight.left != 0) insets.boundingRectRight.left.toFloat() else maxX
-            minX = insets.boundingRectLeft.right - insets.boundingRectLeft.left
-            minY = insets.boundingRectBottom.top - insets.boundingRectBottom.bottom
-
-            cutoutLeft = insets.boundingRectRight.right - insets.boundingRectRight.left
-            cutoutBottom = insets.boundingRectTop.top - insets.boundingRectTop.bottom
-        }
-
-        // This makes sure that if we have an inset on one side of the screen, we mirror it on
-        // the other side. Since removing space from one of the max values messes with the scale,
-        // we also have to account for it using our min values.
-        if (maxX.toInt() != windowMetrics.bounds.width()) minX += cutoutLeft
-        if (maxY.toInt() != windowMetrics.bounds.height()) minY += cutoutBottom
-        if (minX > 0 && maxX.toInt() == windowMetrics.bounds.width()) {
-            maxX -= (minX * 2)
-        } else if (minX > 0) {
-            maxX -= minX
-        }
-        if (minY > 0 && maxY.toInt() == windowMetrics.bounds.height()) {
-            maxY -= (minY * 2)
-        } else if (minY > 0) {
-            maxY -= minY
-        }
-
-        // Each value is a percent from max X/Y stored as an int. Have to bring that value down
-        // to a decimal before multiplying by MAX X/Y.
+        // Each value represents the position of the button in relation to the screen size without insets.
         preferences.edit()
             .putFloat(
                 ButtonType.BUTTON_A.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_A_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_A_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_A.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_A_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_A_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_B.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_B_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_B_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_B.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_B_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_B_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_X.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_X_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_X_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_X.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_X_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_X_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_Y.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_Y_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_Y_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_Y.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_Y_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_Y_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_ZL.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_ZL_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_TRIGGER_ZL_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_ZL.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_ZL_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_TRIGGER_ZL_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_ZR.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_ZR_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_TRIGGER_ZR_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_ZR.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_ZR_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_TRIGGER_ZR_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.DPAD_UP.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_DPAD_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_DPAD_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.DPAD_UP.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_DPAD_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_DPAD_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_L.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_L_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_TRIGGER_L_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_L.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_L_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_TRIGGER_L_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_R.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_R_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_TRIGGER_R_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.TRIGGER_R.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_TRIGGER_R_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_TRIGGER_R_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_PLUS.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_PLUS_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_PLUS_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_PLUS.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_PLUS_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_PLUS_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_MINUS.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_MINUS_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_MINUS_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_MINUS.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_MINUS_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_MINUS_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_HOME.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_BUTTON_HOME_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_BUTTON_HOME_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_HOME.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_BUTTON_HOME_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_BUTTON_HOME_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_CAPTURE.toString() + "-X",
                 resources.getInteger(R.integer.SWITCH_BUTTON_CAPTURE_X)
-                    .toFloat() / 1000 * maxX + minX
+                    .toFloat() / 1000
             )
             .putFloat(
                 ButtonType.BUTTON_CAPTURE.toString() + "-Y",
                 resources.getInteger(R.integer.SWITCH_BUTTON_CAPTURE_Y)
-                    .toFloat() / 1000 * maxY + minY
+                    .toFloat() / 1000
             )
             .putFloat(
                 ButtonType.STICK_R.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_STICK_R_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_STICK_R_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.STICK_R.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_STICK_R_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_STICK_R_Y).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.STICK_L.toString() + "-X",
-                resources.getInteger(R.integer.SWITCH_STICK_L_X).toFloat() / 1000 * maxX + minX
+                resources.getInteger(R.integer.SWITCH_STICK_L_X).toFloat() / 1000
             )
             .putFloat(
                 ButtonType.STICK_L.toString() + "-Y",
-                resources.getInteger(R.integer.SWITCH_STICK_L_Y).toFloat() / 1000 * maxY + minY
+                resources.getInteger(R.integer.SWITCH_STICK_L_Y).toFloat() / 1000
             )
             .apply()
     }
@@ -730,6 +706,9 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
     }
 
     companion object {
+        private val preferences: SharedPreferences =
+            PreferenceManager.getDefaultSharedPreferences(YuzuApplication.appContext)
+
         /**
          * Resizes a [Bitmap] by a given scale factor
          *
@@ -767,6 +746,59 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
         }
 
         /**
+         * Gets the safe screen size for drawing the overlay
+         *
+         * @param context   Context for getting the window metrics
+         * @return          A pair of points, the first being the top left corner of the safe area,
+         *                  the second being the bottom right corner of the safe area
+         */
+        private fun getSafeScreenSize(context: Context): Pair<Point, Point> {
+            // Get screen size
+            val windowMetrics =
+                WindowMetricsCalculator.getOrCreate()
+                    .computeCurrentWindowMetrics(context as Activity)
+            var maxY = windowMetrics.bounds.height().toFloat()
+            var maxX = windowMetrics.bounds.width().toFloat()
+            var minY = 0
+            var minX = 0
+
+            // If we have API access, calculate the safe area to draw the overlay
+            var cutoutLeft = 0
+            var cutoutBottom = 0
+            val insets = context.windowManager.currentWindowMetrics.windowInsets.displayCutout
+            if (insets != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (insets.boundingRectTop.bottom != 0 && insets.boundingRectTop.bottom > maxY / 2)
+                    insets.boundingRectTop.bottom.toFloat() else maxY
+                if (insets.boundingRectRight.left != 0 && insets.boundingRectRight.left > maxX / 2)
+                    insets.boundingRectRight.left.toFloat() else maxX
+
+                minX = insets.boundingRectLeft.right - insets.boundingRectLeft.left
+                minY = insets.boundingRectBottom.top - insets.boundingRectBottom.bottom
+
+                cutoutLeft = insets.boundingRectRight.right - insets.boundingRectRight.left
+                cutoutBottom = insets.boundingRectTop.top - insets.boundingRectTop.bottom
+            }
+
+            // This makes sure that if we have an inset on one side of the screen, we mirror it on
+            // the other side. Since removing space from one of the max values messes with the scale,
+            // we also have to account for it using our min values.
+            if (maxX.toInt() != windowMetrics.bounds.width()) minX += cutoutLeft
+            if (maxY.toInt() != windowMetrics.bounds.height()) minY += cutoutBottom
+            if (minX > 0 && maxX.toInt() == windowMetrics.bounds.width()) {
+                maxX -= (minX * 2)
+            } else if (minX > 0) {
+                maxX -= minX
+            }
+            if (minY > 0 && maxY.toInt() == windowMetrics.bounds.height()) {
+                maxY -= (minY * 2)
+            } else if (minY > 0) {
+                maxY -= minY
+            }
+
+            return Pair(Point(minX, minY), Point(maxX.toInt(), maxY.toInt()))
+        }
+
+        /**
          * Initializes an InputOverlayDrawableButton, given by resId, with all of the
          * parameters set for it to be properly shown on the InputOverlay.
          *
@@ -795,6 +827,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
          * for Android to call the onDraw method.
          *
          * @param context      The current [Context].
+         * @param windowSize   The size of the window to draw the overlay on.
          * @param defaultResId The resource ID of the [Drawable] to get the [Bitmap] of (Default State).
          * @param pressedResId The resource ID of the [Drawable] to get the [Bitmap] of (Pressed State).
          * @param buttonId     Identifier for determining what type of button the initialized InputOverlayDrawableButton represents.
@@ -802,6 +835,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
          */
         private fun initializeOverlayButton(
             context: Context,
+            windowSize: Pair<Point, Point>,
             defaultResId: Int,
             pressedResId: Int,
             buttonId: Int,
@@ -836,12 +870,18 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             val overlayDrawable =
                 InputOverlayDrawableButton(res, defaultStateBitmap, pressedStateBitmap, buttonId)
 
+            // Get the minimum and maximum coordinates of the screen where the button can be placed.
+            val min = windowSize.first
+            val max = windowSize.second
+
             // The X and Y coordinates of the InputOverlayDrawableButton on the InputOverlay.
             // These were set in the input overlay configuration menu.
             val xKey = "$buttonId$orientation-X"
             val yKey = "$buttonId$orientation-Y"
-            val drawableX = sPrefs.getFloat(xKey, 0f).toInt()
-            val drawableY = sPrefs.getFloat(yKey, 0f).toInt()
+            val drawableXPercent = sPrefs.getFloat(xKey, 0f)
+            val drawableYPercent = sPrefs.getFloat(yKey, 0f)
+            val drawableX = (drawableXPercent * max.x + min.x).toInt()
+            val drawableY = (drawableYPercent * max.y + min.y).toInt()
             val width = overlayDrawable.width
             val height = overlayDrawable.height
 
@@ -859,6 +899,8 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
                 drawableX - (width / 2),
                 drawableY - (height / 2)
             )
+            val savedOpacity = preferences.getInt(Settings.PREF_CONTROL_OPACITY, 100)
+            overlayDrawable.setOpacity(savedOpacity * 255 / 100)
             return overlayDrawable
         }
 
@@ -866,6 +908,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
          * Initializes an [InputOverlayDrawableDpad]
          *
          * @param context                   The current [Context].
+         * @param windowSize                The size of the window to draw the overlay on.
          * @param defaultResId              The [Bitmap] resource ID of the default state.
          * @param pressedOneDirectionResId  The [Bitmap] resource ID of the pressed state in one direction.
          * @param pressedTwoDirectionsResId The [Bitmap] resource ID of the pressed state in two directions.
@@ -873,6 +916,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
          */
         private fun initializeOverlayDpad(
             context: Context,
+            windowSize: Pair<Point, Point>,
             defaultResId: Int,
             pressedOneDirectionResId: Int,
             pressedTwoDirectionsResId: Int,
@@ -907,10 +951,16 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
                 ButtonType.DPAD_RIGHT
             )
 
+            // Get the minimum and maximum coordinates of the screen where the button can be placed.
+            val min = windowSize.first
+            val max = windowSize.second
+
             // The X and Y coordinates of the InputOverlayDrawableDpad on the InputOverlay.
             // These were set in the input overlay configuration menu.
-            val drawableX = sPrefs.getFloat("${ButtonType.DPAD_UP}$orientation-X", 0f).toInt()
-            val drawableY = sPrefs.getFloat("${ButtonType.DPAD_UP}$orientation-Y", 0f).toInt()
+            val drawableXPercent = sPrefs.getFloat("${ButtonType.DPAD_UP}$orientation-X", 0f)
+            val drawableYPercent = sPrefs.getFloat("${ButtonType.DPAD_UP}$orientation-Y", 0f)
+            val drawableX = (drawableXPercent * max.x + min.x).toInt()
+            val drawableY = (drawableYPercent * max.y + min.y).toInt()
             val width = overlayDrawable.width
             val height = overlayDrawable.height
 
@@ -925,6 +975,8 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
 
             // Need to set the image's position
             overlayDrawable.setPosition(drawableX - (width / 2), drawableY - (height / 2))
+            val savedOpacity = preferences.getInt(Settings.PREF_CONTROL_OPACITY, 100)
+            overlayDrawable.setOpacity(savedOpacity * 255 / 100)
             return overlayDrawable
         }
 
@@ -932,6 +984,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
          * Initializes an [InputOverlayDrawableJoystick]
          *
          * @param context         The current [Context]
+         * @param windowSize      The size of the window to draw the overlay on.
          * @param resOuter        Resource ID for the outer image of the joystick (the static image that shows the circular bounds).
          * @param defaultResInner Resource ID for the default inner image of the joystick (the one you actually move around).
          * @param pressedResInner Resource ID for the pressed inner image of the joystick.
@@ -941,6 +994,7 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
          */
         private fun initializeOverlayJoystick(
             context: Context,
+            windowSize: Pair<Point, Point>,
             resOuter: Int,
             defaultResInner: Int,
             pressedResInner: Int,
@@ -964,10 +1018,16 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
             val bitmapInnerDefault = getBitmap(context, defaultResInner, 1.0f)
             val bitmapInnerPressed = getBitmap(context, pressedResInner, 1.0f)
 
+            // Get the minimum and maximum coordinates of the screen where the button can be placed.
+            val min = windowSize.first
+            val max = windowSize.second
+
             // The X and Y coordinates of the InputOverlayDrawableButton on the InputOverlay.
             // These were set in the input overlay configuration menu.
-            val drawableX = sPrefs.getFloat("$button$orientation-X", 0f).toInt()
-            val drawableY = sPrefs.getFloat("$button$orientation-Y", 0f).toInt()
+            val drawableXPercent = sPrefs.getFloat("$button$orientation-X", 0f)
+            val drawableYPercent = sPrefs.getFloat("$button$orientation-Y", 0f)
+            val drawableX = (drawableXPercent * max.x + min.x).toInt()
+            val drawableY = (drawableYPercent * max.y + min.y).toInt()
             val outerScale = 1.66f
 
             // Now set the bounds for the InputOverlayDrawableJoystick.
@@ -996,6 +1056,8 @@ class InputOverlay(context: Context, attrs: AttributeSet?) : SurfaceView(context
 
             // Need to set the image's position
             overlayDrawable.setPosition(drawableX, drawableY)
+            val savedOpacity = preferences.getInt(Settings.PREF_CONTROL_OPACITY, 100)
+            overlayDrawable.setOpacity(savedOpacity * 255 / 100)
             return overlayDrawable
         }
     }
