@@ -88,12 +88,12 @@ void TextureCache<P>::RunGarbageCollector() {
         if (!aggressive_mode && True(image.flags & ImageFlagBits::CostlyLoad)) {
             return false;
         }
+        --num_iterations;
         const bool must_download =
             image.IsSafeDownload() && False(image.flags & ImageFlagBits::BadOverlap);
         if (!high_priority_mode && must_download) {
             return false;
         }
-        --num_iterations;
         if (must_download) {
             auto map = runtime.DownloadStagingBuffer(image.unswizzled_size_bytes);
             const auto copies = FullDownloadCopies(image.info);
