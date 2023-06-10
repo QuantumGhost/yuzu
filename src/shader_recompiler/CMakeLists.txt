@@ -216,6 +216,7 @@ add_library(shader_recompiler STATIC
     frontend/maxwell/translate_program.h
     host_translate_info.h
     ir_opt/collect_shader_info_pass.cpp
+    ir_opt/conditional_barrier_pass.cpp
     ir_opt/constant_propagation_pass.cpp
     ir_opt/dead_code_elimination_pass.cpp
     ir_opt/dual_vertex_pass.cpp
@@ -223,6 +224,7 @@ add_library(shader_recompiler STATIC
     ir_opt/identity_removal_pass.cpp
     ir_opt/layer_pass.cpp
     ir_opt/lower_fp16_to_fp32.cpp
+    ir_opt/lower_fp64_to_fp32.cpp
     ir_opt/lower_int64_to_int32.cpp
     ir_opt/passes.h
     ir_opt/position_pass.cpp

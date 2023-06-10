@@ -13,10 +13,12 @@ struct HostTranslateInfo;
 namespace Shader::Optimization {
 
 void CollectShaderInfoPass(Environment& env, IR::Program& program);
+void ConditionalBarrierPass(IR::Program& program);
 void ConstantPropagationPass(Environment& env, IR::Program& program);
 void DeadCodeEliminationPass(IR::Program& program);
 void GlobalMemoryToStorageBufferPass(IR::Program& program);
 void IdentityRemovalPass(IR::Program& program);
+void LowerFp64ToFp32(IR::Program& program);
 void LowerFp16ToFp32(IR::Program& program);
 void LowerInt64ToInt32(IR::Program& program);
 void RescalingPass(IR::Program& program);

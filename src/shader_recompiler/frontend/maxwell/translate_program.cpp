@@ -280,11 +280,17 @@ IR::Program TranslateProgram(ObjectPool<IR::Inst>& inst_pool, ObjectPool<IR::Blo
     RemoveUnreachableBlocks(program);
 
     // Replace instructions before the SSA rewrite
+    if (!host_info.support_float64) {
+        Optimization::LowerFp64ToFp32(program);
+    }
     if (!host_info.support_float16) {
         Optimization::LowerFp16ToFp32(program);
     }
     if (!host_info.support_int64) {
         Optimization::LowerInt64ToInt32(program);
+    }
+    if (!host_info.support_conditional_barrier) {
+        Optimization::ConditionalBarrierPass(program);
     }
     Optimization::SsaRewritePass(program);
 
