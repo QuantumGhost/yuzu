@@ -129,10 +129,6 @@ IR::Opcode Replace(IR::Opcode op) {
         return IR::Opcode::ConvertU32F32;
     case IR::Opcode::ConvertU64F64:
         return IR::Opcode::ConvertU64F32;
-    case IR::Opcode::PackFloat2x16:
-        return IR::Opcode::PackHalf2x16;
-    case IR::Opcode::UnpackFloat2x16:
-        return IR::Opcode::UnpackHalf2x16;
     case IR::Opcode::ConvertF32F64:
         return IR::Opcode::Identity;
     case IR::Opcode::ConvertF64F32:
