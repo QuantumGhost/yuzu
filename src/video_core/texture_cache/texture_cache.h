@@ -502,7 +502,7 @@ void TextureCache<P>::WriteMemory(VAddr cpu_addr, size_t size) {
 
 template <class P>
 void TextureCache<P>::DownloadMemory(VAddr cpu_addr, size_t size) {
-    std::vector<ImageId> images;
+    boost::container::small_vector<ImageId, 16> images;
     ForEachImageInRegion(cpu_addr, size, [&images](ImageId image_id, ImageBase& image) {
         if (!image.IsSafeDownload()) {
             return;
@@ -555,7 +555,7 @@ std::optional<VideoCore::RasterizerDownloadArea> TextureCache<P>::GetFlushArea(V
 
 template <class P>
 void TextureCache<P>::UnmapMemory(VAddr cpu_addr, size_t size) {
-    std::vector<ImageId> deleted_images;
+    boost::container::small_vector<ImageId, 16> deleted_images;
     ForEachImageInRegion(cpu_addr, size, [&](ImageId id, Image&) { deleted_images.push_back(id); });
     for (const ImageId id : deleted_images) {
         Image& image = slot_images[id];
@@ -569,7 +569,7 @@ void TextureCache<P>::UnmapMemory(VAddr cpu_addr, size_t size) {
 
 template <class P>
 void TextureCache<P>::UnmapGPUMemory(size_t as_id, GPUVAddr gpu_addr, size_t size) {
-    std::vector<ImageId> deleted_images;
+    boost::container::small_vector<ImageId, 16> deleted_images;
     ForEachImageInRegionGPU(as_id, gpu_addr, size,
                             [&](ImageId id, Image&) { deleted_images.push_back(id); });
     for (const ImageId id : deleted_images) {
@@ -1077,7 +1077,7 @@ ImageId TextureCache<P>::FindImage(const ImageInfo& info, GPUVAddr gpu_addr,
     const bool native_bgr = runtime.HasNativeBgr();
     const bool flexible_formats = True(options & RelaxedOptions::Format);
     ImageId image_id{};
-    boost::container::small_vector<ImageId, 1> image_ids;
+    boost::container::small_vector<ImageId, 8> image_ids;
     const auto lambda = [&](ImageId existing_image_id, ImageBase& existing_image) {
         if (True(existing_image.flags & ImageFlagBits::Remapped)) {
             return false;
@@ -1598,7 +1598,7 @@ ImageId TextureCache<P>::FindDMAImage(const ImageInfo& info, GPUVAddr gpu_addr) 
         }
     }
     ImageId image_id{};
-    boost::container::small_vector<ImageId, 1> image_ids;
+    boost::container::small_vector<ImageId, 8> image_ids;
     const auto lambda = [&](ImageId existing_image_id, ImageBase& existing_image) {
         if (True(existing_image.flags & ImageFlagBits::Remapped)) {
             return false;
@@ -1920,7 +1920,7 @@ void TextureCache<P>::RegisterImage(ImageId image_id) {
         image.map_view_id = map_id;
         return;
     }
-    std::vector<ImageViewId> sparse_maps{};
+    boost::container::small_vector<ImageViewId, 16> sparse_maps;
     ForEachSparseSegment(
         image, [this, image_id, &sparse_maps](GPUVAddr gpu_addr, VAddr cpu_addr, size_t size) {
             auto map_id = slot_map_views.insert(gpu_addr, cpu_addr, size, image_id);
@@ -2195,7 +2195,7 @@ void TextureCache<P>::MarkModification(ImageBase& image) noexcept {
 
 template <class P>
 void TextureCache<P>::SynchronizeAliases(ImageId image_id) {
-    boost::container::small_vector<const AliasedImage*, 1> aliased_images;
+    boost::container::small_vector<const AliasedImage*, 8> aliased_images;
     Image& image = slot_images[image_id];
     bool any_rescaled = True(image.flags & ImageFlagBits::Rescaled);
     bool any_modified = True(image.flags & ImageFlagBits::GpuModified);

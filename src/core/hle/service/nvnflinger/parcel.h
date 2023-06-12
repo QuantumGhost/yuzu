@@ -117,7 +117,10 @@ private:
 
 class OutputParcel final {
 public:
-    OutputParcel() = default;
+    OutputParcel() {
+        m_data_buffer.reserve(0x1000);
+        m_object_buffer.reserve(0x100);
+    }
 
     template <typename T>
     void Write(const T& val) {
