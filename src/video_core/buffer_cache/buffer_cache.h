@@ -719,9 +719,24 @@ void BufferCache<P>::BindHostVertexBuffers() {
     bool any_valid{false};
     auto& flags = maxwell3d->dirty.flags;
     for (u32 index = 0; index < NUM_VERTEX_BUFFERS; ++index) {
+        const Binding& binding = channel_state->vertex_buffers[index];
+        if (binding.buffer_id == NULL_BUFFER_ID) {
+            continue;
+        }
+        Buffer& buffer = slot_buffers[binding.buffer_id];
+        TouchBuffer(buffer, binding.buffer_id);
+        SynchronizeBuffer(buffer, binding.cpu_addr, binding.size);
         if (!flags[Dirty::VertexBuffer0 + index]) {
             continue;
         }
+        flags[Dirty::VertexBuffer0 + index] = false;
+
+        const u32 stride = maxwell3d->regs.vertex_streams[index].stride;
+        const u32 offset = buffer.Offset(binding.cpu_addr);
+        host_bindings.buffers.push_back(&buffer);
+        host_bindings.offsets.push_back(offset);
+        host_bindings.sizes.push_back(binding.size);
+        host_bindings.strides.push_back(stride);
         host_bindings.min_index = std::min(host_bindings.min_index, index);
         host_bindings.max_index = std::max(host_bindings.max_index, index);
         any_valid = true;
@@ -729,23 +744,6 @@ void BufferCache<P>::BindHostVertexBuffers() {
 
     if (any_valid) {
         host_bindings.max_index++;
-        for (u32 index = host_bindings.min_index; index < host_bindings.max_index; index++) {
-            flags[Dirty::VertexBuffer0 + index] = false;
-
-            const Binding& binding = channel_state->vertex_buffers[index];
-            Buffer& buffer = slot_buffers[binding.buffer_id];
-
-            TouchBuffer(buffer, binding.buffer_id);
-            SynchronizeBuffer(buffer, binding.cpu_addr, binding.size);
-
-            const u32 stride = maxwell3d->regs.vertex_streams[index].stride;
-            const u32 offset = buffer.Offset(binding.cpu_addr);
-
-            host_bindings.buffers.push_back(&buffer);
-            host_bindings.offsets.push_back(offset);
-            host_bindings.sizes.push_back(binding.size);
-            host_bindings.strides.push_back(stride);
-        }
         runtime.BindVertexBuffers(host_bindings);
     }
 }
@@ -906,6 +904,9 @@ void BufferCache<P>::BindHostTransformFeedbackBuffers() {
         if (maxwell3d->regs.transform_feedback.controls[index].varying_count == 0 &&
             maxwell3d->regs.transform_feedback.controls[index].stride == 0) {
             break;
+        }
+        if (binding.buffer_id == NULL_BUFFER_ID) {
+            continue;
         }
         Buffer& buffer = slot_buffers[binding.buffer_id];
         TouchBuffer(buffer, binding.buffer_id);
