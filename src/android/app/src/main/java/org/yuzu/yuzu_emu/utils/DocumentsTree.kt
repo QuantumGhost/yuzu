@@ -5,10 +5,10 @@ package org.yuzu.yuzu_emu.utils
 
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import org.yuzu.yuzu_emu.YuzuApplication
-import org.yuzu.yuzu_emu.model.MinimalDocumentFile
 import java.io.File
 import java.util.*
+import org.yuzu.yuzu_emu.YuzuApplication
+import org.yuzu.yuzu_emu.model.MinimalDocumentFile
 
 class DocumentsTree {
     private var root: DocumentsNode? = null
@@ -29,11 +29,18 @@ class DocumentsTree {
         val node = resolvePath(filepath)
         return if (node == null || node.isDirectory) {
             0
-        } else FileUtil.getFileSize(YuzuApplication.appContext, node.uri.toString())
+        } else {
+            FileUtil.getFileSize(YuzuApplication.appContext, node.uri.toString())
+        }
     }
 
     fun exists(filepath: String): Boolean {
         return resolvePath(filepath) != null
+    }
+
+    fun isDirectory(filepath: String): Boolean {
+        val node = resolvePath(filepath)
+        return node != null && node.isDirectory
     }
 
     private fun resolvePath(filepath: String): DocumentsNode? {
@@ -106,7 +113,9 @@ class DocumentsTree {
         fun isNativePath(path: String): Boolean {
             return if (path.isNotEmpty()) {
                 path[0] == '/'
-            } else false
+            } else {
+                false
+            }
         }
     }
 }
