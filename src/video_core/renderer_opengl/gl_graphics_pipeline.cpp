@@ -275,9 +275,9 @@ GraphicsPipeline::GraphicsPipeline(const Device& device, TextureCache& texture_c
 template <typename Spec>
 void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
     std::array<VideoCommon::ImageViewInOut, MAX_TEXTURES + MAX_IMAGES> views;
-    std::array<const Sampler*, MAX_TEXTURES> samplers;
+    std::array<GLuint, MAX_TEXTURES> samplers;
     size_t views_index{};
-    size_t samplers_index{};
+    GLsizei sampler_binding{};
 
     texture_cache.SynchronizeGraphicsDescriptors();
 
@@ -337,6 +337,7 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
                 for (u32 index = 0; index < desc.count; ++index) {
                     const auto handle{read_handle(desc, index)};
                     views[views_index++] = {handle.first};
+                    samplers[sampler_binding++] = 0;
                 }
             }
         }
@@ -351,7 +352,7 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
                 views[views_index++] = {handle.first};
 
                 Sampler* const sampler{texture_cache.GetGraphicsSampler(handle.second)};
-                samplers[samplers_index++] = sampler;
+                samplers[sampler_binding++] = sampler->Handle();
             }
         }
         if constexpr (Spec::has_images) {
@@ -444,13 +445,10 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
         program_manager.BindSourcePrograms(source_programs);
     }
     const VideoCommon::ImageViewInOut* views_it{views.data()};
-    const Sampler** samplers_it{samplers.data()};
     GLsizei texture_binding = 0;
     GLsizei image_binding = 0;
-    GLsizei sampler_binding{};
     std::array<GLuint, MAX_TEXTURES> textures;
     std::array<GLuint, MAX_IMAGES> images;
-    std::array<GLuint, MAX_TEXTURES> gl_samplers;
     const auto prepare_stage{[&](size_t stage) {
         buffer_cache.runtime.SetImagePointers(&textures[texture_binding], &images[image_binding]);
         buffer_cache.BindHostStageBuffers(stage);
@@ -467,13 +465,6 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
         u32 stage_image_binding{};
 
         const auto& info{stage_infos[stage]};
-        if constexpr (Spec::has_texture_buffers) {
-            for (const auto& desc : info.texture_buffer_descriptors) {
-                for (u32 index = 0; index < desc.count; ++index) {
-                    gl_samplers[sampler_binding++] = 0;
-                }
-            }
-        }
         for (const auto& desc : info.texture_descriptors) {
             for (u32 index = 0; index < desc.count; ++index) {
                 ImageView& image_view{texture_cache.GetImageView((views_it++)->id)};
@@ -483,12 +474,6 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
                 }
                 ++texture_binding;
                 ++stage_texture_binding;
-
-                const Sampler& sampler{**(samplers_it++)};
-                const bool use_fallback_sampler{sampler.HasAddedAnisotropy() &&
-                                                !image_view.SupportsAnisotropy()};
-                gl_samplers[sampler_binding++] =
-                    use_fallback_sampler ? sampler.HandleWithDefaultAnisotropy() : sampler.Handle();
             }
         }
         for (const auto& desc : info.image_descriptors) {
@@ -549,7 +534,7 @@ void GraphicsPipeline::ConfigureImpl(bool is_indexed) {
     if (texture_binding != 0) {
         ASSERT(texture_binding == sampler_binding);
         glBindTextures(0, texture_binding, textures.data());
-        glBindSamplers(0, sampler_binding, gl_samplers.data());
+        glBindSamplers(0, sampler_binding, samplers.data());
     }
     if (image_binding != 0) {
         glBindImageTextures(0, image_binding, images.data());
