@@ -716,13 +716,9 @@ void BufferCache<P>::BindHostIndexBuffer() {
 template <class P>
 void BufferCache<P>::BindHostVertexBuffers() {
     HostBindings<typename P::Buffer> host_bindings;
-    bool any_valid{false};
     auto& flags = maxwell3d->dirty.flags;
     for (u32 index = 0; index < NUM_VERTEX_BUFFERS; ++index) {
         const Binding& binding = channel_state->vertex_buffers[index];
-        if (binding.buffer_id == NULL_BUFFER_ID) {
-            continue;
-        }
         Buffer& buffer = slot_buffers[binding.buffer_id];
         TouchBuffer(buffer, binding.buffer_id);
         SynchronizeBuffer(buffer, binding.cpu_addr, binding.size);
@@ -738,12 +734,10 @@ void BufferCache<P>::BindHostVertexBuffers() {
         host_bindings.sizes.push_back(binding.size);
         host_bindings.strides.push_back(stride);
         host_bindings.min_index = std::min(host_bindings.min_index, index);
-        host_bindings.max_index = std::max(host_bindings.max_index, index);
-        any_valid = true;
+        host_bindings.count++;
     }
 
-    if (any_valid) {
-        host_bindings.max_index++;
+    if (host_bindings.count > 0) {
         runtime.BindVertexBuffers(host_bindings);
     }
 }
@@ -905,9 +899,6 @@ void BufferCache<P>::BindHostTransformFeedbackBuffers() {
             maxwell3d->regs.transform_feedback.controls[index].stride == 0) {
             break;
         }
-        if (binding.buffer_id == NULL_BUFFER_ID) {
-            continue;
-        }
         Buffer& buffer = slot_buffers[binding.buffer_id];
         TouchBuffer(buffer, binding.buffer_id);
         const u32 size = binding.size;
@@ -917,8 +908,9 @@ void BufferCache<P>::BindHostTransformFeedbackBuffers() {
         host_bindings.buffers.push_back(&buffer);
         host_bindings.offsets.push_back(offset);
         host_bindings.sizes.push_back(binding.size);
+        host_bindings.count++;
     }
-    if (host_bindings.buffers.size() > 0) {
+    if (host_bindings.count > 0) {
         runtime.BindTransformFeedbackBuffers(host_bindings);
     }
 }

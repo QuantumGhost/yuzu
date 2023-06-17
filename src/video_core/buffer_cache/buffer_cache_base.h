@@ -112,7 +112,7 @@ struct HostBindings {
     boost::container::small_vector<u64, NUM_VERTEX_BUFFERS> sizes;
     boost::container::small_vector<u64, NUM_VERTEX_BUFFERS> strides;
     u32 min_index{NUM_VERTEX_BUFFERS};
-    u32 max_index{0};
+    u32 count{0};
 };
 
 class BufferCacheChannelInfo : public ChannelInfo {
