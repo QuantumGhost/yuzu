@@ -226,30 +226,50 @@ void TextureCache<P>::CheckFeedbackLoop(std::span<const ImageViewInOut> views) {
 
 template <class P>
 typename P::Sampler* TextureCache<P>::GetGraphicsSampler(u32 index) {
+    return &slot_samplers[GetGraphicsSamplerId(index)];
+}
+
+template <class P>
+typename P::Sampler* TextureCache<P>::GetComputeSampler(u32 index) {
+    return &slot_samplers[GetComputeSamplerId(index)];
+}
+
+template <class P>
+SamplerId TextureCache<P>::GetGraphicsSamplerId(u32 index) {
     if (index > channel_state->graphics_sampler_table.Limit()) {
         LOG_DEBUG(HW_GPU, "Invalid sampler index={}", index);
-        return &slot_samplers[NULL_SAMPLER_ID];
+        return NULL_SAMPLER_ID;
     }
     const auto [descriptor, is_new] = channel_state->graphics_sampler_table.Read(index);
     SamplerId& id = channel_state->graphics_sampler_ids[index];
     if (is_new) {
         id = FindSampler(descriptor);
     }
-    return &slot_samplers[id];
+    return id;
 }
 
 template <class P>
-typename P::Sampler* TextureCache<P>::GetComputeSampler(u32 index) {
+SamplerId TextureCache<P>::GetComputeSamplerId(u32 index) {
     if (index > channel_state->compute_sampler_table.Limit()) {
         LOG_DEBUG(HW_GPU, "Invalid sampler index={}", index);
-        return &slot_samplers[NULL_SAMPLER_ID];
+        return NULL_SAMPLER_ID;
     }
     const auto [descriptor, is_new] = channel_state->compute_sampler_table.Read(index);
     SamplerId& id = channel_state->compute_sampler_ids[index];
     if (is_new) {
         id = FindSampler(descriptor);
     }
-    return &slot_samplers[id];
+    return id;
+}
+
+template <class P>
+const typename P::Sampler& TextureCache<P>::GetSampler(SamplerId id) const noexcept {
+    return slot_samplers[id];
+}
+
+template <class P>
+typename P::Sampler& TextureCache<P>::GetSampler(SamplerId id) noexcept {
+    return slot_samplers[id];
 }
 
 template <class P>
@@ -284,7 +304,7 @@ void TextureCache<P>::SynchronizeComputeDescriptors() {
 }
 
 template <class P>
-bool TextureCache<P>::RescaleRenderTargets(bool is_clear) {
+bool TextureCache<P>::RescaleRenderTargets() {
     auto& flags = maxwell3d->dirty.flags;
     u32 scale_rating = 0;
     bool rescaled = false;
@@ -322,13 +342,13 @@ bool TextureCache<P>::RescaleRenderTargets(bool is_clear) {
             ImageViewId& color_buffer_id = render_targets.color_buffer_ids[index];
             if (flags[Dirty::ColorBuffer0 + index] || force) {
                 flags[Dirty::ColorBuffer0 + index] = false;
-                BindRenderTarget(&color_buffer_id, FindColorBuffer(index, is_clear));
+                BindRenderTarget(&color_buffer_id, FindColorBuffer(index));
             }
             check_rescale(color_buffer_id, tmp_color_images[index]);
         }
         if (flags[Dirty::ZetaBuffer] || force) {
             flags[Dirty::ZetaBuffer] = false;
-            BindRenderTarget(&render_targets.depth_buffer_id, FindDepthBuffer(is_clear));
+            BindRenderTarget(&render_targets.depth_buffer_id, FindDepthBuffer());
         }
         check_rescale(render_targets.depth_buffer_id, tmp_depth_image);
 
@@ -393,7 +413,7 @@ void TextureCache<P>::UpdateRenderTargets(bool is_clear) {
         return;
     }
 
-    const bool rescaled = RescaleRenderTargets(is_clear);
+    const bool rescaled = RescaleRenderTargets();
     if (is_rescaling != rescaled) {
         flags[Dirty::RescaleViewports] = true;
         flags[Dirty::RescaleScissors] = true;
@@ -1662,7 +1682,7 @@ SamplerId TextureCache<P>::FindSampler(const TSCEntry& config) {
 }
 
 template <class P>
-ImageViewId TextureCache<P>::FindColorBuffer(size_t index, bool is_clear) {
+ImageViewId TextureCache<P>::FindColorBuffer(size_t index) {
     const auto& regs = maxwell3d->regs;
     if (index >= regs.rt_control.count) {
         return ImageViewId{};
@@ -1676,11 +1696,11 @@ ImageViewId TextureCache<P>::FindColorBuffer(size_t index, bool is_clear) {
         return ImageViewId{};
     }
     const ImageInfo info(regs.rt[index], regs.anti_alias_samples_mode);
-    return FindRenderTargetView(info, gpu_addr, is_clear);
+    return FindRenderTargetView(info, gpu_addr);
 }
 
 template <class P>
-ImageViewId TextureCache<P>::FindDepthBuffer(bool is_clear) {
+ImageViewId TextureCache<P>::FindDepthBuffer() {
     const auto& regs = maxwell3d->regs;
     if (!regs.zeta_enable) {
         return ImageViewId{};
@@ -1690,18 +1710,16 @@ ImageViewId TextureCache<P>::FindDepthBuffer(bool is_clear) {
         return ImageViewId{};
     }
     const ImageInfo info(regs.zeta, regs.zeta_size, regs.anti_alias_samples_mode);
-    return FindRenderTargetView(info, gpu_addr, is_clear);
+    return FindRenderTargetView(info, gpu_addr);
 }
 
 template <class P>
-ImageViewId TextureCache<P>::FindRenderTargetView(const ImageInfo& info, GPUVAddr gpu_addr,
-                                                  bool is_clear) {
-    const auto options = is_clear ? RelaxedOptions::Samples : RelaxedOptions{};
+ImageViewId TextureCache<P>::FindRenderTargetView(const ImageInfo& info, GPUVAddr gpu_addr) {
     ImageId image_id{};
     bool delete_state = has_deleted_images;
     do {
         has_deleted_images = false;
-        image_id = FindOrInsertImage(info, gpu_addr, options);
+        image_id = FindOrInsertImage(info, gpu_addr);
         delete_state |= has_deleted_images;
     } while (has_deleted_images);
     has_deleted_images = delete_state;
