@@ -518,15 +518,15 @@ void BufferCacheRuntime::BindVertexBuffers(VideoCommon::HostBindings<Buffer>& bi
     if (device.IsExtExtendedDynamicStateSupported()) {
         scheduler.Record([bindings = std::move(bindings),
                           buffer_handles = std::move(buffer_handles)](vk::CommandBuffer cmdbuf) {
-            cmdbuf.BindVertexBuffers2EXT(bindings.min_index, bindings.count, buffer_handles.data(),
-                                         bindings.offsets.data(), bindings.sizes.data(),
-                                         bindings.strides.data());
+            cmdbuf.BindVertexBuffers2EXT(
+                bindings.min_index, bindings.max_index - bindings.min_index, buffer_handles.data(),
+                bindings.offsets.data(), bindings.sizes.data(), bindings.strides.data());
         });
     } else {
         scheduler.Record([bindings = std::move(bindings),
                           buffer_handles = std::move(buffer_handles)](vk::CommandBuffer cmdbuf) {
-            cmdbuf.BindVertexBuffers(bindings.min_index, bindings.count, buffer_handles.data(),
-                                     bindings.offsets.data());
+            cmdbuf.BindVertexBuffers(bindings.min_index, bindings.max_index - bindings.min_index,
+                                     buffer_handles.data(), bindings.offsets.data());
         });
     }
 }
@@ -563,8 +563,9 @@ void BufferCacheRuntime::BindTransformFeedbackBuffers(VideoCommon::HostBindings<
     }
     scheduler.Record([bindings = std::move(bindings),
                       buffer_handles = std::move(buffer_handles)](vk::CommandBuffer cmdbuf) {
-        cmdbuf.BindTransformFeedbackBuffersEXT(0, bindings.count, buffer_handles.data(),
-                                               bindings.offsets.data(), bindings.sizes.data());
+        cmdbuf.BindTransformFeedbackBuffersEXT(0, bindings.max_index - bindings.max_index,
+                                               buffer_handles.data(), bindings.offsets.data(),
+                                               bindings.sizes.data());
     });
 }
 
