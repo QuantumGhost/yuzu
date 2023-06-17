@@ -563,7 +563,7 @@ void BufferCacheRuntime::BindTransformFeedbackBuffers(VideoCommon::HostBindings<
     }
     scheduler.Record([bindings = std::move(bindings),
                       buffer_handles = std::move(buffer_handles)](vk::CommandBuffer cmdbuf) {
-        cmdbuf.BindTransformFeedbackBuffersEXT(0, bindings.max_index - bindings.max_index,
+        cmdbuf.BindTransformFeedbackBuffersEXT(0, static_cast<u32>(buffer_handles.size()),
                                                buffer_handles.data(), bindings.offsets.data(),
                                                bindings.sizes.data());
     });

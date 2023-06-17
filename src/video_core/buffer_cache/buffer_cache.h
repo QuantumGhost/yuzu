@@ -801,8 +801,7 @@ void BufferCache<P>::BindHostGraphicsUniformBuffer(size_t stage, u32 index, u32 
                     !HasFastUniformBufferBound(stage, binding_index) ||
                     channel_state->uniform_buffer_binding_sizes[stage][binding_index] != size;
                 if (should_fast_bind) {
-                    // We only have to bind when the currently bound buffer is not the fast
-                    // version
+                    // We only have to bind when the currently bound buffer is not the fast version
                     channel_state->fast_bound_uniform_buffers[stage] |= 1U << binding_index;
                     channel_state->uniform_buffer_binding_sizes[stage][binding_index] = size;
                     runtime.BindFastUniformBuffer(stage, binding_index, size);
@@ -905,7 +904,6 @@ void BufferCache<P>::BindHostTransformFeedbackBuffers() {
         return;
     }
     HostBindings<typename P::Buffer> host_bindings;
-    bool any_valid{false};
     for (u32 index = 0; index < NUM_TRANSFORM_FEEDBACK_BUFFERS; ++index) {
         const Binding& binding = channel_state->transform_feedback_buffers[index];
         if (maxwell3d->regs.transform_feedback.controls[index].varying_count == 0 &&
@@ -921,12 +919,8 @@ void BufferCache<P>::BindHostTransformFeedbackBuffers() {
         host_bindings.buffers.push_back(&buffer);
         host_bindings.offsets.push_back(offset);
         host_bindings.sizes.push_back(binding.size);
-        host_bindings.min_index = std::min(host_bindings.min_index, index);
-        host_bindings.max_index = std::max(host_bindings.max_index, index);
-        any_valid = true;
     }
-    if (any_valid) {
-        host_bindings.max_index++;
+    if (host_bindings.buffers.size() > 0) {
         runtime.BindTransformFeedbackBuffers(host_bindings);
     }
 }
@@ -1322,8 +1316,8 @@ typename BufferCache<P>::OverlapResult BufferCache<P>::ResolveOverlaps(VAddr cpu
         }
         stream_score += overlap.StreamScore();
         if (stream_score > STREAM_LEAP_THRESHOLD && !has_stream_leap) {
-            // When this memory region has been joined a bunch of times, we assume it's being
-            // used as a stream buffer. Increase the size to skip constantly recreating buffers.
+            // When this memory region has been joined a bunch of times, we assume it's being used
+            // as a stream buffer. Increase the size to skip constantly recreating buffers.
             has_stream_leap = true;
             if (expands_right) {
                 begin -= CACHING_PAGESIZE * 256;
@@ -1717,17 +1711,16 @@ Binding BufferCache<P>::StorageBufferBinding(GPUVAddr ssbo_addr, u32 cbuf_index,
     const GPUVAddr gpu_addr = gpu_memory->Read<u64>(ssbo_addr);
     const auto size = [&]() {
         const bool is_nvn_cbuf = cbuf_index == 0;
-        // The NVN driver buffer (index 0) is known to pack the SSBO address followed by its
-        // size.
+        // The NVN driver buffer (index 0) is known to pack the SSBO address followed by its size.
         if (is_nvn_cbuf) {
             const u32 ssbo_size = gpu_memory->Read<u32>(ssbo_addr + 8);
             if (ssbo_size != 0) {
                 return ssbo_size;
             }
         }
-        // Other titles (notably Doom Eternal) may use STG/LDG on buffer addresses in custom
-        // defined cbufs, which do not store the sizes adjacent to the addresses, so use the
-        // fully mapped buffer size for now.
+        // Other titles (notably Doom Eternal) may use STG/LDG on buffer addresses in custom defined
+        // cbufs, which do not store the sizes adjacent to the addresses, so use the fully
+        // mapped buffer size for now.
         const u32 memory_layout_size = static_cast<u32>(gpu_memory->GetMemoryLayoutSize(gpu_addr));
         return std::min(memory_layout_size, static_cast<u32>(8_MiB));
     }();
