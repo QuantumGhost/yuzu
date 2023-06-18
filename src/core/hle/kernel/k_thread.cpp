@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <atomic>
 #include <cinttypes>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -1311,7 +1313,8 @@ void KThread::RequestDummyThreadWait() {
     ASSERT(this->IsDummyThread());
 
     // We will block when the scheduler lock is released.
-    m_dummy_thread_runnable.store(false);
+    std::scoped_lock lock{m_dummy_thread_mutex};
+    m_dummy_thread_runnable = false;
 }
 
 void KThread::DummyThreadBeginWait() {
@@ -1321,7 +1324,8 @@ void KThread::DummyThreadBeginWait() {
     }
 
     // Block until runnable is no longer false.
-    m_dummy_thread_runnable.wait(false);
+    std::unique_lock lock{m_dummy_thread_mutex};
+    m_dummy_thread_cv.wait(lock, [this] { return m_dummy_thread_runnable; });
 }
 
 void KThread::DummyThreadEndWait() {
@@ -1329,8 +1333,11 @@ void KThread::DummyThreadEndWait() {
     ASSERT(this->IsDummyThread());
 
     // Wake up the waiting thread.
-    m_dummy_thread_runnable.store(true);
-    m_dummy_thread_runnable.notify_one();
+    {
+        std::scoped_lock lock{m_dummy_thread_mutex};
+        m_dummy_thread_runnable = true;
+    }
+    m_dummy_thread_cv.notify_one();
 }
 
 void KThread::BeginWait(KThreadQueue* queue) {
