@@ -15,6 +15,7 @@
 #include "common/address_space.h"
 #include "common/common_funcs.h"
 #include "common/common_types.h"
+#include "common/scratch_buffer.h"
 #include "common/swap.h"
 #include "core/hle/service/nvdrv/core/nvmap.h"
 #include "core/hle/service/nvdrv/devices/nvdevice.h"
@@ -212,6 +213,7 @@ private:
         bool initialised{};
     } vm;
     std::shared_ptr<Tegra::MemoryManager> gmmu;
+    Common::ScratchBuffer<IoctlRemapEntry> entries;
 
     // s32 channel{};
     // u32 big_page_size{VM::DEFAULT_BIG_PAGE_SIZE};

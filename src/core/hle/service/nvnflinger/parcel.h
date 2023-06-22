@@ -6,6 +6,7 @@
 #include <memory>
 #include <span>
 #include <vector>
+#include <boost/container/small_vector.hpp>
 
 #include "common/alignment.h"
 #include "common/assert.h"
@@ -117,10 +118,7 @@ private:
 
 class OutputParcel final {
 public:
-    OutputParcel() {
-        m_data_buffer.reserve(0x1000);
-        m_object_buffer.reserve(0x100);
-    }
+    OutputParcel() = default;
 
     template <typename T>
     void Write(const T& val) {
@@ -170,7 +168,7 @@ public:
 private:
     template <typename T>
         requires(std::is_trivially_copyable_v<T>)
-    void WriteImpl(const T& val, std::vector<u8>& buffer) {
+    void WriteImpl(const T& val, boost::container::small_vector<u8, 0x200>& buffer) {
         const size_t aligned_size = Common::AlignUp(sizeof(T), 4);
         const size_t old_size = buffer.size();
         buffer.resize(old_size + aligned_size);
@@ -179,8 +177,8 @@ private:
     }
 
 private:
-    std::vector<u8> m_data_buffer;
-    std::vector<u8> m_object_buffer;
+    boost::container::small_vector<u8, 0x200> m_data_buffer;
+    boost::container::small_vector<u8, 0x200> m_object_buffer;
 };
 
 } // namespace Service::android

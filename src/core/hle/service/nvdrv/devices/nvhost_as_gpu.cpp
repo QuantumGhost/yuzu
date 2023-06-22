@@ -271,11 +271,9 @@ NvResult nvhost_as_gpu::Remap(std::span<const u8> input, std::span<u8> output) {
 
     LOG_DEBUG(Service_NVDRV, "called, num_entries=0x{:X}", num_entries);
 
-    static Common::ScratchBuffer<IoctlRemapEntry> entries;
+    std::scoped_lock lock(mutex);
     entries.resize_destructive(num_entries);
     std::memcpy(entries.data(), input.data(), input.size());
-
-    std::scoped_lock lock(mutex);
 
     if (!vm.initialised) {
         return NvResult::BadValue;
