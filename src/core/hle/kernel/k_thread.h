@@ -343,7 +343,8 @@ public:
     }
 
     std::span<Handle> GetHandleBuffer() {
-        return m_sync_object_buffer.handles;
+        return {m_sync_object_buffer.handles.data() + Svc::ArgumentHandleCountMax,
+                Svc::ArgumentHandleCountMax};
     }
 
     u16 GetUserDisableCount() const;
