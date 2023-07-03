@@ -70,7 +70,7 @@ void CoreTiming::Initialize(std::function<void()>&& on_thread_init_) {
         -> std::optional<std::chrono::nanoseconds> { return std::nullopt; };
     ev_lost = CreateEvent("_lost_event", empty_timed_callback);
     if (is_multicore) {
-        timer_thread = std::make_unique<std::thread>(ThreadEntry, std::ref(*this));
+        timer_thread = std::make_unique<std::jthread>(ThreadEntry, std::ref(*this));
     }
 }
 
@@ -253,12 +253,8 @@ void CoreTiming::ThreadLoop() {
                 auto wait_time = *next_time - GetGlobalTimeNs().count();
                 if (wait_time > 0) {
 #ifdef _WIN32
-                    const auto timer_resolution_ns =
-                        Common::Windows::GetCurrentTimerResolution().count();
-
                     while (!paused && !event.IsSet() && wait_time > 0) {
                         wait_time = *next_time - GetGlobalTimeNs().count();
-
                         if (wait_time >= timer_resolution_ns) {
                             Common::Windows::SleepForOneTick();
                         } else {
@@ -315,5 +311,11 @@ std::chrono::microseconds CoreTiming::GetGlobalTimeUs() const {
     }
     return std::chrono::microseconds{Common::WallClock::CPUTickToUS(cpu_ticks)};
 }
+
+#ifdef _WIN32
+void CoreTiming::SetTimerResolutionNs(std::chrono::nanoseconds ns) {
+    timer_resolution_ns = ns.count();
+}
+#endif
 
 } // namespace Core::Timing
