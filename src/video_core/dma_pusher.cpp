@@ -5,15 +5,12 @@
 #include "common/microprofile.h"
 #include "common/settings.h"
 #include "core/core.h"
-#include "core/memory.h"
 #include "video_core/dma_pusher.h"
 #include "video_core/engines/maxwell_3d.h"
 #include "video_core/gpu.h"
 #include "video_core/memory_manager.h"
 
 namespace Tegra {
-
-constexpr u32 MacroRegistersStart = 0xE00;
 
 DmaPusher::DmaPusher(Core::System& system_, GPU& gpu_, MemoryManager& memory_manager_,
                      Control::ChannelState& channel_state_)
@@ -77,16 +74,25 @@ bool DmaPusher::Step() {
         }
 
         // Push buffer non-empty, read a word
-        if (dma_state.method >= MacroRegistersStart) {
-            if (subchannels[dma_state.subchannel]) {
-                subchannels[dma_state.subchannel]->current_dirty = memory_manager.IsMemoryDirty(
-                    dma_state.dma_get, command_list_header.size * sizeof(u32));
+        command_headers.resize_destructive(command_list_header.size);
+        constexpr u32 MacroRegistersStart = 0xE00;
+        if (dma_state.method < MacroRegistersStart) {
+            if (Settings::IsGPULevelHigh()) {
+                memory_manager.ReadBlock(dma_state.dma_get, command_headers.data(),
+                                         command_list_header.size * sizeof(u32));
+            } else {
+                memory_manager.ReadBlockUnsafe(dma_state.dma_get, command_headers.data(),
+                                               command_list_header.size * sizeof(u32));
             }
+        } else {
+            const size_t copy_size = command_list_header.size * sizeof(u32);
+            if (subchannels[dma_state.subchannel]) {
+                subchannels[dma_state.subchannel]->current_dirty =
+                    memory_manager.IsMemoryDirty(dma_state.dma_get, copy_size);
+            }
+            memory_manager.ReadBlockUnsafe(dma_state.dma_get, command_headers.data(), copy_size);
         }
-        Core::Memory::GpuGuestMemory<Tegra::CommandHeader,
-                                     Core::Memory::GuestMemoryFlags::UnsafeRead>
-            headers(memory_manager, dma_state.dma_get, command_list_header.size, &command_headers);
-        ProcessCommands(headers);
+        ProcessCommands(command_headers);
     }
 
     return true;

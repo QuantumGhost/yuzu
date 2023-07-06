@@ -122,7 +122,6 @@ struct PageTable {
      * corresponding attribute element is of type `Memory`.
      */
     VirtualBuffer<PageInfo> pointers;
-    VirtualBuffer<u64> blocks;
 
     VirtualBuffer<u64> backing_addr;
 

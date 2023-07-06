@@ -84,6 +84,7 @@ Texture::TICEntry KeplerCompute::GetTICEntry(u32 tic_index) const {
 
     Texture::TICEntry tic_entry;
     memory_manager.ReadBlockUnsafe(tic_address_gpu, &tic_entry, sizeof(Texture::TICEntry));
+
     return tic_entry;
 }
 
