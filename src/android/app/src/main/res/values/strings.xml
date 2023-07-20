@@ -113,6 +113,8 @@
     <string name="install_game_content_success_install">%1$d installed successfully</string>
     <string name="install_game_content_success_overwrite">%1$d overwritten successfully</string>
     <string name="install_game_content_help_link">https://yuzu-emu.org/help/quickstart/#dumping-installed-updates</string>
+    <string name="custom_driver_not_supported">Custom drivers not supported</string>
+    <string name="custom_driver_not_supported_description">Custom driver loading isn\'t currently supported for this device.\nCheck this option again in the future to see if support was added!</string>
 
     <!-- About screen strings -->
     <string name="gaia_is_not_real">Gaia isn\'t real</string>
@@ -230,7 +232,7 @@
 
     <!-- ROM loading errors -->
     <string name="loader_error_encrypted">Your ROM is encrypted</string>
-    <string name="loader_error_encrypted_roms_description"><![CDATA[Please follow the guides to redump your <a href="https://yuzu-emu.org/help/quickstart/#dumping-cartridge-games">game cartidges</a> or <a href="https://yuzu-emu.org/help/quickstart/#dumping-installed-titles-eshop">installed titles</a>.]]></string>
+    <string name="loader_error_encrypted_roms_description"><![CDATA[Please follow the guides to redump your <a href="https://yuzu-emu.org/help/quickstart/#dumping-physical-titles-game-cards">game cartidges</a> or <a href="https://yuzu-emu.org/help/quickstart/#dumping-digital-titles-eshop">installed titles</a>.]]></string>
     <string name="loader_error_encrypted_keys_description"><![CDATA[Please ensure your <a href="https://yuzu-emu.org/help/quickstart/#dumping-prodkeys-and-titlekeys">prod.keys</a> file is installed so that games can be decrypted.]]></string>
     <string name="loader_error_video_core">An error occurred initializing the video core</string>
     <string name="loader_error_video_core_description">This is usually caused by an incompatible GPU driver. Installing a custom GPU driver may resolve this problem.</string>
