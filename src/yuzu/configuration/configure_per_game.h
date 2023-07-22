@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <forward_list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,9 +11,12 @@
 #include <QDialog>
 #include <QList>
 
+#include "configuration/shared_widget.h"
 #include "core/file_sys/vfs_types.h"
 #include "vk_device_info.h"
 #include "yuzu/configuration/config.h"
+#include "yuzu/configuration/configuration_shared.h"
+#include "yuzu/configuration/shared_translation.h"
 
 namespace Core {
 class System;
@@ -25,7 +29,6 @@ class InputSubsystem;
 class ConfigurePerGameAddons;
 class ConfigureAudio;
 class ConfigureCpu;
-class ConfigureGeneral;
 class ConfigureGraphics;
 class ConfigureGraphicsAdvanced;
 class ConfigureInputPerGame;
@@ -73,11 +76,12 @@ private:
     std::unique_ptr<Config> game_config;
 
     Core::System& system;
+    std::unique_ptr<ConfigurationShared::Builder> builder;
+    std::shared_ptr<std::forward_list<ConfigurationShared::Tab*>> tab_group;
 
     std::unique_ptr<ConfigurePerGameAddons> addons_tab;
     std::unique_ptr<ConfigureAudio> audio_tab;
     std::unique_ptr<ConfigureCpu> cpu_tab;
-    std::unique_ptr<ConfigureGeneral> general_tab;
     std::unique_ptr<ConfigureGraphicsAdvanced> graphics_advanced_tab;
     std::unique_ptr<ConfigureGraphics> graphics_tab;
     std::unique_ptr<ConfigureInputPerGame> input_tab;
