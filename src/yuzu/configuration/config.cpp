@@ -727,8 +727,7 @@ void Config::ReadMultiplayerValues() {
 }
 
 void Config::ReadNetworkValues() {
-    qt_config->beginGroup(
-        QString::fromUtf8(Settings::TranslateCategory(Settings::Category::Network)));
+    qt_config->beginGroup(QString::fromStdString("Services"));
 
     ReadCategory(Settings::Category::Network);
 
@@ -1271,9 +1270,11 @@ void Config::ReadSettingGeneric(Settings::BasicSetting* const setting) {
     }
 
     if (global || !use_global) {
-        const bool is_default = ReadSetting(name + QStringLiteral("/default"), true).value<bool>();
+        const bool is_default =
+            qt_config->value(name + QStringLiteral("/default"), true).value<bool>();
         if (!is_default) {
-            setting->LoadString(ReadSetting(name, default_value).value<QString>().toStdString());
+            setting->LoadString(
+                qt_config->value(name, default_value).value<QString>().toStdString());
         } else {
             // Empty string resets the Setting to default
             setting->LoadString("");
