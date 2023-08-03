@@ -18,7 +18,6 @@
 #include "core/hle/kernel/svc_common.h"
 
 namespace Core {
-class ARM_Interface;
 class ExclusiveMonitor;
 class System;
 } // namespace Core
@@ -105,6 +104,9 @@ public:
     /// Resets the kernel to a clean slate for use.
     void Initialize();
 
+    /// Initializes the CPU cores.
+    void InitializeCores();
+
     /// Clears all resources in use by the kernel instance.
     void Shutdown();
 
@@ -171,11 +173,12 @@ public:
     /// Gets the an instance of the hardware timer.
     Kernel::KHardwareTimer& HardwareTimer();
 
-    /// Gets the exclusive monitor for the process on the current core
-    Core::ExclusiveMonitor& GetCurrentExclusiveMonitor();
+    /// Stops execution of 'id' core, in order to reschedule a new thread.
+    void PrepareReschedule(std::size_t id);
 
-    /// Gets the JIT instance for the process on the current core
-    Core::ARM_Interface& GetCurrentArmInterface();
+    Core::ExclusiveMonitor& GetExclusiveMonitor();
+
+    const Core::ExclusiveMonitor& GetExclusiveMonitor() const;
 
     KAutoObjectWithListContainer& ObjectListContainer();
 

@@ -102,7 +102,9 @@ void Break(Core::System& system, BreakReason reason, u64 info1, u64 info2) {
 
         handle_debug_buffer(info1, info2);
 
-        system.GetCurrentArmInterface().LogBacktrace();
+        auto* const current_thread = GetCurrentThreadPointer(system.Kernel());
+        const auto thread_processor_id = current_thread->GetActiveCore();
+        system.ArmInterface(static_cast<std::size_t>(thread_processor_id)).LogBacktrace();
     }
 
     if (system.DebuggerEnabled()) {

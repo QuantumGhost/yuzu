@@ -23,16 +23,19 @@ namespace Kernel {
 
 class PhysicalCore {
 public:
-    PhysicalCore(std::size_t core_index_, Core::System& system_);
+    PhysicalCore(std::size_t core_index_, Core::System& system_, KScheduler& scheduler_);
     ~PhysicalCore();
 
     YUZU_NON_COPYABLE(PhysicalCore);
     YUZU_NON_MOVEABLE(PhysicalCore);
 
-    /// Execute JIT and return whether we ran to completion
-    bool Run(Core::ARM_Interface& current_arm_interface);
+    /// Initialize the core for the specified parameters.
+    void Initialize(bool is_64_bit);
 
-    void WaitForInterrupt();
+    /// Execute current jit state
+    void Run();
+
+    void Idle();
 
     /// Interrupt this physical core.
     void Interrupt();
@@ -40,22 +43,42 @@ public:
     /// Clear this core's interrupt
     void ClearInterrupt();
 
-    bool GetIsInterrupted() const {
-        return m_is_interrupted;
+    /// Check if this core is interrupted
+    bool IsInterrupted() const;
+
+    bool IsInitialized() const {
+        return m_arm_interface != nullptr;
     }
 
-    std::size_t GetCoreIndex() const {
+    Core::ARM_Interface& ArmInterface() {
+        return *m_arm_interface;
+    }
+
+    const Core::ARM_Interface& ArmInterface() const {
+        return *m_arm_interface;
+    }
+
+    std::size_t CoreIndex() const {
         return m_core_index;
+    }
+
+    Kernel::KScheduler& Scheduler() {
+        return m_scheduler;
+    }
+
+    const Kernel::KScheduler& Scheduler() const {
+        return m_scheduler;
     }
 
 private:
     const std::size_t m_core_index;
     Core::System& m_system;
+    Kernel::KScheduler& m_scheduler;
 
     std::mutex m_guard;
     std::condition_variable m_on_interrupt;
+    std::unique_ptr<Core::ARM_Interface> m_arm_interface;
     bool m_is_interrupted{};
-    Core::ARM_Interface* m_current_arm_interface{};
 };
 
 } // namespace Kernel

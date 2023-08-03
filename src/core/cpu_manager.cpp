@@ -9,7 +9,6 @@
 #include "core/core_timing.h"
 #include "core/cpu_manager.h"
 #include "core/hle/kernel/k_interrupt_manager.h"
-#include "core/hle/kernel/k_process.h"
 #include "core/hle/kernel/k_scheduler.h"
 #include "core/hle/kernel/k_thread.h"
 #include "core/hle/kernel/kernel.h"
@@ -74,15 +73,13 @@ void CpuManager::HandleInterrupt() {
 void CpuManager::MultiCoreRunGuestThread() {
     // Similar to UserModeThreadStarter in HOS
     auto& kernel = system.Kernel();
-    auto& process = Kernel::GetCurrentProcess(kernel);
     kernel.CurrentScheduler()->OnThreadStart();
 
     while (true) {
         auto* physical_core = &kernel.CurrentPhysicalCore();
-        auto* arm_interface = process.GetArmInterface(physical_core->GetCoreIndex());
-
-        if (physical_core->Run(*arm_interface)) {
-            continue;
+        while (!physical_core->IsInterrupted()) {
+            physical_core->Run();
+            physical_core = &kernel.CurrentPhysicalCore();
         }
 
         HandleInterrupt();
@@ -98,7 +95,11 @@ void CpuManager::MultiCoreRunIdleThread() {
     kernel.CurrentScheduler()->OnThreadStart();
 
     while (true) {
-        kernel.CurrentPhysicalCore().WaitForInterrupt();
+        auto& physical_core = kernel.CurrentPhysicalCore();
+        if (!physical_core.IsInterrupted()) {
+            physical_core.Idle();
+        }
+
         HandleInterrupt();
     }
 }
@@ -109,13 +110,14 @@ void CpuManager::MultiCoreRunIdleThread() {
 
 void CpuManager::SingleCoreRunGuestThread() {
     auto& kernel = system.Kernel();
-    auto& process = Kernel::GetCurrentProcess(kernel);
     kernel.CurrentScheduler()->OnThreadStart();
 
     while (true) {
         auto* physical_core = &kernel.CurrentPhysicalCore();
-        auto* arm_interface = process.GetArmInterface(physical_core->GetCoreIndex());
-        physical_core->Run(*arm_interface);
+        if (!physical_core->IsInterrupted()) {
+            physical_core->Run();
+            physical_core = &kernel.CurrentPhysicalCore();
+        }
 
         kernel.SetIsPhantomModeForSingleCore(true);
         system.CoreTiming().Advance();

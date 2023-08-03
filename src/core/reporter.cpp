@@ -111,7 +111,7 @@ json GetProcessorStateData(const std::string& architecture, u64 entry_point, u64
 
 json GetProcessorStateDataAuto(Core::System& system) {
     const auto* process{system.ApplicationProcess()};
-    auto& arm{system.GetCurrentArmInterface()};
+    auto& arm{system.CurrentArmInterface()};
 
     Core::ARM_Interface::ThreadContext64 context{};
     arm.SaveContext(context);
@@ -123,7 +123,7 @@ json GetProcessorStateDataAuto(Core::System& system) {
 
 json GetBacktraceData(Core::System& system) {
     auto out = json::array();
-    const auto& backtrace{system.GetCurrentArmInterface().GetBacktrace()};
+    const auto& backtrace{system.CurrentArmInterface().GetBacktrace()};
     for (const auto& entry : backtrace) {
         out.push_back({
             {"module", entry.module},
