@@ -73,13 +73,7 @@ protected:
         std::array<Shader::Environment*, NUM_PROGRAMS> env_ptrs{};
 
         std::span<Shader::Environment* const> Span() const noexcept {
-            size_t size{};
-            for (; size < NUM_PROGRAMS; size++) {
-                if (!env_ptrs[size]) {
-                    break;
-                }
-            }
-            return std::span(env_ptrs.begin(), size);
+            return std::span(env_ptrs.begin(), std::ranges::find(env_ptrs, nullptr));
         }
     };
 
