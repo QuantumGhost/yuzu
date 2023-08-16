@@ -357,7 +357,7 @@ Result BucketTree::Visitor::MoveNext() {
 
         entry_index = 0;
     } else {
-        m_entry_index = 1;
+        m_entry_index = -1;
     }
 
     // Read the new entry.
