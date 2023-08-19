@@ -776,8 +776,8 @@ bool FindGradient3DDerivates(std::array<IR::Value, 3>& results, IR::Value coord)
             // last operand can be inversed, we cannot determine a result.
             return false;
         }
-        zero_mask_a |= (swizzles_mask_a[i] == 3 ? 1 : 0) << i;
-        zero_mask_b |= (swizzles_mask_b[i] == 3 ? 1 : 0) << i;
+        zero_mask_a |= static_cast<size_t>(swizzles_mask_a[i] == 3 ? 1 : 0) << i;
+        zero_mask_b |= static_cast<size_t>(swizzles_mask_b[i] == 3 ? 1 : 0) << i;
     }
     static constexpr size_t ddx_pattern = 0b1010;
     static constexpr size_t ddx_pattern_inv = ~ddx_pattern & 0b00001111;
