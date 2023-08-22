@@ -51,7 +51,7 @@ public:
     virtual void CreateChannel(Tegra::Control::ChannelState& channel);
 
     /// Bind a channel for execution.
-    virtual void BindToChannel(s32 id);
+    void BindToChannel(s32 id);
 
     /// Erase channel's state.
     void EraseChannel(s32 id);

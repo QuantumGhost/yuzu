@@ -25,13 +25,6 @@
 #include "video_core/rasterizer_interface.h"
 #include "video_core/texture_cache/slot_vector.h"
 
-namespace VideoCore {
-enum class QueryType {
-    SamplesPassed,
-};
-constexpr std::size_t NumQueryTypes = 1;
-} // namespace VideoCore
-
 namespace VideoCommon {
 
 using AsyncJobId = SlotId;
@@ -105,10 +98,10 @@ private:
 };
 
 template <class QueryCache, class CachedQuery, class CounterStream, class HostCounter>
-class QueryCacheLegacy : public VideoCommon::ChannelSetupCaches<VideoCommon::ChannelInfo> {
+class QueryCacheBase : public VideoCommon::ChannelSetupCaches<VideoCommon::ChannelInfo> {
 public:
-    explicit QueryCacheLegacy(VideoCore::RasterizerInterface& rasterizer_,
-                              Core::Memory::Memory& cpu_memory_)
+    explicit QueryCacheBase(VideoCore::RasterizerInterface& rasterizer_,
+                            Core::Memory::Memory& cpu_memory_)
         : rasterizer{rasterizer_},
           // Use reinterpret_cast instead of static_cast as workaround for
           // UBSan bug (https://github.com/llvm/llvm-project/issues/59060)

@@ -27,7 +27,7 @@ constexpr GLenum GetTarget(VideoCore::QueryType type) {
 } // Anonymous namespace
 
 QueryCache::QueryCache(RasterizerOpenGL& rasterizer_, Core::Memory::Memory& cpu_memory_)
-    : QueryCacheLegacy(rasterizer_, cpu_memory_), gl_rasterizer{rasterizer_} {}
+    : QueryCacheBase(rasterizer_, cpu_memory_), gl_rasterizer{rasterizer_} {}
 
 QueryCache::~QueryCache() = default;
 

@@ -41,9 +41,6 @@ set(SHADER_FILES
     pitch_unswizzle.comp
     present_bicubic.frag
     present_gaussian.frag
-    queries_prefix_scan_sum.comp
-    queries_prefix_scan_sum_nosubgroups.comp
-    resolve_conditional_render.comp
     smaa_edge_detection.vert
     smaa_edge_detection.frag
     smaa_blending_weight_calculation.vert
@@ -73,7 +70,6 @@ if ("${GLSLANGVALIDATOR}" STREQUAL "GLSLANGVALIDATOR-NOTFOUND")
 endif()
 
 set(GLSL_FLAGS "")
-set(SPIR_V_VERSION "spirv1.3")
 set(QUIET_FLAG "--quiet")
 
 set(SHADER_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/include)
@@ -127,7 +123,7 @@ foreach(FILENAME IN ITEMS ${SHADER_FILES})
             OUTPUT
                 ${SPIRV_HEADER_FILE}
             COMMAND
-                ${GLSLANGVALIDATOR} -V ${QUIET_FLAG} -I"${FIDELITYFX_INCLUDE_DIR}" ${GLSL_FLAGS} --variable-name ${SPIRV_VARIABLE_NAME} -o ${SPIRV_HEADER_FILE} ${SOURCE_FILE} --target-env ${SPIR_V_VERSION}
+                ${GLSLANGVALIDATOR} -V ${QUIET_FLAG} -I"${FIDELITYFX_INCLUDE_DIR}" ${GLSL_FLAGS} --variable-name ${SPIRV_VARIABLE_NAME} -o ${SPIRV_HEADER_FILE} ${SOURCE_FILE}
             MAIN_DEPENDENCY
                 ${SOURCE_FILE}
         )

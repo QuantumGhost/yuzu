@@ -272,19 +272,13 @@ std::pair<typename P::Buffer*, u32> BufferCache<P>::ObtainBuffer(GPUVAddr gpu_ad
     if (!cpu_addr) {
         return {&slot_buffers[NULL_BUFFER_ID], 0};
     }
-    return ObtainCPUBuffer(*cpu_addr, size, sync_info, post_op);
-}
-
-template <class P>
-std::pair<typename P::Buffer*, u32> BufferCache<P>::ObtainCPUBuffer(
-    VAddr cpu_addr, u32 size, ObtainBufferSynchronize sync_info, ObtainBufferOperation post_op) {
-    const BufferId buffer_id = FindBuffer(cpu_addr, size);
+    const BufferId buffer_id = FindBuffer(*cpu_addr, size);
     Buffer& buffer = slot_buffers[buffer_id];
 
     // synchronize op
     switch (sync_info) {
     case ObtainBufferSynchronize::FullSynchronize:
-        SynchronizeBuffer(buffer, cpu_addr, size);
+        SynchronizeBuffer(buffer, *cpu_addr, size);
         break;
     default:
         break;
@@ -292,10 +286,10 @@ std::pair<typename P::Buffer*, u32> BufferCache<P>::ObtainCPUBuffer(
 
     switch (post_op) {
     case ObtainBufferOperation::MarkAsWritten:
-        MarkWrittenBuffer(buffer_id, cpu_addr, size);
+        MarkWrittenBuffer(buffer_id, *cpu_addr, size);
         break;
     case ObtainBufferOperation::DiscardWrite: {
-        IntervalType interval{cpu_addr, size};
+        IntervalType interval{*cpu_addr, size};
         ClearDownload(interval);
         break;
     }
@@ -303,7 +297,7 @@ std::pair<typename P::Buffer*, u32> BufferCache<P>::ObtainCPUBuffer(
         break;
     }
 
-    return {&buffer, buffer.Offset(cpu_addr)};
+    return {&buffer, buffer.Offset(*cpu_addr)};
 }
 
 template <class P>

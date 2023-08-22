@@ -129,17 +129,13 @@ void LogSettings() {
     log_path("DataStorage_SDMCDir", Common::FS::GetYuzuPath(Common::FS::YuzuPath::SDMCDir));
 }
 
-void UpdateGPUAccuracy() {
-    values.current_gpu_accuracy = values.gpu_accuracy.GetValue();
-}
-
 bool IsGPULevelExtreme() {
-    return values.current_gpu_accuracy == GpuAccuracy::Extreme;
+    return values.gpu_accuracy.GetValue() == GpuAccuracy::Extreme;
 }
 
 bool IsGPULevelHigh() {
-    return values.current_gpu_accuracy == GpuAccuracy::Extreme ||
-           values.current_gpu_accuracy == GpuAccuracy::High;
+    return values.gpu_accuracy.GetValue() == GpuAccuracy::Extreme ||
+           values.gpu_accuracy.GetValue() == GpuAccuracy::High;
 }
 
 bool IsFastmemEnabled() {
