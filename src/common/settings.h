@@ -307,6 +307,7 @@ struct Values {
                                                       Specialization::Default,
                                                       true,
                                                       true};
+    GpuAccuracy current_gpu_accuracy{GpuAccuracy::High};
     SwitchableSetting<AnisotropyMode, true> max_anisotropy{
         linkage,          AnisotropyMode::Automatic, AnisotropyMode::Automatic, AnisotropyMode::X16,
         "max_anisotropy", Category::RendererAdvanced};
@@ -514,6 +515,7 @@ struct Values {
 
 extern Values values;
 
+void UpdateGPUAccuracy();
 bool IsGPULevelExtreme();
 bool IsGPULevelHigh();
 
