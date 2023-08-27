@@ -205,6 +205,7 @@ struct DeviceDispatch : InstanceDispatch {
     PFN_vkCmdCopyImageToBuffer vkCmdCopyImageToBuffer{};
     PFN_vkCmdCopyQueryPoolResults vkCmdCopyQueryPoolResults{};
     PFN_vkCmdDispatch vkCmdDispatch{};
+    PFN_vkCmdDispatchIndirect vkCmdDispatchIndirect{};
     PFN_vkCmdDraw vkCmdDraw{};
     PFN_vkCmdDrawIndexed vkCmdDrawIndexed{};
     PFN_vkCmdDrawIndirect vkCmdDrawIndirect{};
@@ -1218,6 +1219,10 @@ public:
 
     void Dispatch(u32 x, u32 y, u32 z) const noexcept {
         dld->vkCmdDispatch(handle, x, y, z);
+    }
+
+    void DispatchIndirect(VkBuffer indirect_buffer, VkDeviceSize offset) const noexcept {
+        dld->vkCmdDispatchIndirect(handle, indirect_buffer, offset);
     }
 
     void PipelineBarrier(VkPipelineStageFlags src_stage_mask, VkPipelineStageFlags dst_stage_mask,

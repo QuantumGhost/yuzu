@@ -1193,12 +1193,6 @@ void TextureCacheRuntime::CopyImage(Image& dst, Image& src,
     const VkImageAspectFlags aspect_mask = dst.AspectMask();
     ASSERT(aspect_mask == src.AspectMask());
 
-    if (VideoCore::Surface::BytesPerBlock(src.info.format) !=
-        VideoCore::Surface::BytesPerBlock(dst.info.format)) {
-        ReinterpretImage(dst, src, copies);
-        return;
-    }
-
     std::ranges::transform(copies, vk_copies.begin(), [aspect_mask](const auto& copy) {
         return MakeImageCopy(copy, aspect_mask);
     });
