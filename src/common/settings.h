@@ -349,6 +349,7 @@ struct Values {
                                           Category::RendererDebug};
     Setting<bool> disable_shader_loop_safety_checks{
         linkage, false, "disable_shader_loop_safety_checks", Category::RendererDebug};
+    bool graphics_AMD_workaround{}; // TODO: remove me once amd supports VK_EXT_depth_bias_control
 
     // System
     SwitchableSetting<Language, true> language_index{linkage,
