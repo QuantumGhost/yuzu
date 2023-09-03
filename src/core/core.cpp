@@ -377,8 +377,8 @@ struct System::Impl {
         }
 
         // Workarounds:
-        // Activate this in Super Smash Brothers, it only affects AMD cards using AMDVLK
-        Settings::values.graphics_AMD_workaround = program_id == 0x1006A800016E000ULL;
+        // Activate this in Super Smash Brothers Ultimate, it only affects AMD cards using AMDVLK
+        Settings::values.renderer_amdvlk_depth_bias_workaround = program_id == 0x1006A800016E000ULL;
 
         status = SystemResultStatus::Success;
         return status;
@@ -440,7 +440,7 @@ struct System::Impl {
         }
 
         // Workarounds
-        Settings::values.graphics_AMD_workaround = false;
+        Settings::values.renderer_amdvlk_depth_bias_workaround = false;
 
         LOG_DEBUG(Core, "Shutdown OK");
     }

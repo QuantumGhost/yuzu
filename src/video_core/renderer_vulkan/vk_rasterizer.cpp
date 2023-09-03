@@ -1021,7 +1021,7 @@ void RasterizerVulkan::UpdateDepthBias(Tegra::Engines::Maxwell3D::Regs& regs) {
         if (device.IsExtDepthBiasControlSupported()) {
             return true;
         }
-        if (!Settings::values.graphics_AMD_workaround) {
+        if (!Settings::values.renderer_amdvlk_depth_bias_workaround) {
             return false;
         }
         // the base formulas can be obtained from here:
