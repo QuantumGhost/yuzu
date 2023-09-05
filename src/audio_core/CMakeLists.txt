@@ -5,7 +5,6 @@ add_library(audio_core STATIC
     adsp/adsp.cpp
     adsp/adsp.h
     adsp/mailbox.h
-    adsp/mailbox.cpp
     adsp/apps/audio_renderer/audio_renderer.cpp
     adsp/apps/audio_renderer/audio_renderer.h
     adsp/apps/audio_renderer/command_buffer.h

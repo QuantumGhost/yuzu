@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2022 yuzu Emulator Project
+// SPDX-FileCopyrightText: Copyright 2023 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #pragma once
@@ -34,19 +34,19 @@ class Sink;
 namespace ADSP::AudioRenderer {
 
 enum Message : u32 {
-    /* 0x00 */ Invalid,
-    /* 0x01 */ MapUnmap_Map,
-    /* 0x02 */ MapUnmap_MapResponse,
-    /* 0x03 */ MapUnmap_Unmap,
-    /* 0x04 */ MapUnmap_UnmapResponse,
-    /* 0x05 */ MapUnmap_InvalidateCache,
-    /* 0x06 */ MapUnmap_InvalidateCacheResponse,
-    /* 0x07 */ MapUnmap_Shutdown,
-    /* 0x08 */ MapUnmap_ShutdownResponse,
-    /* 0x16 */ InitializeOK = 0x16,
-    /* 0x20 */ RenderResponse = 0x20,
-    /* 0x2A */ Render = 0x2A,
-    /* 0x34 */ Shutdown = 0x34,
+    Invalid = 0x00,
+    MapUnmap_Map = 0x01,
+    MapUnmap_MapResponse = 0x02,
+    MapUnmap_Unmap = 0x03,
+    MapUnmap_UnmapResponse = 0x04,
+    MapUnmap_InvalidateCache = 0x05,
+    MapUnmap_InvalidateCacheResponse = 0x06,
+    MapUnmap_Shutdown = 0x07,
+    MapUnmap_ShutdownResponse = 0x08,
+    InitializeOK = 0x16,
+    RenderResponse = 0x20,
+    Render = 0x2A,
+    Shutdown = 0x34,
 };
 
 /**

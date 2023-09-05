@@ -1,10 +1,7 @@
-// SPDX-FileCopyrightText: Copyright 2022 yuzu Emulator Project
+// SPDX-FileCopyrightText: Copyright 2023 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #pragma once
-
-#include <memory>
-#include <mutex>
 
 #include "audio_core/adsp/apps/audio_renderer/audio_renderer.h"
 #include "common/common_types.h"
