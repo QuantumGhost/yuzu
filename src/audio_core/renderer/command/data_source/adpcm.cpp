@@ -23,7 +23,7 @@ void AdpcmDataSourceVersion1Command::Process(const AudioRenderer::CommandListPro
     for (auto& wave_buffer : wave_buffers) {
         wave_buffer.loop_start_offset = wave_buffer.start_offset;
         wave_buffer.loop_end_offset = wave_buffer.end_offset;
-        wave_buffer.loop_count = -(wave_buffer.loop & 1);
+        wave_buffer.loop_count = wave_buffer.loop ? -1 : 0;
     }
 
     DecodeFromWaveBuffersArgs args{
