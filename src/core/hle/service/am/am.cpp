@@ -1852,7 +1852,7 @@ void IApplicationFunctions::ExecuteProgram(HLERequestContext& ctx) {
 }
 
 void IApplicationFunctions::ClearUserChannel(HLERequestContext& ctx) {
-    LOG_DEBUG(Service_AM, "(STUBBED) called");
+    LOG_DEBUG(Service_AM, "called");
 
     system.GetUserChannel().clear();
 
