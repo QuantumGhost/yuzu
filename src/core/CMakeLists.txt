@@ -627,8 +627,8 @@ add_library(core STATIC
     hle/service/nfp/nfp_interface.h
     hle/service/nfp/nfp_result.h
     hle/service/nfp/nfp_types.h
-    hle/service/ngct/ngct.cpp
-    hle/service/ngct/ngct.h
+    hle/service/ngc/ngc.cpp
+    hle/service/ngc/ngc.h
     hle/service/nifm/nifm.cpp
     hle/service/nifm/nifm.h
     hle/service/nim/nim.cpp
@@ -887,7 +887,7 @@ endif()
 create_target_directory_groups(core)
 
 target_link_libraries(core PUBLIC common PRIVATE audio_core network video_core nx_tzdb)
-target_link_libraries(core PUBLIC Boost::headers PRIVATE fmt::fmt nlohmann_json::nlohmann_json mbedtls Opus::opus)
+target_link_libraries(core PUBLIC Boost::headers PRIVATE fmt::fmt nlohmann_json::nlohmann_json mbedtls)
 if (MINGW)
     target_link_libraries(core PRIVATE ${MSWSOCK_LIBRARY})
 endif()
