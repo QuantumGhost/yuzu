@@ -262,9 +262,6 @@ public:
     Core::SystemResultStatus InitializeEmulation(const std::string& filepath) {
         std::scoped_lock lock(m_mutex);
 
-        // Loads the configuration.
-        Config{};
-
         // Create the render window.
         m_window = std::make_unique<EmuWindow_Android>(&m_input_subsystem, m_native_window,
                                                        m_vulkan_library);
@@ -330,12 +327,13 @@ public:
             m_system.ShutdownMainProcess();
             m_detached_tasks.WaitForAllTasks();
             m_load_result = Core::SystemResultStatus::ErrorNotInitialized;
+            m_window.reset();
+            OnEmulationStopped(Core::SystemResultStatus::Success);
+            return;
         }
 
         // Tear down the render window.
         m_window.reset();
-
-        OnEmulationStopped(m_load_result);
     }
 
     void PauseEmulation() {
