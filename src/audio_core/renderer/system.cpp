@@ -684,11 +684,11 @@ u64 System::GenerateCommand(std::span<u8> in_command_buffer,
                                        sink_context,   splitter_context,     perf_manager};
 
     voice_context.SortInfo();
+    command_generator.GenerateVoiceCommands();
 
     const auto start_estimated_time{drop_voice_param *
                                     static_cast<f32>(command_buffer.estimated_process_time)};
 
-    command_generator.GenerateVoiceCommands();
     command_generator.GenerateSubMixCommands();
     command_generator.GenerateFinalMixCommands();
     command_generator.GenerateSinkCommands();
