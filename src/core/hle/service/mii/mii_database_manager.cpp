@@ -15,6 +15,8 @@
 #include "core/hle/service/mii/types/store_data.h"
 
 namespace Service::Mii {
+const char* DbFileName = "MiiDatabase.dat";
+
 DatabaseManager::DatabaseManager() {}
 
 Result DatabaseManager::MountSaveData() {

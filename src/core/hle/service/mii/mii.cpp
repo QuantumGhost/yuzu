@@ -546,7 +546,7 @@ private:
         rb.Push(ResultSuccess);
         rb.PushIpcInterface<IDatabaseService>(system, is_system);
 
-        LOG_CRITICAL(Service_Mii, "called");
+        LOG_DEBUG(Service_Mii, "called");
     }
 
     bool is_system{};

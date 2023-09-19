@@ -53,7 +53,6 @@ private:
     NintendoFigurineDatabase database{};
 
     std::filesystem::path system_save_dir{};
-    const std::string DbFileName = "MiiDatabase.dat";
 };
 
 }; // namespace Service::Mii
