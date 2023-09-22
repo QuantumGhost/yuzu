@@ -552,7 +552,7 @@ void MiiDBModule::GetDatabaseService(HLERequestContext& ctx) {
     rb.Push(ResultSuccess);
     rb.PushIpcInterface<IDatabaseService>(system, manager, is_system);
 
-    LOG_CRITICAL(Service_Mii, "called");
+    LOG_DEBUG(Service_Mii, "called");
 }
 
 std::shared_ptr<MiiManager> MiiDBModule::GetMiiManager() {
