@@ -46,6 +46,7 @@ VK_DEFINE_HANDLE(VmaAllocator)
     FEATURE(EXT, ExtendedDynamicState, EXTENDED_DYNAMIC_STATE, extended_dynamic_state)             \
     FEATURE(EXT, ExtendedDynamicState2, EXTENDED_DYNAMIC_STATE_2, extended_dynamic_state2)         \
     FEATURE(EXT, ExtendedDynamicState3, EXTENDED_DYNAMIC_STATE_3, extended_dynamic_state3)         \
+    FEATURE(EXT, 4444Formats, 4444_FORMATS, format_a4b4g4r4)                                       \
     FEATURE(EXT, IndexTypeUint8, INDEX_TYPE_UINT8, index_type_uint8)                               \
     FEATURE(EXT, LineRasterization, LINE_RASTERIZATION, line_rasterization)                        \
     FEATURE(EXT, PrimitiveTopologyListRestart, PRIMITIVE_TOPOLOGY_LIST_RESTART,                    \
@@ -101,6 +102,7 @@ VK_DEFINE_HANDLE(VmaAllocator)
     EXTENSION_NAME(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)                                   \
     EXTENSION_NAME(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME)                                 \
     EXTENSION_NAME(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)                                 \
+    EXTENSION_NAME(VK_EXT_4444_FORMATS_EXTENSION_NAME)                                             \
     EXTENSION_NAME(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)                                       \
     EXTENSION_NAME(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)                                             \
     EXTENSION_NAME(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME)                               \
@@ -151,6 +153,7 @@ VK_DEFINE_HANDLE(VmaAllocator)
     FEATURE_NAME(depth_bias_control, leastRepresentableValueForceUnormRepresentation)              \
     FEATURE_NAME(depth_bias_control, depthBiasExact)                                               \
     FEATURE_NAME(extended_dynamic_state, extendedDynamicState)                                     \
+    FEATURE_NAME(format_a4b4g4r4, formatA4B4G4R4)                                                  \
     FEATURE_NAME(index_type_uint8, indexTypeUint8)                                                 \
     FEATURE_NAME(primitive_topology_list_restart, primitiveTopologyListRestart)                    \
     FEATURE_NAME(provoking_vertex, provokingVertexLast)                                            \
@@ -503,6 +506,11 @@ public:
     /// Returns true if the device supports VK_EXT_extended_dynamic_state3.
     bool IsExtExtendedDynamicState3Supported() const {
         return extensions.extended_dynamic_state3;
+    }
+
+    /// Returns true if the device supports VK_EXT_4444_formats.
+    bool IsExt4444FormatsSupported() const {
+        return features.format_a4b4g4r4.formatA4B4G4R4;
     }
 
     /// Returns true if the device supports VK_EXT_extended_dynamic_state3.

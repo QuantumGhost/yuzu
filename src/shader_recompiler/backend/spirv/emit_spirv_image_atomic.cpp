@@ -9,10 +9,10 @@ namespace Shader::Backend::SPIRV {
 namespace {
 Id Image(EmitContext& ctx, IR::TextureInstInfo info) {
     if (info.type == TextureType::Buffer) {
-        const ImageBufferDefinition def{ctx.image_buffers.at(info.descriptor_index.Value())};
+        const ImageBufferDefinition def{ctx.image_buffers.at(info.descriptor_index)};
         return def.id;
     } else {
-        const ImageDefinition def{ctx.images.at(info.descriptor_index.Value())};
+        const ImageDefinition def{ctx.images.at(info.descriptor_index)};
         return def.id;
     }
 }
@@ -25,9 +25,9 @@ std::pair<Id, Id> AtomicArgs(EmitContext& ctx) {
 
 Id ImageAtomicU32(EmitContext& ctx, IR::Inst* inst, const IR::Value& index, Id coords, Id value,
                   Id (Sirit::Module::*atomic_func)(Id, Id, Id, Id, Id)) {
-    if (!index.IsImmediate()) {
+    if (!index.IsImmediate() || index.U32() != 0) {
         // TODO: handle layers
-        throw NotImplementedException("Indirect image indexing");
+        throw NotImplementedException("Image indexing");
     }
     const auto info{inst->Flags<IR::TextureInstInfo>()};
     const Id image{Image(ctx, info)};

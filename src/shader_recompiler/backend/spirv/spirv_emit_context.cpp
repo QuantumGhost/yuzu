@@ -1270,7 +1270,7 @@ void EmitContext::DefineImageBuffers(const Info& info, u32& binding) {
         if (desc.count != 1) {
             throw NotImplementedException("Array of image buffers");
         }
-        const auto format = GetImageFormat(desc.format);
+        const spv::ImageFormat format{GetImageFormat(desc.format)};
         const Id image_type{TypeImage(U32[1], spv::Dim::Buffer, false, false, false, 2, format)};
         const Id pointer_type{TypePointer(spv::StorageClass::UniformConstant, image_type)};
         const Id id{AddGlobalVariable(pointer_type, spv::StorageClass::UniformConstant)};
