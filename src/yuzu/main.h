@@ -370,6 +370,7 @@ private slots:
     void ResetWindowSize720();
     void ResetWindowSize900();
     void ResetWindowSize1080();
+    void OnMiiEdit();
     void OnCaptureScreenshot();
     void OnReinitializeKeys(ReinitializeKeyBehavior behavior);
     void OnLanguageChanged(const QString& locale);
@@ -415,6 +416,7 @@ private:
     void OpenPerGameConfiguration(u64 title_id, const std::string& file_name);
     bool CheckDarkMode();
     bool CheckSystemArchiveDecryption();
+    bool CheckFirmwarePresence();
     void ConfigureFilesystemProvider(const std::string& filepath);
 
     QString GetTasStateDescription() const;
