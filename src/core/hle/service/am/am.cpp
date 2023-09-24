@@ -1513,7 +1513,7 @@ IAppletCommonFunctions::IAppletCommonFunctions(Core::System& system_)
 IAppletCommonFunctions::~IAppletCommonFunctions() = default;
 
 void IAppletCommonFunctions::SetCpuBoostRequestPriority(HLERequestContext& ctx) {
-    LOG_ERROR(Service_AM, "called");
+    LOG_WARNING(Service_AM, "(STUBBED) called");
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(ResultSuccess);
