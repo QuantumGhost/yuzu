@@ -13,6 +13,8 @@
 
 #include <android/api-level.h>
 #include <android/native_window_jni.h>
+#include <common/fs/fs.h>
+#include <core/file_sys/savedata_factory.h>
 #include <core/loader/nro.h>
 #include <jni.h>
 
@@ -102,7 +104,7 @@ public:
         m_native_window = native_window;
     }
 
-    int InstallFileToNand(std::string filename) {
+    int InstallFileToNand(std::string filename, std::string file_extension) {
         jconst copy_func = [](const FileSys::VirtualFile& src, const FileSys::VirtualFile& dest,
                               std::size_t block_size) {
             if (src == nullptr || dest == nullptr) {
@@ -134,12 +136,12 @@ public:
         m_system.GetFileSystemController().CreateFactories(*m_vfs);
 
         [[maybe_unused]] std::shared_ptr<FileSys::NSP> nsp;
-        if (filename.ends_with("nsp")) {
+        if (file_extension == "nsp") {
             nsp = std::make_shared<FileSys::NSP>(m_vfs->OpenFile(filename, FileSys::Mode::Read));
             if (nsp->IsExtractedType()) {
                 return InstallError;
             }
-        } else if (filename.ends_with("xci")) {
+        } else if (file_extension == "xci") {
             jconst xci =
                 std::make_shared<FileSys::XCI>(m_vfs->OpenFile(filename, FileSys::Mode::Read));
             nsp = xci->GetSecurePartitionNSP();
@@ -607,8 +609,10 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_setAppDirectory(JNIEnv* env, jobject 
 }
 
 int Java_org_yuzu_yuzu_1emu_NativeLibrary_installFileToNand(JNIEnv* env, jobject instance,
-                                                            [[maybe_unused]] jstring j_file) {
-    return EmulationSession::GetInstance().InstallFileToNand(GetJString(env, j_file));
+                                                            jstring j_file,
+                                                            jstring j_file_extension) {
+    return EmulationSession::GetInstance().InstallFileToNand(GetJString(env, j_file),
+                                                             GetJString(env, j_file_extension));
 }
 
 void JNICALL Java_org_yuzu_yuzu_1emu_NativeLibrary_initializeGpuDriver(JNIEnv* env, jclass clazz,
@@ -877,6 +881,26 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_submitInlineKeyboardText(JNIEnv* env,
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_submitInlineKeyboardInput(JNIEnv* env, jclass clazz,
                                                                      jint j_key_code) {
     EmulationSession::GetInstance().SoftwareKeyboard()->SubmitInlineKeyboardInput(j_key_code);
+}
+
+void Java_org_yuzu_yuzu_1emu_NativeLibrary_initializeEmptyUserDirectory(JNIEnv* env,
+                                                                        jobject instance) {
+    const auto nand_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir);
+    auto vfs_nand_dir = EmulationSession::GetInstance().System().GetFilesystem()->OpenDirectory(
+        Common::FS::PathToUTF8String(nand_dir), FileSys::Mode::Read);
+
+    Service::Account::ProfileManager manager;
+    const auto user_id = manager.GetUser(static_cast<std::size_t>(0));
+    ASSERT(user_id);
+
+    const auto user_save_data_path = FileSys::SaveDataFactory::GetFullPath(
+        EmulationSession::GetInstance().System(), vfs_nand_dir, FileSys::SaveDataSpaceId::NandUser,
+        FileSys::SaveDataType::SaveData, 1, user_id->AsU128(), 0);
+
+    const auto full_path = Common::FS::ConcatPathSafe(nand_dir, user_save_data_path);
+    if (!Common::FS::CreateParentDirs(full_path)) {
+        LOG_WARNING(Frontend, "Failed to create full path of the default user's save directory");
+    }
 }
 
 } // extern "C"
