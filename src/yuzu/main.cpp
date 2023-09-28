@@ -3129,10 +3129,9 @@ void GMainWindow::OnMenuInstallToNAND() {
         QFuture<InstallResult> future;
         InstallResult result;
 
-        if (file.endsWith(QStringLiteral("xci"), Qt::CaseInsensitive) ||
-            file.endsWith(QStringLiteral("nsp"), Qt::CaseInsensitive)) {
+        if (file.endsWith(QStringLiteral("nsp"), Qt::CaseInsensitive)) {
 
-            future = QtConcurrent::run([this, &file] { return InstallNSPXCI(file); });
+            future = QtConcurrent::run([this, &file] { return InstallNSP(file); });
 
             while (!future.isFinished()) {
                 QCoreApplication::processEvents();
@@ -3191,7 +3190,7 @@ void GMainWindow::OnMenuInstallToNAND() {
     ui->action_Install_File_NAND->setEnabled(true);
 }
 
-InstallResult GMainWindow::InstallNSPXCI(const QString& filename) {
+InstallResult GMainWindow::InstallNSP(const QString& filename) {
     const auto qt_raw_copy = [this](const FileSys::VirtualFile& src,
                                     const FileSys::VirtualFile& dest, std::size_t block_size) {
         if (src == nullptr || dest == nullptr) {
@@ -3225,9 +3224,7 @@ InstallResult GMainWindow::InstallNSPXCI(const QString& filename) {
             return InstallResult::Failure;
         }
     } else {
-        const auto xci = std::make_shared<FileSys::XCI>(
-            vfs->OpenFile(filename.toStdString(), FileSys::Mode::Read));
-        nsp = xci->GetSecurePartitionNSP();
+        return InstallResult::Failure;
     }
 
     if (nsp->GetStatus() != Loader::ResultStatus::Success) {
