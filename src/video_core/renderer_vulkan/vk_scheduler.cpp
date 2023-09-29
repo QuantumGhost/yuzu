@@ -22,11 +22,12 @@ namespace Vulkan {
 
 MICROPROFILE_DECLARE(Vulkan_WaitForWorker);
 
-void Scheduler::CommandChunk::ExecuteAll(vk::CommandBuffer cmdbuf) {
+void Scheduler::CommandChunk::ExecuteAll(vk::CommandBuffer cmdbuf,
+                                         vk::CommandBuffer upload_cmdbuf) {
     auto command = first;
     while (command != nullptr) {
         auto next = command->GetNext();
-        command->Execute(cmdbuf);
+        command->Execute(cmdbuf, upload_cmdbuf);
         command->~Command();
         command = next;
     }
@@ -102,22 +103,23 @@ void Scheduler::RequestRenderpass(const Framebuffer* framebuffer) {
     state.framebuffer = framebuffer_handle;
     state.render_area = render_area;
 
-    Record([renderpass, framebuffer_handle, render_area](vk::CommandBuffer cmdbuf) {
-        const VkRenderPassBeginInfo renderpass_bi{
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .pNext = nullptr,
-            .renderPass = renderpass,
-            .framebuffer = framebuffer_handle,
-            .renderArea =
-                {
-                    .offset = {.x = 0, .y = 0},
-                    .extent = render_area,
-                },
-            .clearValueCount = 0,
-            .pClearValues = nullptr,
-        };
-        cmdbuf.BeginRenderPass(renderpass_bi, VK_SUBPASS_CONTENTS_INLINE);
-    });
+    Record(
+        [renderpass, framebuffer_handle, render_area](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+            const VkRenderPassBeginInfo renderpass_bi{
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .pNext = nullptr,
+                .renderPass = renderpass,
+                .framebuffer = framebuffer_handle,
+                .renderArea =
+                    {
+                        .offset = {.x = 0, .y = 0},
+                        .extent = render_area,
+                    },
+                .clearValueCount = 0,
+                .pClearValues = nullptr,
+            };
+            cmdbuf.BeginRenderPass(renderpass_bi, VK_SUBPASS_CONTENTS_INLINE);
+        });
     num_renderpass_images = framebuffer->NumImages();
     renderpass_images = framebuffer->Images();
     renderpass_image_ranges = framebuffer->ImageRanges();
@@ -180,7 +182,7 @@ void Scheduler::WorkerThread(std::stop_token stop_token) {
             // Perform the work, tracking whether the chunk was a submission
             // before executing.
             const bool has_submit = work->HasSubmit();
-            work->ExecuteAll(current_cmdbuf);
+            work->ExecuteAll(current_cmdbuf, current_upload_cmdbuf);
 
             // If the chunk was a submission, reallocate the command buffer.
             if (has_submit) {
@@ -205,6 +207,13 @@ void Scheduler::AllocateWorkerCommandBuffer() {
         .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
         .pInheritanceInfo = nullptr,
     });
+    current_upload_cmdbuf = vk::CommandBuffer(command_pool->Commit(), device.GetDispatchLoader());
+    current_upload_cmdbuf.Begin({
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = nullptr,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr,
+    });
 }
 
 u64 Scheduler::SubmitExecution(VkSemaphore signal_semaphore, VkSemaphore wait_semaphore) {
@@ -212,7 +221,9 @@ u64 Scheduler::SubmitExecution(VkSemaphore signal_semaphore, VkSemaphore wait_se
     InvalidateState();
 
     const u64 signal_value = master_semaphore->NextTick();
-    Record([signal_semaphore, wait_semaphore, signal_value, this](vk::CommandBuffer cmdbuf) {
+    Record([signal_semaphore, wait_semaphore, signal_value, this](vk::CommandBuffer cmdbuf,
+                                                                  vk::CommandBuffer upload_cmdbuf) {
+        upload_cmdbuf.End();
         cmdbuf.End();
 
         if (on_submit) {
@@ -221,7 +232,7 @@ u64 Scheduler::SubmitExecution(VkSemaphore signal_semaphore, VkSemaphore wait_se
 
         std::scoped_lock lock{submit_mutex};
         switch (const VkResult result = master_semaphore->SubmitQueue(
-                    cmdbuf, signal_semaphore, wait_semaphore, signal_value)) {
+                    cmdbuf, upload_cmdbuf, signal_semaphore, wait_semaphore, signal_value)) {
         case VK_SUCCESS:
             break;
         case VK_ERROR_DEVICE_LOST:
@@ -275,7 +286,7 @@ void Scheduler::EndRenderPass() {
         return;
     }
     Record([num_images = num_renderpass_images, images = renderpass_images,
-            ranges = renderpass_image_ranges](vk::CommandBuffer cmdbuf) {
+            ranges = renderpass_image_ranges](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         std::array<VkImageMemoryBarrier, 9> barriers;
         for (size_t i = 0; i < num_images; ++i) {
             barriers[i] = VkImageMemoryBarrier{

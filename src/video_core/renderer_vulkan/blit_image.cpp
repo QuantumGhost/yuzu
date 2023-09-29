@@ -454,7 +454,7 @@ void BlitImageHelper::BlitColor(const Framebuffer* dst_framebuffer, VkImageView 
     const VkPipeline pipeline = FindOrEmplaceColorPipeline(key);
     scheduler.RequestRenderpass(dst_framebuffer);
     scheduler.Record([this, dst_region, src_region, pipeline, layout, sampler,
-                      src_view](vk::CommandBuffer cmdbuf) {
+                      src_view](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         // TODO: Barriers
         const VkDescriptorSet descriptor_set = one_texture_descriptor_allocator.Commit();
         UpdateOneTextureDescriptorSet(device, descriptor_set, sampler, src_view);
@@ -479,7 +479,8 @@ void BlitImageHelper::BlitColor(const Framebuffer* dst_framebuffer, VkImageView 
     const VkPipeline pipeline = FindOrEmplaceColorPipeline(key);
     scheduler.RequestOutsideRenderPassOperationContext();
     scheduler.Record([this, dst_framebuffer, src_image_view, src_image, src_sampler, dst_region,
-                      src_region, src_size, pipeline, layout](vk::CommandBuffer cmdbuf) {
+                      src_region, src_size, pipeline,
+                      layout](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         TransitionImageLayout(cmdbuf, src_image, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
         BeginRenderPass(cmdbuf, dst_framebuffer);
         const VkDescriptorSet descriptor_set = one_texture_descriptor_allocator.Commit();
@@ -512,7 +513,7 @@ void BlitImageHelper::BlitDepthStencil(const Framebuffer* dst_framebuffer,
     const VkPipeline pipeline = FindOrEmplaceDepthStencilPipeline(key);
     scheduler.RequestRenderpass(dst_framebuffer);
     scheduler.Record([dst_region, src_region, pipeline, layout, sampler, src_depth_view,
-                      src_stencil_view, this](vk::CommandBuffer cmdbuf) {
+                      src_stencil_view, this](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         // TODO: Barriers
         const VkDescriptorSet descriptor_set = two_textures_descriptor_allocator.Commit();
         UpdateTwoTexturesDescriptorSet(device, descriptor_set, sampler, src_depth_view,
@@ -581,17 +582,17 @@ void BlitImageHelper::ClearColor(const Framebuffer* dst_framebuffer, u8 color_ma
     const VkPipeline pipeline = FindOrEmplaceClearColorPipeline(key);
     const VkPipelineLayout layout = *clear_color_pipeline_layout;
     scheduler.RequestRenderpass(dst_framebuffer);
-    scheduler.Record(
-        [pipeline, layout, color_mask, clear_color, dst_region](vk::CommandBuffer cmdbuf) {
-            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            const std::array blend_color = {
-                (color_mask & 0x1) ? 1.0f : 0.0f, (color_mask & 0x2) ? 1.0f : 0.0f,
-                (color_mask & 0x4) ? 1.0f : 0.0f, (color_mask & 0x8) ? 1.0f : 0.0f};
-            cmdbuf.SetBlendConstants(blend_color.data());
-            BindBlitState(cmdbuf, dst_region);
-            cmdbuf.PushConstants(layout, VK_SHADER_STAGE_FRAGMENT_BIT, clear_color);
-            cmdbuf.Draw(3, 1, 0, 0);
-        });
+    scheduler.Record([pipeline, layout, color_mask, clear_color,
+                      dst_region](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+        cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        const std::array blend_color = {
+            (color_mask & 0x1) ? 1.0f : 0.0f, (color_mask & 0x2) ? 1.0f : 0.0f,
+            (color_mask & 0x4) ? 1.0f : 0.0f, (color_mask & 0x8) ? 1.0f : 0.0f};
+        cmdbuf.SetBlendConstants(blend_color.data());
+        BindBlitState(cmdbuf, dst_region);
+        cmdbuf.PushConstants(layout, VK_SHADER_STAGE_FRAGMENT_BIT, clear_color);
+        cmdbuf.Draw(3, 1, 0, 0);
+    });
     scheduler.InvalidateState();
 }
 
@@ -608,14 +609,13 @@ void BlitImageHelper::ClearDepthStencil(const Framebuffer* dst_framebuffer, bool
     const VkPipeline pipeline = FindOrEmplaceClearStencilPipeline(key);
     const VkPipelineLayout layout = *clear_color_pipeline_layout;
     scheduler.RequestRenderpass(dst_framebuffer);
-    scheduler.Record([pipeline, layout, clear_depth, dst_region](vk::CommandBuffer cmdbuf) {
-        constexpr std::array blend_constants{0.0f, 0.0f, 0.0f, 0.0f};
-        cmdbuf.SetBlendConstants(blend_constants.data());
-        cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        BindBlitState(cmdbuf, dst_region);
-        cmdbuf.PushConstants(layout, VK_SHADER_STAGE_FRAGMENT_BIT, clear_depth);
-        cmdbuf.Draw(3, 1, 0, 0);
-    });
+    scheduler.Record(
+        [pipeline, layout, clear_depth, dst_region](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+            BindBlitState(cmdbuf, dst_region);
+            cmdbuf.PushConstants(layout, VK_SHADER_STAGE_FRAGMENT_BIT, clear_depth);
+            cmdbuf.Draw(3, 1, 0, 0);
+        });
     scheduler.InvalidateState();
 }
 
@@ -627,7 +627,8 @@ void BlitImageHelper::Convert(VkPipeline pipeline, const Framebuffer* dst_frameb
     const VkExtent2D extent = GetConversionExtent(src_image_view);
 
     scheduler.RequestRenderpass(dst_framebuffer);
-    scheduler.Record([pipeline, layout, sampler, src_view, extent, this](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([pipeline, layout, sampler, src_view, extent, this](vk::CommandBuffer cmdbuf,
+                                                                         vk::CommandBuffer) {
         const VkOffset2D offset{
             .x = 0,
             .y = 0,
@@ -673,7 +674,7 @@ void BlitImageHelper::ConvertDepthStencil(VkPipeline pipeline, const Framebuffer
 
     scheduler.RequestRenderpass(dst_framebuffer);
     scheduler.Record([pipeline, layout, sampler, src_depth_view, src_stencil_view, extent,
-                      this](vk::CommandBuffer cmdbuf) {
+                      this](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         const VkOffset2D offset{
             .x = 0,
             .y = 0,
@@ -867,7 +868,7 @@ VkPipeline BlitImageHelper::FindOrEmplaceClearStencilPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .depthTestEnable = key.depth_clear,
+        .depthTestEnable = VK_FALSE,
         .depthWriteEnable = key.depth_clear,
         .depthCompareOp = VK_COMPARE_OP_ALWAYS,
         .depthBoundsTestEnable = VK_FALSE,

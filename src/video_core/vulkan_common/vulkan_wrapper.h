@@ -1098,6 +1098,10 @@ public:
         return &handle;
     }
 
+    VkCommandBuffer operator*() const noexcept {
+        return handle;
+    }
+
     void Begin(const VkCommandBufferBeginInfo& begin_info) const {
         Check(dld->vkBeginCommandBuffer(handle, &begin_info));
     }

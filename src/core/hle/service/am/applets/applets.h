@@ -34,6 +34,10 @@ class KEvent;
 class KReadableEvent;
 } // namespace Kernel
 
+namespace Service::NFP {
+enum class CabinetMode : u8;
+} // namespace Service::NFP
+
 namespace Service::AM {
 
 class IStorage;
@@ -41,6 +45,8 @@ class IStorage;
 namespace Applets {
 
 enum class AppletId : u32 {
+    None = 0x00,
+    Application = 0x01,
     OverlayDisplay = 0x02,
     QLaunch = 0x03,
     Starter = 0x04,
@@ -160,7 +166,6 @@ public:
         return initialized;
     }
 
-protected:
     struct CommonArguments {
         u32_le arguments_version;
         u32_le size;
@@ -171,6 +176,7 @@ protected:
     };
     static_assert(sizeof(CommonArguments) == 0x20, "CommonArguments has incorrect size.");
 
+protected:
     CommonArguments common_args{};
     AppletDataBroker broker;
     LibraryAppletMode applet_mode;
@@ -219,8 +225,12 @@ public:
     ~AppletManager();
 
     const AppletFrontendSet& GetAppletFrontendSet() const;
+    NFP::CabinetMode GetCabinetMode() const;
+    AppletId GetCurrentAppletId() const;
 
     void SetAppletFrontendSet(AppletFrontendSet set);
+    void SetCabinetMode(NFP::CabinetMode mode);
+    void SetCurrentAppletId(AppletId applet_id);
     void SetDefaultAppletFrontendSet();
     void SetDefaultAppletsIfMissing();
     void ClearAll();
@@ -228,6 +238,9 @@ public:
     std::shared_ptr<Applet> GetApplet(AppletId id, LibraryAppletMode mode) const;
 
 private:
+    AppletId current_applet_id{};
+    NFP::CabinetMode cabinet_mode{};
+
     AppletFrontendSet frontend;
     Core::System& system;
 };

@@ -166,7 +166,7 @@ void PresentManager::Present(Frame* frame) {
         return;
     }
 
-    scheduler.Record([this, frame](vk::CommandBuffer) {
+    scheduler.Record([this, frame](vk::CommandBuffer, vk::CommandBuffer) {
         std::unique_lock lock{queue_mutex};
         present_queue.push(frame);
         frame_cv.notify_one();

@@ -201,43 +201,44 @@ void BlitScreen::Draw(const Tegra::FramebufferConfig& framebuffer,
                     .depth = 1,
                 },
         };
-        scheduler.Record([this, copy, index = image_index](vk::CommandBuffer cmdbuf) {
-            const VkImage image = *raw_images[index];
-            const VkImageMemoryBarrier base_barrier{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .pNext = nullptr,
-                .srcAccessMask = 0,
-                .dstAccessMask = 0,
-                .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
-                .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = image,
-                .subresourceRange{
-                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .baseMipLevel = 0,
-                    .levelCount = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount = 1,
-                },
-            };
-            VkImageMemoryBarrier read_barrier = base_barrier;
-            read_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-            read_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            read_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        scheduler.Record(
+            [this, copy, index = image_index](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                const VkImage image = *raw_images[index];
+                const VkImageMemoryBarrier base_barrier{
+                    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                    .pNext = nullptr,
+                    .srcAccessMask = 0,
+                    .dstAccessMask = 0,
+                    .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+                    .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image = image,
+                    .subresourceRange{
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1,
+                    },
+                };
+                VkImageMemoryBarrier read_barrier = base_barrier;
+                read_barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+                read_barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                read_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-            VkImageMemoryBarrier write_barrier = base_barrier;
-            write_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            write_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                VkImageMemoryBarrier write_barrier = base_barrier;
+                write_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                write_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-            cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                                   read_barrier);
-            cmdbuf.CopyBufferToImage(*buffer, image, VK_IMAGE_LAYOUT_GENERAL, copy);
-            cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-                                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                   0, write_barrier);
-        });
+                cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                       0, read_barrier);
+                cmdbuf.CopyBufferToImage(*buffer, image, VK_IMAGE_LAYOUT_GENERAL, copy);
+                cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                       0, write_barrier);
+            });
     }
 
     const auto anti_alias_pass = Settings::values.anti_aliasing.GetValue();
@@ -250,7 +251,7 @@ void BlitScreen::Draw(const Tegra::FramebufferConfig& framebuffer,
             .height = (up_scale * framebuffer.height) >> down_shift,
         };
         scheduler.Record([this, index = image_index, size,
-                          anti_alias_pass](vk::CommandBuffer cmdbuf) {
+                          anti_alias_pass](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             const VkImageMemoryBarrier base_barrier{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                 .pNext = nullptr,
@@ -375,7 +376,7 @@ void BlitScreen::Draw(const Tegra::FramebufferConfig& framebuffer,
     }
 
     scheduler.Record([this, host_framebuffer, index = image_index,
-                      size = render_area](vk::CommandBuffer cmdbuf) {
+                      size = render_area](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         const f32 bg_red = Settings::values.bg_red.GetValue() / 255.0f;
         const f32 bg_green = Settings::values.bg_green.GetValue() / 255.0f;
         const f32 bg_blue = Settings::values.bg_blue.GetValue() / 255.0f;

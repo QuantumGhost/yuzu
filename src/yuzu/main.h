@@ -106,6 +106,10 @@ namespace Service::NFC {
 class NfcDevice;
 } // namespace Service::NFC
 
+namespace Service::NFP {
+enum class CabinetMode : u8;
+} // namespace Service::NFP
+
 namespace Ui {
 class MainWindow;
 }
@@ -370,6 +374,11 @@ private slots:
     void ResetWindowSize720();
     void ResetWindowSize900();
     void ResetWindowSize1080();
+    void OnCabinetNicknameAndOwner();
+    void OnCabinetEraser();
+    void OnCabinetRestorer();
+    void OnCabinetFormatter();
+    void OnCabinet(Service::NFP::CabinetMode mode);
     void OnMiiEdit();
     void OnCaptureScreenshot();
     void OnReinitializeKeys(ReinitializeKeyBehavior behavior);

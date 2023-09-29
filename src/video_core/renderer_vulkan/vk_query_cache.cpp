@@ -138,9 +138,10 @@ public:
         };
         accumulation_buffer = memory_allocator.CreateBuffer(buffer_ci, MemoryUsage::DeviceLocal);
         scheduler.RequestOutsideRenderPassOperationContext();
-        scheduler.Record([buffer = *accumulation_buffer](vk::CommandBuffer cmdbuf) {
-            cmdbuf.FillBuffer(buffer, 0, 8, 0);
-        });
+        scheduler.Record(
+            [buffer = *accumulation_buffer](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                cmdbuf.FillBuffer(buffer, 0, 8, 0);
+            });
     }
 
     ~SamplesStreamer() = default;
@@ -150,8 +151,8 @@ public:
             return;
         }
         ReserveHostQuery();
-        scheduler.Record([query_pool = current_query_pool,
-                          query_index = current_bank_slot](vk::CommandBuffer cmdbuf) {
+        scheduler.Record([query_pool = current_query_pool, query_index = current_bank_slot](
+                             vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             const bool use_precise = Settings::IsGPULevelHigh();
             cmdbuf.BeginQuery(query_pool, static_cast<u32>(query_index),
                               use_precise ? VK_QUERY_CONTROL_PRECISE_BIT : 0);
@@ -163,8 +164,8 @@ public:
         if (!has_started) {
             return;
         }
-        scheduler.Record([query_pool = current_query_pool,
-                          query_index = current_bank_slot](vk::CommandBuffer cmdbuf) {
+        scheduler.Record([query_pool = current_query_pool, query_index = current_bank_slot](
+                             vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             cmdbuf.EndQuery(query_pool, static_cast<u32>(query_index));
         });
         has_started = false;
@@ -227,8 +228,8 @@ public:
             auto& resolve_buffer = buffers[resolve_buffer_index];
             VkQueryPool query_pool = bank->GetInnerPool();
             scheduler.RequestOutsideRenderPassOperationContext();
-            scheduler.Record([start, amount, base_offset, query_pool,
-                              buffer = *resolve_buffer](vk::CommandBuffer cmdbuf) {
+            scheduler.Record([start, amount, base_offset, query_pool, buffer = *resolve_buffer](
+                                 vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
                 const VkBufferMemoryBarrier copy_query_pool_barrier{
                     .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
                     .pNext = nullptr,
@@ -291,9 +292,10 @@ public:
 
         } else {
             scheduler.RequestOutsideRenderPassOperationContext();
-            scheduler.Record([buffer = *accumulation_buffer](vk::CommandBuffer cmdbuf) {
-                cmdbuf.FillBuffer(buffer, 0, 8, 0);
-            });
+            scheduler.Record(
+                [buffer = *accumulation_buffer](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                    cmdbuf.FillBuffer(buffer, 0, 8, 0);
+                });
         }
 
         ReplicateCurrentQueryIfNeeded();
@@ -608,7 +610,7 @@ public:
     void Sync(StagingBufferRef& stagging_buffer, size_t extra_offset, size_t start, size_t size) {
         scheduler.RequestOutsideRenderPassOperationContext();
         scheduler.Record([this, dst_buffer = stagging_buffer.buffer, extra_offset, start,
-                          size](vk::CommandBuffer cmdbuf) {
+                          size](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             std::array<VkBufferCopy, 1> copy{VkBufferCopy{
                 .srcOffset = start * QUERY_SIZE,
                 .dstOffset = extra_offset,
@@ -793,7 +795,7 @@ public:
             .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
         };
         scheduler.RequestOutsideRenderPassOperationContext();
-        scheduler.Record([](vk::CommandBuffer cmdbuf) {
+        scheduler.Record([](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
                                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, WRITE_BARRIER);
         });
@@ -841,13 +843,14 @@ private:
         }
         has_flushed_end_pending = true;
         if (!has_started || buffers_count == 0) {
-            scheduler.Record([](vk::CommandBuffer cmdbuf) {
+            scheduler.Record([](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
                 cmdbuf.BeginTransformFeedbackEXT(0, 0, nullptr, nullptr);
             });
             UpdateBuffers();
             return;
         }
-        scheduler.Record([this, total = static_cast<u32>(buffers_count)](vk::CommandBuffer cmdbuf) {
+        scheduler.Record([this, total = static_cast<u32>(buffers_count)](vk::CommandBuffer cmdbuf,
+                                                                         vk::CommandBuffer) {
             cmdbuf.BeginTransformFeedbackEXT(0, total, counter_buffers.data(), offsets.data());
         });
         UpdateBuffers();
@@ -861,12 +864,12 @@ private:
         has_flushed_end_pending = false;
 
         if (buffers_count == 0) {
-            scheduler.Record([](vk::CommandBuffer cmdbuf) {
+            scheduler.Record([](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
                 cmdbuf.EndTransformFeedbackEXT(0, 0, nullptr, nullptr);
             });
         } else {
-            scheduler.Record([this,
-                              total = static_cast<u32>(buffers_count)](vk::CommandBuffer cmdbuf) {
+            scheduler.Record([this, total = static_cast<u32>(buffers_count)](
+                                 vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
                 cmdbuf.EndTransformFeedbackEXT(0, total, counter_buffers.data(), offsets.data());
             });
         }
@@ -918,7 +921,7 @@ private:
         scheduler.RequestOutsideRenderPassOperationContext();
         scheduler.Record([dst_buffer = current_bank->GetBuffer(),
                           src_buffer = counter_buffers[stream], src_offset = offsets[stream],
-                          slot](vk::CommandBuffer cmdbuf) {
+                          slot](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0, READ_BARRIER);
             std::array<VkBufferCopy, 1> copy{VkBufferCopy{
@@ -1253,8 +1256,9 @@ void QueryCacheRuntime::PauseHostConditionalRendering() {
         return;
     }
     if (impl->is_hcr_running) {
-        impl->scheduler.Record(
-            [](vk::CommandBuffer cmdbuf) { cmdbuf.EndConditionalRenderingEXT(); });
+        impl->scheduler.Record([](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+            cmdbuf.EndConditionalRenderingEXT();
+        });
     }
     impl->is_hcr_running = false;
 }
@@ -1264,9 +1268,10 @@ void QueryCacheRuntime::ResumeHostConditionalRendering() {
         return;
     }
     if (!impl->is_hcr_running) {
-        impl->scheduler.Record([hcr_setup = impl->hcr_setup](vk::CommandBuffer cmdbuf) {
-            cmdbuf.BeginConditionalRenderingEXT(hcr_setup);
-        });
+        impl->scheduler.Record(
+            [hcr_setup = impl->hcr_setup](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                cmdbuf.BeginConditionalRenderingEXT(hcr_setup);
+            });
     }
     impl->is_hcr_running = true;
 }
@@ -1436,12 +1441,12 @@ void QueryCacheRuntime::Barriers(bool is_prebarrier) {
         .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
     };
     if (is_prebarrier) {
-        impl->scheduler.Record([](vk::CommandBuffer cmdbuf) {
+        impl->scheduler.Record([](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
                                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0, READ_BARRIER);
         });
     } else {
-        impl->scheduler.Record([](vk::CommandBuffer cmdbuf) {
+        impl->scheduler.Record([](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
                                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, WRITE_BARRIER);
         });
@@ -1536,13 +1541,14 @@ void QueryCacheRuntime::SyncValues(std::span<SyncValuesType> values, VkBuffer ba
     }
 
     impl->scheduler.RequestOutsideRenderPassOperationContext();
-    impl->scheduler.Record([src_buffer, dst_buffers = std::move(impl->buffers_to_upload_to),
-                            vk_copies = std::move(impl->copies_setup)](vk::CommandBuffer cmdbuf) {
-        size_t size = dst_buffers.size();
-        for (size_t i = 0; i < size; i++) {
-            cmdbuf.CopyBuffer(src_buffer, dst_buffers[i].first, vk_copies[i]);
-        }
-    });
+    impl->scheduler.Record(
+        [src_buffer, dst_buffers = std::move(impl->buffers_to_upload_to),
+         vk_copies = std::move(impl->copies_setup)](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+            size_t size = dst_buffers.size();
+            for (size_t i = 0; i < size; i++) {
+                cmdbuf.CopyBuffer(src_buffer, dst_buffers[i].first, vk_copies[i]);
+            }
+        });
 }
 
 } // namespace Vulkan

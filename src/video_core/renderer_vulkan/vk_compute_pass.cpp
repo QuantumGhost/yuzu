@@ -324,22 +324,23 @@ std::pair<VkBuffer, VkDeviceSize> Uint8Pass::Assemble(u32 num_vertices, VkBuffer
     const void* const descriptor_data{compute_pass_descriptor_queue.UpdateData()};
 
     scheduler.RequestOutsideRenderPassOperationContext();
-    scheduler.Record([this, descriptor_data, num_vertices](vk::CommandBuffer cmdbuf) {
-        static constexpr u32 DISPATCH_SIZE = 1024;
-        static constexpr VkMemoryBarrier WRITE_BARRIER{
-            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-            .pNext = nullptr,
-            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-        };
-        const VkDescriptorSet set = descriptor_allocator.Commit();
-        device.GetLogical().UpdateDescriptorSet(set, *descriptor_template, descriptor_data);
-        cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
-        cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, *layout, 0, set, {});
-        cmdbuf.Dispatch(Common::DivCeil(num_vertices, DISPATCH_SIZE), 1, 1);
-        cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                               VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, WRITE_BARRIER);
-    });
+    scheduler.Record(
+        [this, descriptor_data, num_vertices](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+            static constexpr u32 DISPATCH_SIZE = 1024;
+            static constexpr VkMemoryBarrier WRITE_BARRIER{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+                .pNext = nullptr,
+                .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+            };
+            const VkDescriptorSet set = descriptor_allocator.Commit();
+            device.GetLogical().UpdateDescriptorSet(set, *descriptor_template, descriptor_data);
+            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
+            cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_COMPUTE, *layout, 0, set, {});
+            cmdbuf.Dispatch(Common::DivCeil(num_vertices, DISPATCH_SIZE), 1, 1);
+            cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                   VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, WRITE_BARRIER);
+        });
     return {staging.buffer, staging.offset};
 }
 
@@ -383,7 +384,7 @@ std::pair<VkBuffer, VkDeviceSize> QuadIndexedPass::Assemble(
 
     scheduler.RequestOutsideRenderPassOperationContext();
     scheduler.Record([this, descriptor_data, num_tri_vertices, base_vertex, index_shift,
-                      is_strip](vk::CommandBuffer cmdbuf) {
+                      is_strip](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         static constexpr u32 DISPATCH_SIZE = 1024;
         static constexpr VkMemoryBarrier WRITE_BARRIER{
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
@@ -423,7 +424,7 @@ void ConditionalRenderingResolvePass::Resolve(VkBuffer dst_buffer, VkBuffer src_
     const void* const descriptor_data{compute_pass_descriptor_queue.UpdateData()};
 
     scheduler.RequestOutsideRenderPassOperationContext();
-    scheduler.Record([this, descriptor_data](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([this, descriptor_data](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         static constexpr VkMemoryBarrier read_barrier{
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
             .pNext = nullptr,
@@ -483,7 +484,7 @@ void QueriesPrefixScanPass::Run(VkBuffer accumulation_buffer, VkBuffer dst_buffe
 
         scheduler.RequestOutsideRenderPassOperationContext();
         scheduler.Record([this, descriptor_data, min_accumulation_limit, max_accumulation_limit,
-                          runs_to_do, used_offset](vk::CommandBuffer cmdbuf) {
+                          runs_to_do, used_offset](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             static constexpr VkMemoryBarrier read_barrier{
                 .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
                 .pNext = nullptr,
@@ -548,8 +549,8 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
     const VkImageAspectFlags aspect_mask = image.AspectMask();
     const VkImage vk_image = image.Handle();
     const bool is_initialized = image.ExchangeInitialization();
-    scheduler.Record([vk_pipeline, vk_image, aspect_mask,
-                      is_initialized](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([vk_pipeline, vk_image, aspect_mask, is_initialized](vk::CommandBuffer cmdbuf,
+                                                                          vk::CommandBuffer) {
         const VkImageMemoryBarrier image_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
@@ -592,7 +593,7 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
         ASSERT(params.destination == (std::array<s32, 3>{0, 0, 0}));
         ASSERT(params.bytes_per_block_log2 == 4);
         scheduler.Record([this, num_dispatches_x, num_dispatches_y, num_dispatches_z, block_dims,
-                          params, descriptor_data](vk::CommandBuffer cmdbuf) {
+                          params, descriptor_data](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             const AstcPushConstants uniforms{
                 .blocks_dims = block_dims,
                 .layer_stride = params.layer_stride,
@@ -608,7 +609,7 @@ void ASTCDecoderPass::Assemble(Image& image, const StagingBufferRef& map,
             cmdbuf.Dispatch(num_dispatches_x, num_dispatches_y, num_dispatches_z);
         });
     }
-    scheduler.Record([vk_image, aspect_mask](vk::CommandBuffer cmdbuf) {
+    scheduler.Record([vk_image, aspect_mask](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
         const VkImageMemoryBarrier image_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
@@ -699,7 +700,7 @@ void MSAACopyPass::CopyImage(Image& dst_image, Image& src_image,
         };
 
         scheduler.Record([this, dst = dst_image.Handle(), msaa_pipeline, num_dispatches,
-                          descriptor_data](vk::CommandBuffer cmdbuf) {
+                          descriptor_data](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
             const VkDescriptorSet set = descriptor_allocator.Commit();
             device.GetLogical().UpdateDescriptorSet(set, *descriptor_template, descriptor_data);
             cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, msaa_pipeline);

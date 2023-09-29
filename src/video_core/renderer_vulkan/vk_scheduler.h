@@ -119,7 +119,7 @@ private:
     public:
         virtual ~Command() = default;
 
-        virtual void Execute(vk::CommandBuffer cmdbuf) const = 0;
+        virtual void Execute(vk::CommandBuffer cmdbuf, vk::CommandBuffer upload_cmdbuf) const = 0;
 
         Command* GetNext() const {
             return next;
@@ -142,8 +142,8 @@ private:
         TypedCommand(TypedCommand&&) = delete;
         TypedCommand& operator=(TypedCommand&&) = delete;
 
-        void Execute(vk::CommandBuffer cmdbuf) const override {
-            command(cmdbuf);
+        void Execute(vk::CommandBuffer cmdbuf, vk::CommandBuffer upload_cmdbuf) const override {
+            command(cmdbuf, upload_cmdbuf);
         }
 
     private:
@@ -152,7 +152,7 @@ private:
 
     class CommandChunk final {
     public:
-        void ExecuteAll(vk::CommandBuffer cmdbuf);
+        void ExecuteAll(vk::CommandBuffer cmdbuf, vk::CommandBuffer upload_cmdbuf);
 
         template <typename T>
         bool Record(T& command) {
@@ -228,6 +228,7 @@ private:
     VideoCommon::QueryCacheBase<QueryCacheParams>* query_cache = nullptr;
 
     vk::CommandBuffer current_cmdbuf;
+    vk::CommandBuffer current_upload_cmdbuf;
 
     std::unique_ptr<CommandChunk> chunk;
     std::function<void()> on_submit;
