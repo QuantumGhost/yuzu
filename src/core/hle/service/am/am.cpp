@@ -8,6 +8,7 @@
 #include "common/settings.h"
 #include "common/settings_enums.h"
 #include "core/core.h"
+#include "core/core_timing.h"
 #include "core/file_sys/control_metadata.h"
 #include "core/file_sys/patch_manager.h"
 #include "core/file_sys/registered_cache.h"
@@ -544,17 +545,23 @@ void ISelfController::GetSystemSharedBufferHandle(HLERequestContext& ctx) {
 }
 
 Result ISelfController::EnsureBufferSharingEnabled() {
-    R_SUCCEED_IF(buffer_sharing_enabled);
-    R_UNLESS(system.GetAppletManager().GetCurrentAppletId() > Applets::AppletId::Application,
-             VI::ResultOperationFailed);
+    if (buffer_sharing_enabled) {
+        return ResultSuccess;
+    }
 
-    ON_RESULT_SUCCESS {
-        buffer_sharing_enabled = true;
-    };
+    if (system.GetAppletManager().GetCurrentAppletId() <= Applets::AppletId::Application) {
+        return VI::ResultOperationFailed;
+    }
 
     const auto display_id = nvnflinger.OpenDisplay("Default");
-    R_RETURN(nvnflinger.GetSystemBufferManager().Initialize(&system_shared_buffer_id,
-                                                            &system_shared_layer_id, *display_id));
+    const auto result = nvnflinger.GetSystemBufferManager().Initialize(
+        &system_shared_buffer_id, &system_shared_layer_id, *display_id);
+
+    if (result.IsSuccess()) {
+        buffer_sharing_enabled = true;
+    }
+
+    return result;
 }
 
 void ISelfController::CreateManagedDisplaySeparableLayer(HLERequestContext& ctx) {
@@ -1563,19 +1570,19 @@ void ILibraryAppletSelfAccessor::GetCallerAppletIdentityInfo(HLERequestContext& 
 }
 
 void ILibraryAppletSelfAccessor::PushInShowCabinetData() {
-    constexpr Applets::Applet::CommonArguments arguments{
-        .arguments_version = 3,
-        .size = 0x20,
-        .library_version = 1,
-        .theme_color = 3,
+    const Applets::CommonArguments arguments{
+        .arguments_version = Applets::CommonArgumentVersion::Version3,
+        .size = Applets::CommonArgumentSize::Version3,
+        .library_version = static_cast<u32>(Applets::CabinetAppletVersion::Version1),
+        .theme_color = Applets::ThemeColor::BasicBlack,
         .play_startup_sound = true,
-        .system_tick = 0,
+        .system_tick = system.CoreTiming().GetClockTicks(),
     };
 
     const Applets::StartParamForAmiiboSettings amiibo_settings{
         .param_1 = 0,
         .applet_mode = system.GetAppletManager().GetCabinetMode(),
-        .flags = 0,
+        .flags = Applets::CabinetFlags::None,
         .amiibo_settings_1 = 0,
         .device_handle = 0,
         .tag_info{},

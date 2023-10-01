@@ -23,7 +23,7 @@ static_assert(sizeof(SharedMemorySlot) == 0x18, "SharedMemorySlot has wrong size
 
 struct SharedMemoryPoolLayout {
     s32 num_slots;
-    SharedMemorySlot slots[0x10];
+    std::array<SharedMemorySlot, 0x10> slots;
 };
 static_assert(sizeof(SharedMemoryPoolLayout) == 0x188, "SharedMemoryPoolLayout has wrong size");
 

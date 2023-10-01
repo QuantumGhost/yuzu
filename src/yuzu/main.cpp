@@ -1556,10 +1556,14 @@ void GMainWindow::ConnectMenuEvents() {
     // Tools
     connect_menu(ui->action_Rederive, std::bind(&GMainWindow::OnReinitializeKeys, this,
                                                 ReinitializeKeyBehavior::Warning));
-    connect_menu(ui->action_Load_Cabinet_Nickname_Owner, &GMainWindow::OnCabinetNicknameAndOwner);
-    connect_menu(ui->action_Load_Cabinet_Eraser, &GMainWindow::OnCabinetEraser);
-    connect_menu(ui->action_Load_Cabinet_Restorer, &GMainWindow::OnCabinetRestorer);
-    connect_menu(ui->action_Load_Cabinet_Formatter, &GMainWindow::OnCabinetFormatter);
+    connect_menu(ui->action_Load_Cabinet_Nickname_Owner,
+                 [this]() { OnCabinet(Service::NFP::CabinetMode::StartNicknameAndOwnerSettings); });
+    connect_menu(ui->action_Load_Cabinet_Eraser,
+                 [this]() { OnCabinet(Service::NFP::CabinetMode::StartGameDataEraser); });
+    connect_menu(ui->action_Load_Cabinet_Restorer,
+                 [this]() { OnCabinet(Service::NFP::CabinetMode::StartRestorer); });
+    connect_menu(ui->action_Load_Cabinet_Formatter,
+                 [this]() { OnCabinet(Service::NFP::CabinetMode::StartFormatter); });
     connect_menu(ui->action_Load_Mii_Edit, &GMainWindow::OnMiiEdit);
     connect_menu(ui->action_Capture_Screenshot, &GMainWindow::OnCaptureScreenshot);
 
@@ -1601,7 +1605,7 @@ void GMainWindow::UpdateMenuState() {
     }
 
     for (QAction* action : applet_actions) {
-        action->setEnabled(is_firmware_available);
+        action->setEnabled(is_firmware_available && !emulation_running);
     }
 
     ui->action_Capture_Screenshot->setEnabled(emulation_running && !is_paused);
@@ -4174,22 +4178,6 @@ void GMainWindow::OnToggleStatusBar() {
     statusBar()->setVisible(ui->action_Show_Status_Bar->isChecked());
 }
 
-void GMainWindow::OnCabinetNicknameAndOwner() {
-    OnCabinet(Service::NFP::CabinetMode::StartNicknameAndOwnerSettings);
-}
-
-void GMainWindow::OnCabinetEraser() {
-    OnCabinet(Service::NFP::CabinetMode::StartGameDataEraser);
-}
-
-void GMainWindow::OnCabinetRestorer() {
-    OnCabinet(Service::NFP::CabinetMode::StartRestorer);
-}
-
-void GMainWindow::OnCabinetFormatter() {
-    OnCabinet(Service::NFP::CabinetMode::StartFormatter);
-}
-
 void GMainWindow::OnCabinet(Service::NFP::CabinetMode mode) {
     constexpr u64 CabinetId = 0x0100000000001002ull;
     auto bis_system = system->GetFileSystemController().GetSystemNANDContents();
@@ -4209,7 +4197,7 @@ void GMainWindow::OnCabinet(Service::NFP::CabinetMode mode) {
     system->GetAppletManager().SetCurrentAppletId(Service::AM::Applets::AppletId::Cabinet);
     system->GetAppletManager().SetCabinetMode(mode);
 
-    QString filename = QString::fromStdString((cabinet_nca->GetFullPath()));
+    const auto filename = QString::fromStdString(cabinet_nca->GetFullPath());
     UISettings::values.roms_path = QFileInfo(filename).path();
     BootGame(filename);
 }

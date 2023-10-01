@@ -77,6 +77,32 @@ enum class LibraryAppletMode : u32 {
     AllForegroundInitiallyHidden = 4,
 };
 
+enum class CommonArgumentVersion : u32 {
+    Version0,
+    Version1,
+    Version2,
+    Version3,
+};
+
+enum class CommonArgumentSize : u32 {
+    Version3 = 0x20,
+};
+
+enum class ThemeColor : u32 {
+    BasicWhite = 0,
+    BasicBlack = 3,
+};
+
+struct CommonArguments {
+    CommonArgumentVersion arguments_version;
+    CommonArgumentSize size;
+    u32 library_version;
+    ThemeColor theme_color;
+    bool play_startup_sound;
+    u64_le system_tick;
+};
+static_assert(sizeof(CommonArguments) == 0x20, "CommonArguments has incorrect size.");
+
 class AppletDataBroker final {
 public:
     explicit AppletDataBroker(Core::System& system_, LibraryAppletMode applet_mode_);
@@ -165,16 +191,6 @@ public:
     bool IsInitialized() const {
         return initialized;
     }
-
-    struct CommonArguments {
-        u32_le arguments_version;
-        u32_le size;
-        u32_le library_version;
-        u32_le theme_color;
-        bool play_startup_sound;
-        u64_le system_tick;
-    };
-    static_assert(sizeof(CommonArguments) == 0x20, "CommonArguments has incorrect size.");
 
 protected:
     CommonArguments common_args{};
