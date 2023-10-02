@@ -40,7 +40,7 @@ IAlbumAccessorService::IAlbumAccessorService(Core::System& system_)
         {0, nullptr, "GetAlbumFileCount"},
         {1, nullptr, "GetAlbumFileList"},
         {2, nullptr, "LoadAlbumFile"},
-        {3,  &IAlbumAccessorService::DeleteAlbumFile, "DeleteAlbumFile"},
+        {3, &IAlbumAccessorService::DeleteAlbumFile, "DeleteAlbumFile"},
         {4, nullptr, "StorageCopyAlbumFile"},
         {5, &IAlbumAccessorService::IsAlbumMounted, "IsAlbumMounted"},
         {6, nullptr, "GetAlbumUsage"},
@@ -282,8 +282,8 @@ Result IAlbumAccessorService::GetAlbumEntry(AlbumEntry& out_entry,
     std::getline(line_stream, date, '_');
     std::getline(line_stream, time, '_');
 
-    std::istringstream line_stream2(date);
-    std::istringstream line_stream3(time);
+    std::istringstream date_stream(date);
+    std::istringstream time_stream(time);
     std::string year;
     std::string month;
     std::string day;
@@ -291,13 +291,13 @@ Result IAlbumAccessorService::GetAlbumEntry(AlbumEntry& out_entry,
     std::string minute;
     std::string second;
 
-    std::getline(line_stream2, year, '-');
-    std::getline(line_stream2, month, '-');
-    std::getline(line_stream2, day, '-');
+    std::getline(date_stream, year, '-');
+    std::getline(date_stream, month, '-');
+    std::getline(date_stream, day, '-');
 
-    std::getline(line_stream3, hour, '-');
-    std::getline(line_stream3, minute, '-');
-    std::getline(line_stream3, second, '-');
+    std::getline(time_stream, hour, '-');
+    std::getline(time_stream, minute, '-');
+    std::getline(time_stream, second, '-');
 
     try {
         out_entry = {

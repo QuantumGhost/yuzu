@@ -786,7 +786,9 @@ void ILockAccessor::TryLock(HLERequestContext& ctx) {
     IPC::RequestParser rp{ctx};
     const auto return_handle = rp.Pop<bool>();
 
-    LOG_INFO(Service_AM, "called, return_handle={}", return_handle);
+    LOG_WARNING(Service_AM, "(STUBBED) called, return_handle={}", return_handle);
+
+    // TODO: When return_handle is true this function should return the lock handle
 
     is_locked = true;
 
@@ -796,7 +798,7 @@ void ILockAccessor::TryLock(HLERequestContext& ctx) {
 }
 
 void ILockAccessor::Unlock(HLERequestContext& ctx) {
-    LOG_WARNING(Service_AM, "called");
+    LOG_INFO(Service_AM, "called");
 
     is_locked = false;
 
@@ -805,7 +807,7 @@ void ILockAccessor::Unlock(HLERequestContext& ctx) {
 }
 
 void ILockAccessor::GetEvent(HLERequestContext& ctx) {
-    LOG_WARNING(Service_AM, "called");
+    LOG_INFO(Service_AM, "called");
 
     lock_event->Signal();
 
@@ -815,7 +817,7 @@ void ILockAccessor::GetEvent(HLERequestContext& ctx) {
 }
 
 void ILockAccessor::IsLocked(HLERequestContext& ctx) {
-    LOG_WARNING(Service_AM, "called");
+    LOG_INFO(Service_AM, "called");
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(ResultSuccess);

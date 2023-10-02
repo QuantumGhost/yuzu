@@ -39,7 +39,7 @@ private:
     enum class ScreenShotOrientation : u32 {
         None,
         Rotate90,
-        Rotat180,
+        Rotate180,
         Rotate270,
     };
 
@@ -50,6 +50,7 @@ private:
         u32 unknown_2;
         INSERT_PADDING_BYTES(0x30);
     };
+    static_assert(sizeof(ScreenShotAttribute) == 0x40, "ScreenShotAttribute is an invalid size");
 
     struct ScreenShotDecodeOption {
         ScreenShotDecoderFlag flags;
