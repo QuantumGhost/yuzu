@@ -618,13 +618,14 @@ void BlitImageHelper::ClearDepthStencil(const Framebuffer* dst_framebuffer, bool
     const VkPipeline pipeline = FindOrEmplaceClearStencilPipeline(key);
     const VkPipelineLayout layout = *clear_color_pipeline_layout;
     scheduler.RequestRenderpass(dst_framebuffer);
-    scheduler.Record(
-        [pipeline, layout, clear_depth, dst_region](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
-            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-            BindBlitState(cmdbuf, dst_region);
-            cmdbuf.PushConstants(layout, VK_SHADER_STAGE_FRAGMENT_BIT, clear_depth);
-            cmdbuf.Draw(3, 1, 0, 0);
-        });
+    scheduler.Record([pipeline, layout, clear_depth, dst_region](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+        constexpr std::array blend_constants{0.0f, 0.0f, 0.0f, 0.0f};
+        cmdbuf.SetBlendConstants(blend_constants.data());
+        cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        BindBlitState(cmdbuf, dst_region);
+        cmdbuf.PushConstants(layout, VK_SHADER_STAGE_FRAGMENT_BIT, clear_depth);
+        cmdbuf.Draw(3, 1, 0, 0);
+    });
     scheduler.InvalidateState();
 }
 
@@ -877,7 +878,7 @@ VkPipeline BlitImageHelper::FindOrEmplaceClearStencilPipeline(
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .depthTestEnable = VK_FALSE,
+        .depthTestEnable = key.depth_clear,
         .depthWriteEnable = key.depth_clear,
         .depthCompareOp = VK_COMPARE_OP_ALWAYS,
         .depthBoundsTestEnable = VK_FALSE,
