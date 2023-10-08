@@ -549,7 +549,7 @@ void BufferCache<P>::CommitAsyncFlushesHigh() {
         it++;
     }
 
-    boost::container::small_vector<std::pair<BufferCopy, BufferId>, 1> downloads;
+    boost::container::small_vector<std::pair<BufferCopy, BufferId>, 16> downloads;
     u64 total_size_bytes = 0;
     u64 largest_copy = 0;
     for (const IntervalSet& intervals : committed_ranges) {
@@ -925,6 +925,11 @@ void BufferCache<P>::BindHostGraphicsStorageBuffers(size_t stage) {
         const u32 offset = buffer.Offset(binding.cpu_addr);
         buffer.MarkUsage(offset, size);
         const bool is_written = ((channel_state->written_storage_buffers[stage] >> index) & 1) != 0;
+
+        if (is_written) {
+            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, size);
+        }
+
         if constexpr (NEEDS_BIND_STORAGE_INDEX) {
             runtime.BindStorageBuffer(stage, binding_index, buffer, offset, size, is_written);
             ++binding_index;
@@ -941,6 +946,11 @@ void BufferCache<P>::BindHostGraphicsTextureBuffers(size_t stage) {
         Buffer& buffer = slot_buffers[binding.buffer_id];
         const u32 size = binding.size;
         SynchronizeBuffer(buffer, binding.cpu_addr, size);
+
+        const bool is_written = ((channel_state->written_texture_buffers[stage] >> index) & 1) != 0;
+        if (is_written) {
+            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, size);
+        }
 
         const u32 offset = buffer.Offset(binding.cpu_addr);
         const PixelFormat format = binding.format;
@@ -973,6 +983,8 @@ void BufferCache<P>::BindHostTransformFeedbackBuffers() {
         TouchBuffer(buffer, binding.buffer_id);
         const u32 size = binding.size;
         SynchronizeBuffer(buffer, binding.cpu_addr, size);
+
+        MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, size);
 
         const u32 offset = buffer.Offset(binding.cpu_addr);
         buffer.MarkUsage(offset, size);
@@ -1026,6 +1038,11 @@ void BufferCache<P>::BindHostComputeStorageBuffers() {
         buffer.MarkUsage(offset, size);
         const bool is_written =
             ((channel_state->written_compute_storage_buffers >> index) & 1) != 0;
+
+        if (is_written) {
+            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, size);
+        }
+
         if constexpr (NEEDS_BIND_STORAGE_INDEX) {
             runtime.BindComputeStorageBuffer(binding_index, buffer, offset, size, is_written);
             ++binding_index;
@@ -1042,6 +1059,12 @@ void BufferCache<P>::BindHostComputeTextureBuffers() {
         Buffer& buffer = slot_buffers[binding.buffer_id];
         const u32 size = binding.size;
         SynchronizeBuffer(buffer, binding.cpu_addr, size);
+
+        const bool is_written =
+            ((channel_state->written_compute_texture_buffers >> index) & 1) != 0;
+        if (is_written) {
+            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, size);
+        }
 
         const u32 offset = buffer.Offset(binding.cpu_addr);
         const PixelFormat format = binding.format;
@@ -1218,16 +1241,11 @@ void BufferCache<P>::UpdateUniformBuffers(size_t stage) {
 
 template <class P>
 void BufferCache<P>::UpdateStorageBuffers(size_t stage) {
-    const u32 written_mask = channel_state->written_storage_buffers[stage];
     ForEachEnabledBit(channel_state->enabled_storage_buffers[stage], [&](u32 index) {
         // Resolve buffer
         Binding& binding = channel_state->storage_buffers[stage][index];
         const BufferId buffer_id = FindBuffer(binding.cpu_addr, binding.size);
         binding.buffer_id = buffer_id;
-        // Mark buffer as written if needed
-        if (((written_mask >> index) & 1) != 0) {
-            MarkWrittenBuffer(buffer_id, binding.cpu_addr, binding.size);
-        }
     });
 }
 
@@ -1236,10 +1254,6 @@ void BufferCache<P>::UpdateTextureBuffers(size_t stage) {
     ForEachEnabledBit(channel_state->enabled_texture_buffers[stage], [&](u32 index) {
         Binding& binding = channel_state->texture_buffers[stage][index];
         binding.buffer_id = FindBuffer(binding.cpu_addr, binding.size);
-        // Mark buffer as written if needed
-        if (((channel_state->written_texture_buffers[stage] >> index) & 1) != 0) {
-            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, binding.size);
-        }
     });
 }
 
@@ -1269,7 +1283,6 @@ void BufferCache<P>::UpdateTransformFeedbackBuffer(u32 index) {
         .size = size,
         .buffer_id = buffer_id,
     };
-    MarkWrittenBuffer(buffer_id, *cpu_addr, size);
 }
 
 template <class P>
@@ -1296,10 +1309,6 @@ void BufferCache<P>::UpdateComputeStorageBuffers() {
         // Resolve buffer
         Binding& binding = channel_state->compute_storage_buffers[index];
         binding.buffer_id = FindBuffer(binding.cpu_addr, binding.size);
-        // Mark as written if needed
-        if (((channel_state->written_compute_storage_buffers >> index) & 1) != 0) {
-            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, binding.size);
-        }
     });
 }
 
@@ -1308,18 +1317,11 @@ void BufferCache<P>::UpdateComputeTextureBuffers() {
     ForEachEnabledBit(channel_state->enabled_compute_texture_buffers, [&](u32 index) {
         Binding& binding = channel_state->compute_texture_buffers[index];
         binding.buffer_id = FindBuffer(binding.cpu_addr, binding.size);
-        // Mark as written if needed
-        if (((channel_state->written_compute_texture_buffers >> index) & 1) != 0) {
-            MarkWrittenBuffer(binding.buffer_id, binding.cpu_addr, binding.size);
-        }
     });
 }
 
 template <class P>
 void BufferCache<P>::MarkWrittenBuffer(BufferId buffer_id, VAddr cpu_addr, u32 size) {
-    if (memory_tracker.IsRegionCpuModified(cpu_addr, size)) {
-        SynchronizeBuffer(slot_buffers[buffer_id], cpu_addr, size);
-    }
     memory_tracker.MarkRegionAsGpuModified(cpu_addr, size);
 
     const IntervalType base_interval{cpu_addr, cpu_addr + size};
