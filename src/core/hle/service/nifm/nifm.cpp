@@ -546,11 +546,13 @@ void IGeneralService::IsAnyInternetRequestAccepted(HLERequestContext& ctx) {
 }
 
 void IGeneralService::IsAnyForegroundRequestAccepted(HLERequestContext& ctx) {
-    LOG_ERROR(Service_NIFM, "(STUBBED) called");
+    const bool is_accepted{};
+
+    LOG_WARNING(Service_NIFM, "(STUBBED) called, is_accepted={}", is_accepted);
 
     IPC::ResponseBuilder rb{ctx, 3};
     rb.Push(ResultSuccess);
-    rb.Push<u8>(0);
+    rb.Push<u8>(is_accepted);
 }
 
 IGeneralService::IGeneralService(Core::System& system_)
