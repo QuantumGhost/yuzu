@@ -345,6 +345,7 @@ private:
     void GetLibraryAppletInfo(HLERequestContext& ctx);
     void ExitProcessAndReturn(HLERequestContext& ctx);
     void GetCallerAppletIdentityInfo(HLERequestContext& ctx);
+    void GetMainAppletAvailableUsers(HLERequestContext& ctx);
 
     void PushInShowAlbum();
     void PushInShowCabinetData();
