@@ -98,12 +98,11 @@ void AudioRenderer::SetCommandBuffer(s32 session_id, CpuAddr buffer, u64 size, u
 }
 
 void AudioRenderer::PostDSPClearCommandBuffer() noexcept {
-    command_buffers[0].buffer = 0;
-    command_buffers[0].size = 0;
-    command_buffers[0].reset_buffer = false;
-    command_buffers[1].buffer = 0;
-    command_buffers[1].size = 0;
-    command_buffers[1].reset_buffer = false;
+    for (auto& buffer : command_buffers) {
+        buffer.buffer = 0;
+        buffer.size = 0;
+        buffer.reset_buffer = false;
+    }
 }
 
 u32 AudioRenderer::GetRemainCommandCount(s32 session_id) const noexcept {
