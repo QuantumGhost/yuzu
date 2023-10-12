@@ -87,7 +87,7 @@ Result AlbumManager::GetAlbumFileList(std::vector<AlbumEntry>& out_entries, Albu
 
 Result AlbumManager::GetAlbumFileList(std::vector<ApplicationAlbumFileEntry>& out_entries,
                                       ContentType contex_type, s64 start_posix_time,
-                                      s64 end_posix_time, u64 aruid) {
+                                      s64 end_posix_time, u64 aruid) const {
     if (!is_mounted) {
         return ResultIsNotMounted;
     }
@@ -115,7 +115,7 @@ Result AlbumManager::GetAlbumFileList(std::vector<ApplicationAlbumFileEntry>& ou
 
 Result AlbumManager::GetAlbumFileList(std::vector<ApplicationAlbumEntry>& out_entries,
                                       ContentType contex_type, AlbumFileDateTime start_date,
-                                      AlbumFileDateTime end_date, u64 aruid) {
+                                      AlbumFileDateTime end_date, u64 aruid) const {
     if (!is_mounted) {
         return ResultIsNotMounted;
     }
