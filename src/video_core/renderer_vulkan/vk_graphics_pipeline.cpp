@@ -493,7 +493,7 @@ void GraphicsPipeline::ConfigureDraw(const RescalingPushConstant& rescaling,
 
     if (!is_built.load(std::memory_order::relaxed)) {
         // Wait for the pipeline to be built
-        scheduler.Record([this](vk::CommandBuffer, vk::CommandBuffer) {
+        scheduler.Record([this](vk::CommandBuffer) {
             std::unique_lock lock{build_mutex};
             build_condvar.wait(lock, [this] { return is_built.load(std::memory_order::relaxed); });
         });
@@ -502,43 +502,42 @@ void GraphicsPipeline::ConfigureDraw(const RescalingPushConstant& rescaling,
     const bool update_rescaling{scheduler.UpdateRescaling(is_rescaling)};
     const bool bind_pipeline{scheduler.UpdateGraphicsPipeline(this)};
     const void* const descriptor_data{guest_descriptor_queue.UpdateData()};
-    scheduler.Record(
-        [this, descriptor_data, bind_pipeline, rescaling_data = rescaling.Data(), is_rescaling,
-         update_rescaling, uses_render_area = render_area.uses_render_area,
-         render_area_data = render_area.words](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
-            if (bind_pipeline) {
-                cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
-            }
+    scheduler.Record([this, descriptor_data, bind_pipeline, rescaling_data = rescaling.Data(),
+                      is_rescaling, update_rescaling,
+                      uses_render_area = render_area.uses_render_area,
+                      render_area_data = render_area.words](vk::CommandBuffer cmdbuf) {
+        if (bind_pipeline) {
+            cmdbuf.BindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
+        }
+        cmdbuf.PushConstants(*pipeline_layout, VK_SHADER_STAGE_ALL_GRAPHICS,
+                             RESCALING_LAYOUT_WORDS_OFFSET, sizeof(rescaling_data),
+                             rescaling_data.data());
+        if (update_rescaling) {
+            const f32 config_down_factor{Settings::values.resolution_info.down_factor};
+            const f32 scale_down_factor{is_rescaling ? config_down_factor : 1.0f};
             cmdbuf.PushConstants(*pipeline_layout, VK_SHADER_STAGE_ALL_GRAPHICS,
-                                 RESCALING_LAYOUT_WORDS_OFFSET, sizeof(rescaling_data),
-                                 rescaling_data.data());
-            if (update_rescaling) {
-                const f32 config_down_factor{Settings::values.resolution_info.down_factor};
-                const f32 scale_down_factor{is_rescaling ? config_down_factor : 1.0f};
-                cmdbuf.PushConstants(*pipeline_layout, VK_SHADER_STAGE_ALL_GRAPHICS,
-                                     RESCALING_LAYOUT_DOWN_FACTOR_OFFSET, sizeof(scale_down_factor),
-                                     &scale_down_factor);
-            }
-            if (uses_render_area) {
-                cmdbuf.PushConstants(*pipeline_layout, VK_SHADER_STAGE_ALL_GRAPHICS,
-                                     RENDERAREA_LAYOUT_OFFSET, sizeof(render_area_data),
-                                     &render_area_data);
-            }
-            if (!descriptor_set_layout) {
-                return;
-            }
-            if (uses_push_descriptor) {
-                cmdbuf.PushDescriptorSetWithTemplateKHR(*descriptor_update_template,
-                                                        *pipeline_layout, 0, descriptor_data);
-            } else {
-                const VkDescriptorSet descriptor_set{descriptor_allocator.Commit()};
-                const vk::Device& dev{device.GetLogical()};
-                dev.UpdateDescriptorSet(descriptor_set, *descriptor_update_template,
-                                        descriptor_data);
-                cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline_layout, 0,
-                                          descriptor_set, nullptr);
-            }
-        });
+                                 RESCALING_LAYOUT_DOWN_FACTOR_OFFSET, sizeof(scale_down_factor),
+                                 &scale_down_factor);
+        }
+        if (uses_render_area) {
+            cmdbuf.PushConstants(*pipeline_layout, VK_SHADER_STAGE_ALL_GRAPHICS,
+                                 RENDERAREA_LAYOUT_OFFSET, sizeof(render_area_data),
+                                 &render_area_data);
+        }
+        if (!descriptor_set_layout) {
+            return;
+        }
+        if (uses_push_descriptor) {
+            cmdbuf.PushDescriptorSetWithTemplateKHR(*descriptor_update_template, *pipeline_layout,
+                                                    0, descriptor_data);
+        } else {
+            const VkDescriptorSet descriptor_set{descriptor_allocator.Commit()};
+            const vk::Device& dev{device.GetLogical()};
+            dev.UpdateDescriptorSet(descriptor_set, *descriptor_update_template, descriptor_data);
+            cmdbuf.BindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline_layout, 0,
+                                      descriptor_set, nullptr);
+        }
+    });
 }
 
 void GraphicsPipeline::MakePipeline(VkRenderPass render_pass) {

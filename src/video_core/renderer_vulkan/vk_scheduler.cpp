@@ -103,23 +103,22 @@ void Scheduler::RequestRenderpass(const Framebuffer* framebuffer) {
     state.framebuffer = framebuffer_handle;
     state.render_area = render_area;
 
-    Record(
-        [renderpass, framebuffer_handle, render_area](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
-            const VkRenderPassBeginInfo renderpass_bi{
-                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .pNext = nullptr,
-                .renderPass = renderpass,
-                .framebuffer = framebuffer_handle,
-                .renderArea =
-                    {
-                        .offset = {.x = 0, .y = 0},
-                        .extent = render_area,
-                    },
-                .clearValueCount = 0,
-                .pClearValues = nullptr,
-            };
-            cmdbuf.BeginRenderPass(renderpass_bi, VK_SUBPASS_CONTENTS_INLINE);
-        });
+    Record([renderpass, framebuffer_handle, render_area](vk::CommandBuffer cmdbuf) {
+        const VkRenderPassBeginInfo renderpass_bi{
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext = nullptr,
+            .renderPass = renderpass,
+            .framebuffer = framebuffer_handle,
+            .renderArea =
+                {
+                    .offset = {.x = 0, .y = 0},
+                    .extent = render_area,
+                },
+            .clearValueCount = 0,
+            .pClearValues = nullptr,
+        };
+        cmdbuf.BeginRenderPass(renderpass_bi, VK_SUBPASS_CONTENTS_INLINE);
+    });
     num_renderpass_images = framebuffer->NumImages();
     renderpass_images = framebuffer->Images();
     renderpass_image_ranges = framebuffer->ImageRanges();
@@ -221,8 +220,8 @@ u64 Scheduler::SubmitExecution(VkSemaphore signal_semaphore, VkSemaphore wait_se
     InvalidateState();
 
     const u64 signal_value = master_semaphore->NextTick();
-    Record([signal_semaphore, wait_semaphore, signal_value, this](vk::CommandBuffer cmdbuf,
-                                                                  vk::CommandBuffer upload_cmdbuf) {
+    RecordWithUploadBuffer([signal_semaphore, wait_semaphore, signal_value,
+                            this](vk::CommandBuffer cmdbuf, vk::CommandBuffer upload_cmdbuf) {
         upload_cmdbuf.End();
         cmdbuf.End();
 
@@ -286,7 +285,7 @@ void Scheduler::EndRenderPass() {
         return;
     }
     Record([num_images = num_renderpass_images, images = renderpass_images,
-            ranges = renderpass_image_ranges](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+            ranges = renderpass_image_ranges](vk::CommandBuffer cmdbuf) {
         std::array<VkImageMemoryBarrier, 9> barriers;
         for (size_t i = 0; i < num_images; ++i) {
             barriers[i] = VkImageMemoryBarrier{

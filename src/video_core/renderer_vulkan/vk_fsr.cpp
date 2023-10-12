@@ -38,8 +38,7 @@ VkImageView FSR::Draw(Scheduler& scheduler, size_t image_index, VkImageView imag
 
     UpdateDescriptorSet(image_index, image_view);
 
-    scheduler.Record([this, image_index, input_image_extent, crop_rect](vk::CommandBuffer cmdbuf,
-                                                                        vk::CommandBuffer) {
+    scheduler.Record([this, image_index, input_image_extent, crop_rect](vk::CommandBuffer cmdbuf) {
         const VkImageMemoryBarrier base_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,

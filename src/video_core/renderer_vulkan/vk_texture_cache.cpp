@@ -710,7 +710,7 @@ void BlitScale(Scheduler& scheduler, VkImage src_image, VkImage dst_image, const
 
     scheduler.RequestOutsideRenderPassOperationContext();
     scheduler.Record([dst_image, src_image, extent, resources, aspect_mask, resolution, is_2d,
-                      vk_filter, up_scaling](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                      vk_filter, up_scaling](vk::CommandBuffer cmdbuf) {
         const VkOffset2D src_size{
             .x = static_cast<s32>(up_scaling ? extent.width : resolution.ScaleUp(extent.width)),
             .y = static_cast<s32>(is_2d && up_scaling ? extent.height
@@ -956,7 +956,7 @@ void TextureCacheRuntime::ReinterpretImage(Image& dst, Image& src,
     const VkImage src_image = src.Handle();
     scheduler.RequestOutsideRenderPassOperationContext();
     scheduler.Record([dst_image, src_image, copy_buffer, src_aspect_mask, dst_aspect_mask,
-                      vk_in_copies, vk_out_copies](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                      vk_in_copies, vk_out_copies](vk::CommandBuffer cmdbuf) {
         RangedBarrierRange dst_range;
         RangedBarrierRange src_range;
         for (const VkBufferImageCopy& copy : vk_in_copies) {
@@ -1105,7 +1105,7 @@ void TextureCacheRuntime::BlitImage(Framebuffer* dst_framebuffer, ImageView& dst
     const bool is_resolve = is_src_msaa && !is_dst_msaa;
     scheduler.RequestOutsideRenderPassOperationContext();
     scheduler.Record([filter, dst_region, src_region, dst_image, src_image, dst_layers, src_layers,
-                      aspect_mask, is_resolve](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                      aspect_mask, is_resolve](vk::CommandBuffer cmdbuf) {
         const std::array read_barriers{
             VkImageMemoryBarrier{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1244,8 +1244,7 @@ void TextureCacheRuntime::CopyImage(Image& dst, Image& src,
     const VkImage dst_image = dst.Handle();
     const VkImage src_image = src.Handle();
     scheduler.RequestOutsideRenderPassOperationContext();
-    scheduler.Record([dst_image, src_image, aspect_mask, vk_copies](vk::CommandBuffer cmdbuf,
-                                                                    vk::CommandBuffer) {
+    scheduler.Record([dst_image, src_image, aspect_mask, vk_copies](vk::CommandBuffer cmdbuf) {
         RangedBarrierRange dst_range;
         RangedBarrierRange src_range;
         for (const VkImageCopy& copy : vk_copies) {
@@ -1407,7 +1406,7 @@ void Image::UploadMemory(VkBuffer buffer, VkDeviceSize offset,
     const VkImageAspectFlags vk_aspect_mask = aspect_mask;
     const bool is_initialized = std::exchange(initialized, true);
     scheduler->Record([src_buffer, vk_image, vk_aspect_mask, is_initialized,
-                       vk_copies](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                       vk_copies](vk::CommandBuffer cmdbuf) {
         CopyBufferToImage(cmdbuf, src_buffer, vk_image, vk_aspect_mask, is_initialized, vk_copies);
     });
     if (is_rescaled) {
@@ -1446,8 +1445,7 @@ void Image::DownloadMemory(std::span<VkBuffer> buffers_span, std::span<VkDeviceS
     }
     scheduler->RequestOutsideRenderPassOperationContext();
     scheduler->Record([buffers = std::move(buffers_vector), image = *original_image,
-                       aspect_mask_ = aspect_mask,
-                       vk_copies](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                       aspect_mask_ = aspect_mask, vk_copies](vk::CommandBuffer cmdbuf) {
         const VkImageMemoryBarrier read_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,
@@ -2013,6 +2011,34 @@ void TextureCacheRuntime::AccelerateImageUpload(
         return astc_decoder_pass->Assemble(image, map, swizzles);
     }
     ASSERT(false);
+}
+
+void TextureCacheRuntime::TransitionImageLayout(Image& image) {
+    if (!image.ExchangeInitialization()) {
+        VkImageMemoryBarrier barrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_NONE,
+            .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image.Handle(),
+            .subresourceRange{
+                .aspectMask = image.AspectMask(),
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
+        };
+        scheduler.RequestOutsideRenderPassOperationContext();
+        scheduler.Record([barrier = barrier](vk::CommandBuffer cmdbuf) {
+            cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, barrier);
+        });
+    }
 }
 
 } // namespace Vulkan

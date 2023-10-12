@@ -239,7 +239,7 @@ void Vulkan::RendererVulkan::RenderScreenshot(const Tegra::FramebufferConfig& fr
         memory_allocator.CreateBuffer(dst_buffer_info, MemoryUsage::Download);
 
     scheduler.RequestOutsideRenderPassOperationContext();
-    scheduler.Record([&](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+    scheduler.Record([&](vk::CommandBuffer cmdbuf) {
         const VkImageMemoryBarrier read_barrier{
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
             .pNext = nullptr,

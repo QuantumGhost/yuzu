@@ -80,12 +80,22 @@ public:
 
     /// Send work to a separate thread.
     template <typename T>
-    void Record(T&& command) {
+        requires std::is_invocable_v<T, vk::CommandBuffer, vk::CommandBuffer>
+    void RecordWithUploadBuffer(T&& command) {
         if (chunk->Record(command)) {
             return;
         }
         DispatchWork();
         (void)chunk->Record(command);
+    }
+
+    template <typename T>
+        requires std::is_invocable_v<T, vk::CommandBuffer>
+    void Record(T&& c) {
+        this->RecordWithUploadBuffer(
+            [command = std::move(c)](vk::CommandBuffer cmdbuf, vk::CommandBuffer) {
+                command(cmdbuf);
+            });
     }
 
     /// Returns the current command buffer tick.
