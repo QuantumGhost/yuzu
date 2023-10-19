@@ -124,6 +124,8 @@ public:
 private:
     void GetCallerAppletCaptureImageEx(HLERequestContext& ctx);
     void TakeScreenShotOfOwnLayer(HLERequestContext& ctx);
+    void AcquireLastForegroundCaptureSharedBuffer(HLERequestContext& ctx);
+    void ReleaseLastForegroundCaptureSharedBuffer(HLERequestContext& ctx);
     void AcquireCallerAppletCaptureSharedBuffer(HLERequestContext& ctx);
     void ReleaseCallerAppletCaptureSharedBuffer(HLERequestContext& ctx);
 };

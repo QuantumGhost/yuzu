@@ -210,8 +210,8 @@ IDisplayController::IDisplayController(Core::System& system_)
         {21, nullptr, "ClearAppletTransitionBuffer"},
         {22, nullptr, "AcquireLastApplicationCaptureSharedBuffer"},
         {23, nullptr, "ReleaseLastApplicationCaptureSharedBuffer"},
-        {24, nullptr, "AcquireLastForegroundCaptureSharedBuffer"},
-        {25, nullptr, "ReleaseLastForegroundCaptureSharedBuffer"},
+        {24, &IDisplayController::AcquireLastForegroundCaptureSharedBuffer, "AcquireLastForegroundCaptureSharedBuffer"},
+        {25, &IDisplayController::ReleaseLastForegroundCaptureSharedBuffer, "ReleaseLastForegroundCaptureSharedBuffer"},
         {26, &IDisplayController::AcquireCallerAppletCaptureSharedBuffer, "AcquireCallerAppletCaptureSharedBuffer"},
         {27, &IDisplayController::ReleaseCallerAppletCaptureSharedBuffer, "ReleaseCallerAppletCaptureSharedBuffer"},
         {28, nullptr, "TakeScreenShotOfOwnLayerEx"},
@@ -233,6 +233,22 @@ void IDisplayController::GetCallerAppletCaptureImageEx(HLERequestContext& ctx) {
 }
 
 void IDisplayController::TakeScreenShotOfOwnLayer(HLERequestContext& ctx) {
+    LOG_WARNING(Service_AM, "(STUBBED) called");
+
+    IPC::ResponseBuilder rb{ctx, 2};
+    rb.Push(ResultSuccess);
+}
+
+void IDisplayController::AcquireLastForegroundCaptureSharedBuffer(HLERequestContext& ctx) {
+    LOG_WARNING(Service_AM, "(STUBBED) called");
+
+    IPC::ResponseBuilder rb{ctx, 4};
+    rb.Push(ResultSuccess);
+    rb.Push(1U);
+    rb.Push(0);
+}
+
+void IDisplayController::ReleaseLastForegroundCaptureSharedBuffer(HLERequestContext& ctx) {
     LOG_WARNING(Service_AM, "(STUBBED) called");
 
     IPC::ResponseBuilder rb{ctx, 2};
