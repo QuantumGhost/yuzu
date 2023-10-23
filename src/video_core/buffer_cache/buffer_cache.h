@@ -1083,8 +1083,7 @@ void BufferCache<P>::BindHostComputeTextureBuffers() {
 
 template <class P>
 void BufferCache<P>::DoUpdateGraphicsBuffers(bool is_indexed) {
-    do {
-        channel_state->has_deleted_buffers = false;
+    BufferOperations([&]() {
         if (is_indexed) {
             UpdateIndexBuffer();
         }
@@ -1098,14 +1097,16 @@ void BufferCache<P>::DoUpdateGraphicsBuffers(bool is_indexed) {
         if (current_draw_indirect) {
             UpdateDrawIndirect();
         }
-    } while (channel_state->has_deleted_buffers);
+    });
 }
 
 template <class P>
 void BufferCache<P>::DoUpdateComputeBuffers() {
-    UpdateComputeUniformBuffers();
-    UpdateComputeStorageBuffers();
-    UpdateComputeTextureBuffers();
+    BufferOperations([&]() {
+        UpdateComputeUniformBuffers();
+        UpdateComputeStorageBuffers();
+        UpdateComputeTextureBuffers();
+    });
 }
 
 template <class P>
