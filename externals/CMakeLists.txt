@@ -134,6 +134,10 @@ endif()
 
 # Opus
 if (NOT TARGET Opus::opus)
+    set(OPUS_BUILD_TESTING OFF)
+    set(OPUS_BUILD_PROGRAMS OFF)
+    set(OPUS_INSTALL_PKG_CONFIG_MODULE OFF)
+    set(OPUS_INSTALL_CMAKE_CONFIG_MODULE OFF)
     add_subdirectory(opus)
 endif()
 
@@ -168,8 +172,12 @@ if (NOT TARGET LLVM::Demangle)
     add_library(LLVM::Demangle ALIAS demangle)
 endif()
 
-add_library(stb stb/stb_dxt.cpp stb/stb_image.cpp stb/stb_image_resize.cpp stb/stb_image_write.cpp)
+add_library(stb stb/stb_dxt.cpp)
 target_include_directories(stb PUBLIC ./stb)
+
+if (NOT TARGET stb::headers)
+    add_library(stb::headers ALIAS stb)
+endif()
 
 add_library(bc_decoder bc_decoder/bc_decoder.cpp)
 target_include_directories(bc_decoder PUBLIC ./bc_decoder)
