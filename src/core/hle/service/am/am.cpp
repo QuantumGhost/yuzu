@@ -31,6 +31,7 @@
 #include "core/hle/service/apm/apm_controller.h"
 #include "core/hle/service/apm/apm_interface.h"
 #include "core/hle/service/bcat/backend/backend.h"
+#include "core/hle/service/caps/caps_su.h"
 #include "core/hle/service/caps/caps_types.h"
 #include "core/hle/service/filesystem/filesystem.h"
 #include "core/hle/service/ipc_helpers.h"
@@ -702,9 +703,17 @@ void ISelfController::SetAlbumImageTakenNotificationEnabled(HLERequestContext& c
 void ISelfController::SaveCurrentScreenshot(HLERequestContext& ctx) {
     IPC::RequestParser rp{ctx};
 
-    const auto album_report_option = rp.PopEnum<Capture::AlbumReportOption>();
+    const auto report_option = rp.PopEnum<Capture::AlbumReportOption>();
 
-    LOG_WARNING(Service_AM, "(STUBBED) called. album_report_option={}", album_report_option);
+    LOG_INFO(Service_AM, "called, report_option={}", report_option);
+
+    const auto screenshot_service =
+        system.ServiceManager().GetService<Service::Capture::IScreenShotApplicationService>(
+            "caps:su");
+
+    if (screenshot_service) {
+        screenshot_service->CaptureAndSaveScreenshot(report_option);
+    }
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(ResultSuccess);
@@ -796,7 +805,9 @@ ILockAccessor::ILockAccessor(Core::System& system_)
     lock_event = service_context.CreateEvent("ILockAccessor::LockEvent");
 }
 
-ILockAccessor::~ILockAccessor() = default;
+ILockAccessor::~ILockAccessor() {
+    service_context.CloseEvent(lock_event);
+};
 
 void ILockAccessor::TryLock(HLERequestContext& ctx) {
     IPC::RequestParser rp{ctx};
@@ -909,7 +920,9 @@ ICommonStateGetter::ICommonStateGetter(Core::System& system_,
     msg_queue->PushMessage(AppletMessageQueue::AppletMessage::ChangeIntoForeground);
 }
 
-ICommonStateGetter::~ICommonStateGetter() = default;
+ICommonStateGetter::~ICommonStateGetter() {
+    service_context.CloseEvent(sleep_lock_event);
+};
 
 void ICommonStateGetter::GetBootMode(HLERequestContext& ctx) {
     LOG_DEBUG(Service_AM, "called");
