@@ -3484,7 +3484,7 @@ void GMainWindow::OnExecuteProgram(std::size_t program_index) {
 }
 
 void GMainWindow::OnExit() {
-    OnStopGame();
+    ShutdownGame();
 }
 
 void GMainWindow::OnSaveConfig() {
