@@ -2174,6 +2174,7 @@ void GMainWindow::ShutdownGame() {
         return;
     }
 
+    play_time_manager->Stop();
     OnShutdownBegin();
     OnEmulationStopTimeExpired();
     OnEmulationStopped();
