@@ -48,7 +48,7 @@ void ClusteringProcessor::OnControllerUpdate(Core::HID::ControllerTriggerType ty
     }
 
     next_state = {};
-    const auto camera_data = npad_device->GetCamera();
+    const auto& camera_data = npad_device->GetCamera();
     auto filtered_image = camera_data.data;
 
     RemoveLowIntensityData(filtered_image);
@@ -202,14 +202,14 @@ ClusteringProcessor::ClusteringData ClusteringProcessor::MergeCluster(
 }
 
 u8 ClusteringProcessor::GetPixel(const std::vector<u8>& data, std::size_t x, std::size_t y) const {
-    if ((y * width) + x > data.size()) {
+    if ((y * width) + x >= data.size()) {
         return 0;
     }
     return data[(y * width) + x];
 }
 
 void ClusteringProcessor::SetPixel(std::vector<u8>& data, std::size_t x, std::size_t y, u8 value) {
-    if ((y * width) + x > data.size()) {
+    if ((y * width) + x >= data.size()) {
         return;
     }
     data[(y * width) + x] = value;
