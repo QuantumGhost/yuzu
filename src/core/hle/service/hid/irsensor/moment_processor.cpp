@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright 2022 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "core/core.h"
+#include "core/core_timing.h"
 #include "core/hid/emulated_controller.h"
 #include "core/hid/hid_core.h"
 #include "core/hle/service/hid/irsensor/moment_processor.h"
@@ -10,11 +12,10 @@ static constexpr auto format = Core::IrSensor::ImageTransferProcessorFormat::Siz
 static constexpr std::size_t ImageWidth = 40;
 static constexpr std::size_t ImageHeight = 30;
 
-MomentProcessor::MomentProcessor(Core::HID::HIDCore& hid_core_,
-                                 Core::IrSensor::DeviceFormat& device_format,
+MomentProcessor::MomentProcessor(Core::System& system_, Core::IrSensor::DeviceFormat& device_format,
                                  std::size_t npad_index)
-    : device(device_format) {
-    npad_device = hid_core_.GetEmulatedControllerByIndex(npad_index);
+    : device(device_format), system{system_} {
+    npad_device = system.HIDCore().GetEmulatedControllerByIndex(npad_index);
 
     device.mode = Core::IrSensor::IrSensorMode::MomentProcessor;
     device.camera_status = Core::IrSensor::IrCameraStatus::Unconnected;
@@ -69,7 +70,7 @@ void MomentProcessor::OnControllerUpdate(Core::HID::ControllerTriggerType type) 
     }
 
     next_state.sampling_number = camera_data.sample;
-    next_state.timestamp = next_state.timestamp + 131;
+    next_state.timestamp = system.CoreTiming().GetGlobalTimeNs().count();
     next_state.ambient_noise_level = Core::IrSensor::CameraAmbientNoiseLevel::Low;
     shared_memory->moment_lifo.WriteNextEntry(next_state);
 
