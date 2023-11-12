@@ -1910,7 +1910,8 @@ void GMainWindow::BootGame(const QString& filename, u64 program_id, std::size_t 
                            StartGameType type, AmLaunchType launch_type) {
     LOG_INFO(Frontend, "yuzu starting...");
 
-    if (program_id > static_cast<u64>(Service::AM::Applets::AppletProgramId::MaxProgramId)) {
+    if (program_id == 0 ||
+        program_id > static_cast<u64>(Service::AM::Applets::AppletProgramId::MaxProgramId)) {
         StoreRecentFile(filename); // Put the filename on top of the list
     }
 
@@ -4324,7 +4325,7 @@ void GMainWindow::OnAlbum() {
 
     const auto filename = QString::fromStdString(album_nca->GetFullPath());
     UISettings::values.roms_path = QFileInfo(filename).path();
-    BootGame(filename);
+    BootGame(filename, AlbumId);
 }
 
 void GMainWindow::OnCabinet(Service::NFP::CabinetMode mode) {
@@ -4348,7 +4349,7 @@ void GMainWindow::OnCabinet(Service::NFP::CabinetMode mode) {
 
     const auto filename = QString::fromStdString(cabinet_nca->GetFullPath());
     UISettings::values.roms_path = QFileInfo(filename).path();
-    BootGame(filename);
+    BootGame(filename, CabinetId);
 }
 
 void GMainWindow::OnMiiEdit() {
@@ -4371,7 +4372,7 @@ void GMainWindow::OnMiiEdit() {
 
     const auto filename = QString::fromStdString((mii_applet_nca->GetFullPath()));
     UISettings::values.roms_path = QFileInfo(filename).path();
-    BootGame(filename);
+    BootGame(filename, MiiEditId);
 }
 
 void GMainWindow::OnCaptureScreenshot() {
