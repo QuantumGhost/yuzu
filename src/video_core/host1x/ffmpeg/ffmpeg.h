@@ -191,6 +191,9 @@ private:
 
 class DecodeApi {
 public:
+    YUZU_NON_COPYABLE(DecodeApi);
+    YUZU_NON_MOVEABLE(DecodeApi);
+
     DecodeApi() = default;
     ~DecodeApi() = default;
 

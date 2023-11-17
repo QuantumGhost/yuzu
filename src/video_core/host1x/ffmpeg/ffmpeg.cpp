@@ -217,7 +217,7 @@ bool DecoderContext::OpenContext(const Decoder& decoder) {
 
 bool DecoderContext::SendPacket(const Packet& packet) {
     if (const int ret = avcodec_send_packet(m_codec_context, packet.GetPacket()); ret < 0) {
-        LOG_DEBUG(HW_GPU, "avcodec_send_packet error: {}", AVError(ret));
+        LOG_ERROR(HW_GPU, "avcodec_send_packet error: {}", AVError(ret));
         return false;
     }
 
@@ -229,7 +229,7 @@ std::unique_ptr<Frame> DecoderContext::ReceiveFrame(bool* out_is_interlaced) {
 
     const auto ReceiveImpl = [&](AVFrame* frame) {
         if (const int ret = avcodec_receive_frame(m_codec_context, frame); ret < 0) {
-            LOG_DEBUG(HW_GPU, "avcodec_receive_frame error: {}", AVError(ret));
+            LOG_ERROR(HW_GPU, "avcodec_receive_frame error: {}", AVError(ret));
             return false;
         }
 
@@ -323,7 +323,7 @@ bool DeinterlaceFilter::AddSourceFrame(const Frame& frame) {
     if (const int ret = av_buffersrc_add_frame_flags(m_source_context, frame.GetFrame(),
                                                      AV_BUFFERSRC_FLAG_KEEP_REF);
         ret < 0) {
-        LOG_DEBUG(HW_GPU, "av_buffersrc_add_frame_flags error: {}", AVError(ret));
+        LOG_ERROR(HW_GPU, "av_buffersrc_add_frame_flags error: {}", AVError(ret));
         return false;
     }
 
@@ -339,7 +339,7 @@ std::unique_ptr<Frame> DeinterlaceFilter::DrainSinkFrame() {
     }
 
     if (ret < 0) {
-        LOG_DEBUG(HW_GPU, "av_buffersink_get_frame error: {}", AVError(ret));
+        LOG_ERROR(HW_GPU, "av_buffersink_get_frame error: {}", AVError(ret));
         return {};
     }
 
