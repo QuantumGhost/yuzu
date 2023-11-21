@@ -292,6 +292,7 @@ void NPad::InitNewlyAddedController(Core::HID::NpadIdType npad_id) {
         controller.device->SetPollingMode(Core::HID::EmulatedDeviceIndex::AllDevices,
                                           Common::Input::PollingMode::Active);
     }
+
     SignalStyleSetChangedEvent(npad_id);
     WriteEmptyEntry(controller.shared_memory);
     hid_core.SetLastActiveController(npad_id);
@@ -1340,6 +1341,15 @@ const Core::HID::SixAxisSensorProperties& NPad::GetSixaxisProperties(
     default:
         return controller.shared_memory->sixaxis_fullkey_properties;
     }
+}
+
+NPad::AppletDetailedUiType NPad::GetAppletDetailedUiType(Core::HID::NpadIdType npad_id) {
+    const auto& shared_memory = GetControllerFromNpadIdType(npad_id).shared_memory;
+
+    return {
+        .ui_variant = 0,
+        .footer = shared_memory->applet_footer_type,
+    };
 }
 
 } // namespace Service::HID

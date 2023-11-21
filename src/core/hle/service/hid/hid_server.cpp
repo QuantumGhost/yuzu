@@ -1203,8 +1203,8 @@ void IHidServer::SetNpadJoyAssignmentModeDual(HLERequestContext& ctx) {
     auto controller = GetResourceManager()->GetNpad();
     controller->SetNpadMode(new_npad_id, parameters.npad_id, {}, NPad::NpadJoyAssignmentMode::Dual);
 
-    LOG_INFO(Service_HID, "called, npad_id={}, applet_resource_user_id={}", parameters.npad_id,
-             parameters.applet_resource_user_id);
+    LOG_DEBUG(Service_HID, "called, npad_id={}, applet_resource_user_id={}", parameters.npad_id,
+              parameters.applet_resource_user_id); // Spams a lot when controller applet is open
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(ResultSuccess);
