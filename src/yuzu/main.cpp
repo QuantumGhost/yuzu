@@ -47,6 +47,7 @@
 #include "core/hle/service/am/applet_ae.h"
 #include "core/hle/service/am/applet_oe.h"
 #include "core/hle/service/am/applets/applets.h"
+#include "core/hle/service/set/set_sys.h"
 #include "yuzu/multiplayer/state.h"
 #include "yuzu/util/controller_navigation.h"
 
@@ -186,7 +187,6 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #endif
 
 constexpr int default_mouse_hide_timeout = 2500;
-constexpr int default_mouse_center_timeout = 10;
 constexpr int default_input_update_timeout = 1;
 
 constexpr size_t CopyBufferSize = 1_MiB;
@@ -435,9 +435,6 @@ GMainWindow::GMainWindow(std::unique_ptr<QtConfig> config_, bool has_broken_vulk
     mouse_hide_timer.setInterval(default_mouse_hide_timeout);
     connect(&mouse_hide_timer, &QTimer::timeout, this, &GMainWindow::HideMouseCursor);
     connect(ui->menubar, &QMenuBar::hovered, this, &GMainWindow::ShowMouseCursor);
-
-    mouse_center_timer.setInterval(default_mouse_center_timeout);
-    connect(&mouse_center_timer, &QTimer::timeout, this, &GMainWindow::CenterMouseCursor);
 
     update_input_timer.setInterval(default_input_update_timeout);
     connect(&update_input_timer, &QTimer::timeout, this, &GMainWindow::UpdateInputDrivers);
@@ -1048,7 +1045,12 @@ void GMainWindow::InitializeWidgets() {
         statusBar()->addPermanentWidget(label);
     }
 
-    // TODO (flTobi): Add the widget when multiplayer is fully implemented
+    firmware_label = new QLabel();
+    firmware_label->setObjectName(QStringLiteral("FirmwareLabel"));
+    firmware_label->setVisible(false);
+    firmware_label->setFocusPolicy(Qt::NoFocus);
+    statusBar()->addPermanentWidget(firmware_label);
+
     statusBar()->addPermanentWidget(multiplayer_state->GetStatusText(), 0);
     statusBar()->addPermanentWidget(multiplayer_state->GetStatusIcon(), 0);
 
@@ -1370,14 +1372,6 @@ void GMainWindow::InitializeHotkeys() {
         }
     });
     connect_shortcut(QStringLiteral("Toggle Mouse Panning"), [&] {
-        if (Settings::values.mouse_enabled) {
-            Settings::values.mouse_panning = false;
-            QMessageBox::warning(
-                this, tr("Emulated mouse is enabled"),
-                tr("Real mouse input and mouse panning are incompatible. Please disable the "
-                   "emulated mouse in input advanced settings to allow mouse panning."));
-            return;
-        }
         Settings::values.mouse_panning = !Settings::values.mouse_panning;
         if (Settings::values.mouse_panning) {
             render_window->installEventFilter(render_window);
@@ -2164,6 +2158,10 @@ void GMainWindow::OnEmulationStopped() {
     game_fps_label->setVisible(false);
     emu_frametime_label->setVisible(false);
     renderer_status_button->setEnabled(!UISettings::values.has_broken_vulkan);
+
+    if (!firmware_label->text().isEmpty()) {
+        firmware_label->setVisible(true);
+    }
 
     current_game_path.clear();
 
@@ -4591,6 +4589,7 @@ void GMainWindow::UpdateStatusBar() {
     emu_speed_label->setVisible(!Settings::values.use_multi_core.GetValue());
     game_fps_label->setVisible(true);
     emu_frametime_label->setVisible(true);
+    firmware_label->setVisible(false);
 }
 
 void GMainWindow::UpdateGPUAccuracyButton() {
@@ -4700,26 +4699,10 @@ void GMainWindow::ShowMouseCursor() {
     }
 }
 
-void GMainWindow::CenterMouseCursor() {
-    if (emu_thread == nullptr || !Settings::values.mouse_panning) {
-        mouse_center_timer.stop();
-        return;
-    }
-    if (!this->isActiveWindow()) {
-        mouse_center_timer.stop();
-        return;
-    }
-    const int center_x = render_window->width() / 2;
-    const int center_y = render_window->height() / 2;
-
-    QCursor::setPos(mapToGlobal(QPoint{center_x, center_y}));
-}
-
 void GMainWindow::OnMouseActivity() {
     if (!Settings::values.mouse_panning) {
         ShowMouseCursor();
     }
-    mouse_center_timer.stop();
 }
 
 void GMainWindow::OnReinitializeKeys(ReinitializeKeyBehavior behavior) {
@@ -4810,6 +4793,8 @@ void GMainWindow::OnReinitializeKeys(ReinitializeKeyBehavior behavior) {
                "games."));
     }
 
+    SetFirmwareVersion();
+
     if (behavior == ReinitializeKeyBehavior::Warning) {
         game_list->PopulateAsync(UISettings::values.game_dirs);
     }
@@ -4837,7 +4822,7 @@ bool GMainWindow::CheckSystemArchiveDecryption() {
 }
 
 bool GMainWindow::CheckFirmwarePresence() {
-    constexpr u64 MiiEditId = 0x0100000000001009ull;
+    constexpr u64 MiiEditId = static_cast<u64>(Service::AM::Applets::AppletProgramId::MiiEdit);
 
     auto bis_system = system->GetFileSystemController().GetSystemNANDContents();
     if (!bis_system) {
@@ -4850,6 +4835,28 @@ bool GMainWindow::CheckFirmwarePresence() {
     }
 
     return true;
+}
+
+void GMainWindow::SetFirmwareVersion() {
+    Service::Set::FirmwareVersionFormat firmware_data{};
+    const auto result = Service::Set::GetFirmwareVersionImpl(
+        firmware_data, *system, Service::Set::GetFirmwareVersionType::Version2);
+
+    if (result.IsError() || !CheckFirmwarePresence()) {
+        LOG_INFO(Frontend, "Installed firmware: No firmware available");
+        firmware_label->setVisible(false);
+        return;
+    }
+
+    firmware_label->setVisible(true);
+
+    const std::string display_version(firmware_data.display_version.data());
+    const std::string display_title(firmware_data.display_title.data());
+
+    LOG_INFO(Frontend, "Installed firmware: {}", display_title);
+
+    firmware_label->setText(QString::fromStdString(display_version));
+    firmware_label->setToolTip(QString::fromStdString(display_title));
 }
 
 bool GMainWindow::SelectRomFSDumpTarget(const FileSys::ContentProvider& installed, u64 program_id,
@@ -4994,22 +5001,6 @@ void GMainWindow::dragEnterEvent(QDragEnterEvent* event) {
 
 void GMainWindow::dragMoveEvent(QDragMoveEvent* event) {
     AcceptDropEvent(event);
-}
-
-void GMainWindow::leaveEvent(QEvent* event) {
-    if (Settings::values.mouse_panning) {
-        const QRect& rect = geometry();
-        QPoint position = QCursor::pos();
-
-        qint32 x = qBound(rect.left(), position.x(), rect.right());
-        qint32 y = qBound(rect.top(), position.y(), rect.bottom());
-        // Only start the timer if the mouse has left the window bound.
-        // The leave event is also triggered when the window looses focus.
-        if (x != position.x() || y != position.y()) {
-            mouse_center_timer.start();
-        }
-        event->accept();
-    }
 }
 
 bool GMainWindow::ConfirmChangeGame() {
