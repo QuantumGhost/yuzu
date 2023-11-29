@@ -44,6 +44,7 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QWidget* parent) {
 
     // Cpu
     INSERT(Settings, cpu_accuracy, tr("Accuracy:"), QStringLiteral());
+    INSERT(Settings, cpu_backend, tr("Backend:"), QStringLiteral());
 
     // Cpu Debug
 
@@ -176,6 +177,9 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QWidget* parent) {
     INSERT(UISettings, controller_applet_disabled, tr("Disable controller applet"),
            QStringLiteral());
 
+    // Linux
+    INSERT(Settings, enable_gamemode, tr("Enable Gamemode"), QStringLiteral());
+
     // Ui Debugging
 
     // Ui Multiplayer
@@ -240,6 +244,11 @@ std::unique_ptr<ComboboxTranslationMap> ComboboxEnumeration(QWidget* parent) {
              PAIR(CpuAccuracy, Unsafe, tr("Unsafe")),
              PAIR(CpuAccuracy, Paranoid, tr("Paranoid (disables most optimizations)")),
          }});
+    translations->insert({Settings::EnumMetadata<Settings::CpuBackend>::Index(),
+                          {
+                              PAIR(CpuBackend, Dynarmic, tr("Dynarmic")),
+                              PAIR(CpuBackend, Nce, tr("NCE")),
+                          }});
     translations->insert({Settings::EnumMetadata<Settings::FullscreenMode>::Index(),
                           {
                               PAIR(FullscreenMode, Borderless, tr("Borderless Windowed")),

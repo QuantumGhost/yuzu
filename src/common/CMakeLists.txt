@@ -52,6 +52,7 @@ add_library(common STATIC
     fiber.cpp
     fiber.h
     fixed_point.h
+    free_region_manager.h
     fs/file.cpp
     fs/file.h
     fs/fs.cpp
@@ -166,12 +167,28 @@ if (WIN32)
   target_link_libraries(common PRIVATE ntdll)
 endif()
 
+if (NOT WIN32)
+  target_sources(common PRIVATE
+    signal_chain.cpp
+    signal_chain.h
+  )
+endif()
+
 if(ANDROID)
     target_sources(common
         PRIVATE
             fs/fs_android.cpp
             fs/fs_android.h
     )
+endif()
+
+if (UNIX)
+  target_sources(common PRIVATE
+    linux/gamemode.cpp
+    linux/gamemode.h
+  )
+
+  target_link_libraries(common PRIVATE gamemode)
 endif()
 
 if(ARCHITECTURE_x86_64)
@@ -191,7 +208,7 @@ if(ARCHITECTURE_x86_64)
     target_link_libraries(common PRIVATE xbyak::xbyak)
 endif()
 
-if (ARCHITECTURE_arm64 AND (ANDROID OR LINUX))
+if (HAS_NCE)
     target_sources(common
         PRIVATE
             arm64/native_clock.cpp
