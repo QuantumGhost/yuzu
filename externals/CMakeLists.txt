@@ -193,7 +193,7 @@ if (ANDROID)
    endif()
 endif()
 
-if (UNIX)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_subdirectory(gamemode)
 endif()
 
