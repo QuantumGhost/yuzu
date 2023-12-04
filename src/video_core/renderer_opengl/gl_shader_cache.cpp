@@ -72,8 +72,7 @@ Shader::OutputTopology MaxwellToOutputTopology(Maxwell::PrimitiveTopology topolo
 Shader::RuntimeInfo MakeRuntimeInfo(const GraphicsPipelineKey& key,
                                     const Shader::IR::Program& program,
                                     const Shader::IR::Program* previous_program,
-                                    bool glasm_use_storage_buffers, bool use_assembly_shaders,
-                                    u32 max_num_cbufs) {
+                                    bool glasm_use_storage_buffers, bool use_assembly_shaders) {
     Shader::RuntimeInfo info;
     if (previous_program) {
         info.previous_stage_stores = previous_program->info.stores;
@@ -153,7 +152,6 @@ Shader::RuntimeInfo MakeRuntimeInfo(const GraphicsPipelineKey& key,
         break;
     }
     info.glasm_use_storage_buffers = glasm_use_storage_buffers;
-    info.max_num_cbufs = max_num_cbufs;
     return info;
 }
 
@@ -524,9 +522,8 @@ std::unique_ptr<GraphicsPipeline> ShaderCache::CreateGraphicsPipeline(
         const size_t stage_index{index - 1};
         infos[stage_index] = &program.info;
 
-        const u32 max_num_cbufs{device.GetMaxUniformBuffers(program.stage)};
-        const auto runtime_info{MakeRuntimeInfo(
-            key, program, previous_program, glasm_use_storage_buffers, use_glasm, max_num_cbufs)};
+        const auto runtime_info{
+            MakeRuntimeInfo(key, program, previous_program, glasm_use_storage_buffers, use_glasm)};
         switch (device.GetShaderBackend()) {
         case Settings::ShaderBackend::Glsl:
             ConvertLegacyToGeneric(program, runtime_info);
@@ -583,21 +580,20 @@ std::unique_ptr<ComputePipeline> ShaderCache::CreateComputePipeline(
 
     auto program{TranslateProgram(pools.inst, pools.block, env, cfg, host_info)};
     const u32 num_storage_buffers{Shader::NumDescriptors(program.info.storage_buffers_descriptors)};
-    const Shader::RuntimeInfo info{
-        .glasm_use_storage_buffers = num_storage_buffers <= device.GetMaxGLASMStorageBufferBlocks(),
-        .max_num_cbufs = device.GetMaxUniformBuffers(program.stage),
-    };
+    Shader::RuntimeInfo info;
+    info.glasm_use_storage_buffers = num_storage_buffers <= device.GetMaxGLASMStorageBufferBlocks();
+
     std::string code{};
     std::vector<u32> code_spirv;
     switch (device.GetShaderBackend()) {
     case Settings::ShaderBackend::Glsl:
-        code = EmitGLSL(profile, info, program);
+        code = EmitGLSL(profile, program);
         break;
     case Settings::ShaderBackend::Glasm:
         code = EmitGLASM(profile, info, program);
         break;
     case Settings::ShaderBackend::SpirV:
-        code_spirv = EmitSPIRV(profile, info, program);
+        code_spirv = EmitSPIRV(profile, program);
         break;
     }
 
