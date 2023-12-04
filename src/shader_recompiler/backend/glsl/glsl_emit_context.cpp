@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2021 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "common/div_ceil.h"
 #include "shader_recompiler/backend/bindings.h"
 #include "shader_recompiler/backend/glsl/glsl_emit_context.h"
 #include "shader_recompiler/frontend/ir/program.h"
@@ -430,10 +431,18 @@ void EmitContext::DefineConstantBuffers(Bindings& bindings) {
         return;
     }
     for (const auto& desc : info.constant_buffer_descriptors) {
+        if (bindings.uniform_buffer >= runtime_info.max_num_cbufs) {
+            LOG_WARNING(Shader_GLSL, "Constant buffer binding index {} exceeds device limit of {}",
+                        bindings.uniform_buffer, runtime_info.max_num_cbufs);
+            bindings.uniform_buffer += desc.count;
+            continue;
+        }
         const auto cbuf_type{profile.has_gl_cbuf_ftou_bug ? "uvec4" : "vec4"};
+        const u32 cbuf_used_size{Common::DivCeil(info.constant_buffer_used_sizes[desc.index], 16U)};
+        const u32 cbuf_binding_size{info.uses_global_memory ? 0x1000U : cbuf_used_size};
         header += fmt::format("layout(std140,binding={}) uniform {}_cbuf_{}{{{} {}_cbuf{}[{}];}};",
                               bindings.uniform_buffer, stage_name, desc.index, cbuf_type,
-                              stage_name, desc.index, 4 * 1024);
+                              stage_name, desc.index, cbuf_binding_size);
         bindings.uniform_buffer += desc.count;
     }
 }
