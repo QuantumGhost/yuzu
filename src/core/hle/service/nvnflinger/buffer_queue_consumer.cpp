@@ -90,7 +90,7 @@ Status BufferQueueConsumer::AcquireBuffer(BufferItem* out_buffer,
 
     LOG_DEBUG(Service_Nvnflinger, "acquiring slot={}", slot);
 
-    if (core->StillTracking(*out_buffer)) {
+    if (core->StillTracking(*front)) {
         slots[slot].acquire_called = true;
         slots[slot].buffer_state = BufferState::Acquired;
         slots[slot].fence = Fence::NoFence();
