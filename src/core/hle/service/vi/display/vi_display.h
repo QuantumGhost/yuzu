@@ -66,7 +66,7 @@ public:
 
     /// Whether or not this display has any layers added to it.
     bool HasLayers() const {
-        return !layers.empty();
+        return GetNumLayers() > 0;
     }
 
     /// Gets a layer for this display based off an index.
