@@ -165,6 +165,12 @@ void PresentManager::Present(Frame* frame) {
         return;
     }
 
+    {
+        // If we have run too far ahead of command processing, wait.
+        std::unique_lock lock{queue_mutex};
+        frame_cv.wait(lock, [&] { return present_queue.size() < FRAMES_IN_FLIGHT - 1; });
+    }
+
     scheduler.Record([this, frame](vk::CommandBuffer) {
         std::unique_lock lock{queue_mutex};
         present_queue.push(frame);

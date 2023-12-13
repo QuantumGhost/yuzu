@@ -22,6 +22,10 @@ class Device;
 class Scheduler;
 class Swapchain;
 
+// This should be plenty for the vast majority of cases. Most desktop platforms only
+// provide up to 3 swapchain images.
+constexpr size_t FRAMES_IN_FLIGHT = 7;
+
 struct Frame {
     u32 width;
     u32 height;
