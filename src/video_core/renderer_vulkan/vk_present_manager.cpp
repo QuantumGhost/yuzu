@@ -102,8 +102,8 @@ PresentManager::PresentManager(const vk::Instance& instance_,
       memory_allocator{memory_allocator_}, scheduler{scheduler_}, swapchain{swapchain_},
       surface{surface_}, blit_supported{CanBlitToSwapchain(device.GetPhysical(),
                                                            swapchain.GetImageViewFormat())},
-      use_present_thread{Settings::values.async_presentation.GetValue()},
-      image_count{swapchain.GetImageCount()} {
+      use_present_thread{Settings::values.async_presentation.GetValue()} {
+    SetImageCount();
 
     auto& dld = device.GetLogical();
     cmdpool = dld.CreateCommandPool({
@@ -163,12 +163,6 @@ void PresentManager::Present(Frame* frame) {
         CopyToSwapchain(frame);
         free_queue.push(frame);
         return;
-    }
-
-    {
-        // If we have run too far ahead of command processing, wait.
-        std::unique_lock lock{queue_mutex};
-        frame_cv.wait(lock, [&] { return present_queue.size() < FRAMES_IN_FLIGHT - 1; });
     }
 
     scheduler.Record([this, frame](vk::CommandBuffer) {
@@ -296,6 +290,13 @@ void PresentManager::PresentThread(std::stop_token token) {
 void PresentManager::RecreateSwapchain(Frame* frame) {
     swapchain.Create(*surface, frame->width, frame->height);
     image_count = swapchain.GetImageCount();
+}
+
+void PresentManager::SetImageCount() {
+    // We cannot have more than 5 images in flight at any given time.
+    // FRAMES_IN_FLIGHT is 7, and the cache TICKS_TO_DESTROY is 6.
+    // Mali drivers will give us 6.
+    image_count = std::min<size_t>(swapchain.GetImageCount(), 5);
 }
 
 void PresentManager::CopyToSwapchain(Frame* frame) {
