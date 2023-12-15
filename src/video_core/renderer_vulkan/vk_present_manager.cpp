@@ -289,7 +289,7 @@ void PresentManager::PresentThread(std::stop_token token) {
 
 void PresentManager::RecreateSwapchain(Frame* frame) {
     swapchain.Create(*surface, frame->width, frame->height);
-    image_count = swapchain.GetImageCount();
+    SetImageCount();
 }
 
 void PresentManager::SetImageCount() {
