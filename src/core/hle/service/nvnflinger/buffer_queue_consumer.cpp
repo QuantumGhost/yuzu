@@ -157,6 +157,7 @@ Status BufferQueueConsumer::ReleaseBuffer(s32 slot, u64 frame_number, const Fenc
         } else if (slots[slot].needs_cleanup_on_release) {
             LOG_DEBUG(Service_Nvnflinger, "releasing a stale buffer slot {} (state = {})", slot,
                       slots[slot].buffer_state);
+            slots[slot].needs_cleanup_on_release = false;
             return Status::StaleBufferSlot;
         } else {
             LOG_ERROR(Service_Nvnflinger,
