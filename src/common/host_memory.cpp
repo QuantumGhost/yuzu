@@ -633,7 +633,9 @@ public:
 
     void Protect(size_t virtual_offset, size_t length, bool read, bool write, bool execute) {}
 
-    void ClearBackingRegion(size_t physical_offset, size_t length) {}
+    bool ClearBackingRegion(size_t physical_offset, size_t length) {
+        return false;
+    }
 
     void EnableDirectMappedAddress() {}
 

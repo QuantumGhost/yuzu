@@ -8,6 +8,7 @@
 #include <string>
 #include <thread>
 
+#include "common/polyfill_thread.h"
 #include "common/uuid.h"
 #include "core/hle/result.h"
 #include "core/hle/service/service.h"
@@ -127,6 +128,8 @@ private:
     void GetUserSystemClockAutomaticCorrectionUpdatedTime(HLERequestContext& ctx);
     void SetUserSystemClockAutomaticCorrectionUpdatedTime(HLERequestContext& ctx);
     void GetChineseTraditionalInputMethod(HLERequestContext& ctx);
+    void GetHomeMenuScheme(HLERequestContext& ctx);
+    void GetHomeMenuSchemeModel(HLERequestContext& ctx);
     void GetFieldTestingFlag(HLERequestContext& ctx);
 
     bool LoadSettingsFile(std::filesystem::path& path, auto&& default_func);

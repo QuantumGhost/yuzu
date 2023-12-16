@@ -49,6 +49,16 @@ enum class ChineseTraditionalInputMethod : u32 {
     Unknown2 = 2,
 };
 
+/// This is nn::settings::system::HomeMenuScheme
+struct HomeMenuScheme {
+    u32 main;
+    u32 back;
+    u32 sub;
+    u32 bezel;
+    u32 extra;
+};
+static_assert(sizeof(HomeMenuScheme) == 0x14, "HomeMenuScheme is incorrect size");
+
 /// Indicates the current theme set by the system settings
 enum class ColorSet : u32 {
     BasicWhite = 0,
