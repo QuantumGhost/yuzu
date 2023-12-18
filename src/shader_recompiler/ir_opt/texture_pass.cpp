@@ -538,6 +538,14 @@ void TexturePass(Environment& env, IR::Program& program, const HostTranslateInfo
             flags.type.Assign(ReadTextureType(env, cbuf));
             inst->SetFlags(flags);
             break;
+        case IR::Opcode::ImageSampleImplicitLod:
+            if (flags.type != TextureType::Color2D) {
+                break;
+            }
+            if (ReadTextureType(env, cbuf) == TextureType::Color2DRect) {
+                PatchImageSampleImplicitLod(*texture_inst.block, *texture_inst.inst);
+            }
+            break;
         case IR::Opcode::ImageFetch:
             if (flags.type == TextureType::Color2D || flags.type == TextureType::Color2DRect ||
                 flags.type == TextureType::ColorArray2D) {
@@ -653,19 +661,6 @@ void TexturePass(Environment& env, IR::Program& program, const HostTranslateInfo
             if (pixel_format != TexturePixelFormat::OTHER) {
                 PatchTexelFetch(*texture_inst.block, *texture_inst.inst, pixel_format);
             }
-        }
-
-        switch (inst->GetOpcode()) {
-        case IR::Opcode::ImageSampleImplicitLod:
-            if (flags.type != TextureType::Color2D) {
-                break;
-            }
-            if (ReadTextureType(env, cbuf) == TextureType::Color2DRect) {
-                PatchImageSampleImplicitLod(*texture_inst.block, *texture_inst.inst);
-            }
-            break;
-        default:
-            break;
         }
     }
 }
