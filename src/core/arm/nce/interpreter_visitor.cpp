@@ -5,8 +5,6 @@
 #include "common/bit_cast.h"
 #include "core/arm/nce/interpreter_visitor.h"
 
-#include <dynarmic/frontend/A64/decoder/a64.h>
-
 namespace Core {
 
 template <u32 BitSize>
@@ -249,6 +247,7 @@ bool InterpreterVisitor::LDR_lit_fpsimd(Imm<2> opc, Imm<19> imm19, Vec Vt) {
         return false;
     }
 
+    // Size in bytes
     const u64 size = 4 << opc.ZeroExtend();
     const u64 offset = imm19.SignExtend<u64>() << 2;
     const u64 address = this->GetPc() + offset;
@@ -530,7 +529,7 @@ bool InterpreterVisitor::SIMDImmediate(bool wback, bool postindex, size_t scale,
     }
     case MemOp::Load: {
         u128 data{};
-        m_memory.ReadBlock(address, &data, datasize);
+        m_memory.ReadBlock(address, &data, datasize / 8);
         this->SetVec(Vt, data);
         break;
     }
