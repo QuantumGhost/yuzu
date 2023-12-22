@@ -196,42 +196,34 @@ Id Texture(EmitContext& ctx, IR::TextureInstInfo info, [[maybe_unused]] const IR
 }
 
 Id TextureImage(EmitContext& ctx, IR::TextureInstInfo info, const IR::Value& index) {
+    if (!index.IsImmediate() || index.U32() != 0) {
+        throw NotImplementedException("Indirect image indexing");
+    }
     if (info.type == TextureType::Buffer) {
         const TextureBufferDefinition& def{ctx.texture_buffers.at(info.descriptor_index)};
         if (def.count > 1) {
-            const Id buffer_pointer{ctx.OpAccessChain(def.pointer_type, def.id, ctx.Def(index))};
-            return ctx.OpLoad(ctx.image_buffer_type, buffer_pointer);
-        } else {
-            return ctx.OpLoad(ctx.image_buffer_type, def.id);
+            throw NotImplementedException("Indirect texture sample");
         }
+        return ctx.OpLoad(ctx.image_buffer_type, def.id);
     } else {
         const TextureDefinition& def{ctx.textures.at(info.descriptor_index)};
         if (def.count > 1) {
-            const Id texture_pointer{ctx.OpAccessChain(def.pointer_type, def.id, ctx.Def(index))};
-            return ctx.OpImage(def.image_type, ctx.OpLoad(def.sampled_type, texture_pointer));
-        } else {
-            return ctx.OpImage(def.image_type, ctx.OpLoad(def.sampled_type, def.id));
+            throw NotImplementedException("Indirect texture sample");
         }
+        return ctx.OpImage(def.image_type, ctx.OpLoad(def.sampled_type, def.id));
     }
 }
 
-Id Image(EmitContext& ctx, const IR::Value& index, IR::TextureInstInfo info) {
+std::pair<Id, bool> Image(EmitContext& ctx, const IR::Value& index, IR::TextureInstInfo info) {
+    if (!index.IsImmediate() || index.U32() != 0) {
+        throw NotImplementedException("Indirect image indexing");
+    }
     if (info.type == TextureType::Buffer) {
         const ImageBufferDefinition def{ctx.image_buffers.at(info.descriptor_index)};
-        if (def.count > 1) {
-            const Id image_pointer{ctx.OpAccessChain(def.pointer_type, def.id, ctx.Def(index))};
-            return ctx.OpLoad(def.image_type, image_pointer);
-        } else {
-            return ctx.OpLoad(def.image_type, def.id);
-        }
+        return {ctx.OpLoad(def.image_type, def.id), def.is_integer};
     } else {
         const ImageDefinition def{ctx.images.at(info.descriptor_index)};
-        if (def.count > 1) {
-            const Id image_pointer{ctx.OpAccessChain(def.pointer_type, def.id, ctx.Def(index))};
-            return ctx.OpLoad(def.image_type, image_pointer);
-        } else {
-            return ctx.OpLoad(def.image_type, def.id);
-        }
+        return {ctx.OpLoad(def.image_type, def.id), def.is_integer};
     }
 }
 
@@ -574,13 +566,23 @@ Id EmitImageRead(EmitContext& ctx, IR::Inst* inst, const IR::Value& index, Id co
         LOG_WARNING(Shader_SPIRV, "Typeless image read not supported by host");
         return ctx.ConstantNull(ctx.U32[4]);
     }
-    return Emit(&EmitContext::OpImageSparseRead, &EmitContext::OpImageRead, ctx, inst, ctx.U32[4],
-                Image(ctx, index, info), coords, std::nullopt, std::span<const Id>{});
+    const auto [image, is_integer] = Image(ctx, index, info);
+    const Id result_type{is_integer ? ctx.U32[4] : ctx.F32[4]};
+    Id color{Emit(&EmitContext::OpImageSparseRead, &EmitContext::OpImageRead, ctx, inst,
+                  result_type, image, coords, std::nullopt, std::span<const Id>{})};
+    if (!is_integer) {
+        color = ctx.OpBitcast(ctx.U32[4], color);
+    }
+    return color;
 }
 
 void EmitImageWrite(EmitContext& ctx, IR::Inst* inst, const IR::Value& index, Id coords, Id color) {
     const auto info{inst->Flags<IR::TextureInstInfo>()};
-    ctx.OpImageWrite(Image(ctx, index, info), coords, color);
+    const auto [image, is_integer] = Image(ctx, index, info);
+    if (!is_integer) {
+        color = ctx.OpBitcast(ctx.F32[4], color);
+    }
+    ctx.OpImageWrite(image, coords, color);
 }
 
 Id EmitIsTextureScaled(EmitContext& ctx, const IR::Value& index) {

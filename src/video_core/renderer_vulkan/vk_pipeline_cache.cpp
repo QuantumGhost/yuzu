@@ -54,7 +54,7 @@ using VideoCommon::FileEnvironment;
 using VideoCommon::GenericEnvironment;
 using VideoCommon::GraphicsEnvironment;
 
-constexpr u32 CACHE_VERSION = 10;
+constexpr u32 CACHE_VERSION = 11;
 constexpr std::array<char, 8> VULKAN_CACHE_MAGIC_NUMBER{'y', 'u', 'z', 'u', 'v', 'k', 'c', 'h'};
 
 template <typename Container>
@@ -388,9 +388,6 @@ PipelineCache::PipelineCache(RasterizerVulkan& rasterizer_, const Device& device
         .min_ssbo_alignment = static_cast<u32>(device.GetStorageBufferAlignment()),
         .support_geometry_shader_passthrough = device.IsNvGeometryShaderPassthroughSupported(),
         .support_conditional_barrier = device.SupportsConditionalBarriers(),
-        .support_ufloat_write_as_uint = driver_id != VK_DRIVER_ID_QUALCOMM_PROPRIETARY &&
-                                        driver_id != VK_DRIVER_ID_MESA_TURNIP &&
-                                        driver_id != VK_DRIVER_ID_ARM_PROPRIETARY,
     };
 
     if (device.GetMaxVertexInputAttributes() < Maxwell::NumVertexAttributes) {
