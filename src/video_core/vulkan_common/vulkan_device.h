@@ -651,10 +651,6 @@ public:
         return properties.properties.limits.maxViewports;
     }
 
-    u32 GetMaxUserClipDistances() const {
-        return properties.properties.limits.maxClipDistances;
-    }
-
     bool SupportsConditionalBarriers() const {
         return supports_conditional_barriers;
     }
