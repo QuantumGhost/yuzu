@@ -12,11 +12,9 @@ struct AnalogStickState;
 } // namespace Core::HID
 
 namespace Service::HID {
-struct MouseSharedMemoryFormat;
-
 class Mouse final : public ControllerBase {
 public:
-    explicit Mouse(Core::HID::HIDCore& hid_core_, MouseSharedMemoryFormat& mouse_shared_memory);
+    explicit Mouse(Core::HID::HIDCore& hid_core_);
     ~Mouse() override;
 
     // Called when the controller is initialized
@@ -31,7 +29,6 @@ public:
 private:
     Core::HID::MouseState next_state{};
     Core::HID::AnalogStickState last_mouse_wheel_state{};
-    MouseSharedMemoryFormat& shared_memory;
     Core::HID::EmulatedDevices* emulated_devices = nullptr;
 };
 } // namespace Service::HID

@@ -5,13 +5,13 @@
 #include "core/frontend/emu_window.h"
 #include "core/hid/emulated_devices.h"
 #include "core/hid/hid_core.h"
+#include "core/hle/service/hid/controllers/applet_resource.h"
 #include "core/hle/service/hid/controllers/mouse.h"
-#include "core/hle/service/hid/controllers/shared_memory_format.h"
+#include "core/hle/service/hid/controllers/types/shared_memory_format.h"
 
 namespace Service::HID {
 
-Mouse::Mouse(Core::HID::HIDCore& hid_core_, MouseSharedMemoryFormat& mouse_shared_memory)
-    : ControllerBase{hid_core_}, shared_memory{mouse_shared_memory} {
+Mouse::Mouse(Core::HID::HIDCore& hid_core_) : ControllerBase{hid_core_} {
     emulated_devices = hid_core.GetEmulatedDevices();
 }
 
@@ -21,6 +21,15 @@ void Mouse::OnInit() {}
 void Mouse::OnRelease() {}
 
 void Mouse::OnUpdate(const Core::Timing::CoreTiming& core_timing) {
+    const u64 aruid = applet_resource->GetActiveAruid();
+    auto* data = applet_resource->GetAruidData(aruid);
+
+    if (data == nullptr) {
+        return;
+    }
+
+    MouseSharedMemoryFormat& shared_memory = data->shared_memory_format->mouse;
+
     if (!IsControllerActivated()) {
         shared_memory.mouse_lifo.buffer_count = 0;
         shared_memory.mouse_lifo.buffer_tail = 0;

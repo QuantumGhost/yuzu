@@ -18,8 +18,7 @@ struct TouchScreenSharedMemoryFormat;
 
 class TouchScreen final : public ControllerBase {
 public:
-    explicit TouchScreen(Core::HID::HIDCore& hid_core_,
-                         TouchScreenSharedMemoryFormat& touch_shared_memory);
+    explicit TouchScreen(Core::HID::HIDCore& hid_core_);
     ~TouchScreen() override;
 
     // Called when the controller is initialized
@@ -35,7 +34,6 @@ public:
 
 private:
     TouchScreenState next_state{};
-    TouchScreenSharedMemoryFormat& shared_memory;
     Core::HID::EmulatedConsole* console = nullptr;
 
     std::array<Core::HID::TouchFinger, MAX_FINGERS> fingers{};
