@@ -989,7 +989,7 @@ void IHidServer::SetSupportedNpadStyleSet(HLERequestContext& ctx) {
         Core::HID::NpadStyleTag style_tag{parameters.supported_style_set};
         const auto revision = npad->GetRevision(parameters.applet_resource_user_id);
 
-        if (style_tag.gamecube != 0 && revision < NpadRevision::Revision3) {
+        if (style_tag.palma != 0 && revision < NpadRevision::Revision3) {
             // GetResourceManager()->GetPalma()->EnableBoostMode(parameters.applet_resource_user_id,
             //                                                   true);
         }
@@ -1346,6 +1346,7 @@ void IHidServer::SwapNpadAssignment(HLERequestContext& ctx) {
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(result);
 }
+
 void IHidServer::IsUnintendedHomeButtonInputProtectionEnabled(HLERequestContext& ctx) {
     IPC::RequestParser rp{ctx};
     struct Parameters {
@@ -1357,8 +1358,8 @@ void IHidServer::IsUnintendedHomeButtonInputProtectionEnabled(HLERequestContext&
 
     const auto parameters{rp.PopRaw<Parameters>()};
 
-    LOG_WARNING(Service_HID, "(STUBBED) called, npad_id={}, applet_resource_user_id={}",
-                parameters.npad_id, parameters.applet_resource_user_id);
+    LOG_INFO(Service_HID, "called, npad_id={}, applet_resource_user_id={}", parameters.npad_id,
+             parameters.applet_resource_user_id);
 
     if (!IsNpadIdValid(parameters.npad_id)) {
         IPC::ResponseBuilder rb{ctx, 3};
@@ -1373,7 +1374,7 @@ void IHidServer::IsUnintendedHomeButtonInputProtectionEnabled(HLERequestContext&
 
     IPC::ResponseBuilder rb{ctx, 3};
     rb.Push(result);
-    rb.Push<u8>(is_enabled);
+    rb.Push(is_enabled);
 }
 
 void IHidServer::EnableUnintendedHomeButtonInputProtection(HLERequestContext& ctx) {
@@ -1388,9 +1389,8 @@ void IHidServer::EnableUnintendedHomeButtonInputProtection(HLERequestContext& ct
 
     const auto parameters{rp.PopRaw<Parameters>()};
 
-    LOG_WARNING(Service_HID,
-                "(STUBBED) called, is_enabled={}, npad_id={}, applet_resource_user_id={}",
-                parameters.is_enabled, parameters.npad_id, parameters.applet_resource_user_id);
+    LOG_INFO(Service_HID, "called, is_enabled={}, npad_id={}, applet_resource_user_id={}",
+             parameters.is_enabled, parameters.npad_id, parameters.applet_resource_user_id);
 
     if (!IsNpadIdValid(parameters.npad_id)) {
         IPC::ResponseBuilder rb{ctx, 3};
