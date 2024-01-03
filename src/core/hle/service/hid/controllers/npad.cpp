@@ -120,11 +120,12 @@ void NPad::ControllerUpdate(Core::HID::ControllerTriggerType type, std::size_t c
         ControllerUpdate(Core::HID::ControllerTriggerType::Battery, controller_idx);
         return;
     }
-    if (controller_idx >= controller_data.size()) {
-        return;
-    }
 
     for (std::size_t aruid_index = 0; aruid_index < AruidIndexMax; aruid_index++) {
+        if (controller_idx >= controller_data[aruid_index].size()) {
+            return;
+        }
+
         auto* data = applet_resource_holder.applet_resource->GetAruidDataByIndex(aruid_index);
 
         if (!data->flag.is_assigned) {
@@ -464,7 +465,7 @@ void NPad::OnUpdate(const Core::Timing::CoreTiming& core_timing) {
             continue;
         }
 
-        for (std::size_t i = 0; i < controller_data.size(); ++i) {
+        for (std::size_t i = 0; i < controller_data[aruid_index].size(); ++i) {
             auto& controller = controller_data[aruid_index][i];
             controller.shared_memory =
                 &data->shared_memory_format->npad.npad_entry[i].internal_state;

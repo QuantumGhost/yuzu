@@ -1,7 +1,7 @@
 yuzu emulator early access
 =============
 
-This is the source code for early-access 4044.
+This is the source code for early-access 4045.
 
 ## Legal Notice
 
