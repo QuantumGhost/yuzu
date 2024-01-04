@@ -153,6 +153,8 @@ bool NPadData::IsNpadStyleIndexSupported(Core::HID::NpadStyleIndex style_index) 
     switch (style_index) {
     case Core::HID::NpadStyleIndex::ProController:
         return style.fullkey.As<bool>();
+    case Core::HID::NpadStyleIndex::Handheld:
+        return style.handheld.As<bool>();
     case Core::HID::NpadStyleIndex::JoyconDual:
         return style.joycon_dual.As<bool>();
     case Core::HID::NpadStyleIndex::JoyconLeft:
