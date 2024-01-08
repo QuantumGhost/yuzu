@@ -9,7 +9,6 @@
 #include "common/common_funcs.h"
 #include "common/common_types.h"
 #include "core/hle/service/set/private_settings.h"
-#include "core/hle/service/time/clock_types.h"
 
 namespace Service::Set {
 
@@ -208,7 +207,7 @@ struct TvSettings {
     CmuMode cmu_mode;
     u32 tv_underscan;
     f32 tv_gama;
-    f32 constrast_ratio;
+    f32 contrast_ratio;
 };
 static_assert(sizeof(TvSettings) == 0x20, "TvSettings is an invalid size");
 
@@ -270,7 +269,7 @@ struct EulaVersion {
     EulaVersionClockType clock_type;
     INSERT_PADDING_BYTES(0x4);
     s64 posix_time;
-    Time::Clock::SteadyClockTimePoint timestamp;
+    Service::PSC::Time::SteadyClockTimePoint timestamp;
 };
 static_assert(sizeof(EulaVersion) == 0x30, "EulaVersion is incorrect size");
 
@@ -341,7 +340,7 @@ struct SystemSettings {
     std::array<u8, 0x3C> reserved_09934;
 
     // nn::settings::system::ErrorReportSharePermission
-    ErrorReportSharePermission error_report_share_permssion;
+    ErrorReportSharePermission error_report_share_permission;
 
     std::array<u8, 0x3C> reserved_09974;
 
@@ -481,13 +480,13 @@ struct SystemSettings {
     std::array<u8, 0x64> reserved_2951C;
 
     // nn::time::SystemClockContext
-    Service::Time::Clock::SystemClockContext user_system_clock_context;
-    Service::Time::Clock::SystemClockContext network_system_clock_context;
+    Service::PSC::Time::SystemClockContext user_system_clock_context;
+    Service::PSC::Time::SystemClockContext network_system_clock_context;
     bool user_system_clock_automatic_correction_enabled;
     std::array<u8, 0x3> pad_295C1;
     std::array<u8, 0x4> reserved_295C4;
     // nn::time::SteadyClockTimePoint
-    Service::Time::Clock::SteadyClockTimePoint
+    Service::PSC::Time::SteadyClockTimePoint
         user_system_clock_automatic_correction_updated_time_point;
 
     std::array<u8, 0x10> reserved_295E0;
@@ -580,10 +579,10 @@ struct SystemSettings {
     std::array<u8, 0x6B> reserved_29ED5;
 
     // nn::time::LocationName
-    Service::Time::TimeZone::LocationName device_time_zone_location_name;
+    Service::PSC::Time::LocationName device_time_zone_location_name;
     std::array<u8, 0x4> reserved_29F64;
     // nn::time::SteadyClockTimePoint
-    Service::Time::Clock::SteadyClockTimePoint device_time_zone_location_updated_time;
+    Service::PSC::Time::SteadyClockTimePoint device_time_zone_location_updated_time;
 
     std::array<u8, 0xC0> reserved_29F80;
 

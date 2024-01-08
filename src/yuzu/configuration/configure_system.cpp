@@ -14,7 +14,6 @@
 #include <QMessageBox>
 #include "common/settings.h"
 #include "core/core.h"
-#include "core/hle/service/time/time_manager.h"
 #include "ui_configure_system.h"
 #include "yuzu/configuration/configuration_shared.h"
 #include "yuzu/configuration/configure_system.h"
