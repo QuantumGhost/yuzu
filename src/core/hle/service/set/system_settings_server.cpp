@@ -489,10 +489,11 @@ void ISystemSettingsServer::SetExternalSteadyClockSourceId(HLERequestContext& ct
 void ISystemSettingsServer::GetUserSystemClockContext(HLERequestContext& ctx) {
     LOG_INFO(Service_SET, "called");
 
-    Service::PSC::Time::SystemClockContext context{};
+    Service::Time::Clock::SystemClockContext context{};
     auto res = GetUserSystemClockContext(context);
 
-    IPC::ResponseBuilder rb{ctx, 2 + sizeof(Service::PSC::Time::SystemClockContext) / sizeof(u32)};
+    IPC::ResponseBuilder rb{ctx,
+                            2 + sizeof(Service::Time::Clock::SystemClockContext) / sizeof(u32)};
     rb.Push(res);
     rb.PushRaw(context);
 }
@@ -501,7 +502,7 @@ void ISystemSettingsServer::SetUserSystemClockContext(HLERequestContext& ctx) {
     LOG_INFO(Service_SET, "called");
 
     IPC::RequestParser rp{ctx};
-    auto context{rp.PopRaw<Service::PSC::Time::SystemClockContext>()};
+    auto context{rp.PopRaw<Service::Time::Clock::SystemClockContext>()};
 
     auto res = SetUserSystemClockContext(context);
 
@@ -752,19 +753,19 @@ void ISystemSettingsServer::GetQuestFlag(HLERequestContext& ctx) {
 void ISystemSettingsServer::GetDeviceTimeZoneLocationName(HLERequestContext& ctx) {
     LOG_WARNING(Service_SET, "called");
 
-    Service::PSC::Time::LocationName name{};
+    Service::Time::TimeZone::LocationName name{};
     auto res = GetDeviceTimeZoneLocationName(name);
 
-    IPC::ResponseBuilder rb{ctx, 2 + sizeof(Service::PSC::Time::LocationName) / sizeof(u32)};
+    IPC::ResponseBuilder rb{ctx, 2 + sizeof(Service::Time::TimeZone::LocationName) / sizeof(u32)};
     rb.Push(res);
-    rb.PushRaw<Service::PSC::Time::LocationName>(name);
+    rb.PushRaw<Service::Time::TimeZone::LocationName>(name);
 }
 
 void ISystemSettingsServer::SetDeviceTimeZoneLocationName(HLERequestContext& ctx) {
     LOG_WARNING(Service_SET, "called");
 
     IPC::RequestParser rp{ctx};
-    auto name{rp.PopRaw<Service::PSC::Time::LocationName>()};
+    auto name{rp.PopRaw<Service::Time::TimeZone::LocationName>()};
 
     auto res = SetDeviceTimeZoneLocationName(name);
 
@@ -786,10 +787,11 @@ void ISystemSettingsServer::SetRegionCode(HLERequestContext& ctx) {
 void ISystemSettingsServer::GetNetworkSystemClockContext(HLERequestContext& ctx) {
     LOG_INFO(Service_SET, "called");
 
-    Service::PSC::Time::SystemClockContext context{};
+    Service::Time::Clock::SystemClockContext context{};
     auto res = GetNetworkSystemClockContext(context);
 
-    IPC::ResponseBuilder rb{ctx, 2 + sizeof(Service::PSC::Time::SystemClockContext) / sizeof(u32)};
+    IPC::ResponseBuilder rb{ctx,
+                            2 + sizeof(Service::Time::Clock::SystemClockContext) / sizeof(u32)};
     rb.Push(res);
     rb.PushRaw(context);
 }
@@ -798,7 +800,7 @@ void ISystemSettingsServer::SetNetworkSystemClockContext(HLERequestContext& ctx)
     LOG_INFO(Service_SET, "called");
 
     IPC::RequestParser rp{ctx};
-    auto context{rp.PopRaw<Service::PSC::Time::SystemClockContext>()};
+    auto context{rp.PopRaw<Service::Time::Clock::SystemClockContext>()};
 
     auto res = SetNetworkSystemClockContext(context);
 
@@ -1014,19 +1016,19 @@ void ISystemSettingsServer::GetKeyboardLayout(HLERequestContext& ctx) {
 void ISystemSettingsServer::GetDeviceTimeZoneLocationUpdatedTime(HLERequestContext& ctx) {
     LOG_WARNING(Service_SET, "called.");
 
-    Service::PSC::Time::SteadyClockTimePoint time_point{};
+    Service::Time::Clock::SteadyClockTimePoint time_point{};
     auto res = GetDeviceTimeZoneLocationUpdatedTime(time_point);
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(res);
-    rb.PushRaw<Service::PSC::Time::SteadyClockTimePoint>(time_point);
+    rb.PushRaw<Service::Time::Clock::SteadyClockTimePoint>(time_point);
 }
 
 void ISystemSettingsServer::SetDeviceTimeZoneLocationUpdatedTime(HLERequestContext& ctx) {
     LOG_WARNING(Service_SET, "called.");
 
     IPC::RequestParser rp{ctx};
-    auto time_point{rp.PopRaw<Service::PSC::Time::SteadyClockTimePoint>()};
+    auto time_point{rp.PopRaw<Service::Time::Clock::SteadyClockTimePoint>()};
 
     auto res = SetDeviceTimeZoneLocationUpdatedTime(time_point);
 
@@ -1038,12 +1040,12 @@ void ISystemSettingsServer::GetUserSystemClockAutomaticCorrectionUpdatedTime(
     HLERequestContext& ctx) {
     LOG_WARNING(Service_SET, "called.");
 
-    Service::PSC::Time::SteadyClockTimePoint time_point{};
+    Service::Time::Clock::SteadyClockTimePoint time_point{};
     auto res = GetUserSystemClockAutomaticCorrectionUpdatedTime(time_point);
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(res);
-    rb.PushRaw<Service::PSC::Time::SteadyClockTimePoint>(time_point);
+    rb.PushRaw<Service::Time::Clock::SteadyClockTimePoint>(time_point);
 }
 
 void ISystemSettingsServer::SetUserSystemClockAutomaticCorrectionUpdatedTime(
@@ -1051,7 +1053,7 @@ void ISystemSettingsServer::SetUserSystemClockAutomaticCorrectionUpdatedTime(
     LOG_WARNING(Service_SET, "called.");
 
     IPC::RequestParser rp{ctx};
-    auto time_point{rp.PopRaw<Service::PSC::Time::SteadyClockTimePoint>()};
+    auto time_point{rp.PopRaw<Service::Time::Clock::SteadyClockTimePoint>()};
 
     auto res = SetUserSystemClockAutomaticCorrectionUpdatedTime(time_point);
 
@@ -1129,25 +1131,25 @@ void ISystemSettingsServer::StoreSettings() {
     auto system_dir =
         Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir) / "system/save/8000000000000050";
     if (!StoreSettingsFile(system_dir, m_system_settings)) {
-        LOG_ERROR(Service_SET, "Failed to store System settings");
+        LOG_ERROR(HW_GPU, "Failed to store System settings");
     }
 
     auto private_dir =
         Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir) / "system/save/8000000000000052";
     if (!StoreSettingsFile(private_dir, m_private_settings)) {
-        LOG_ERROR(Service_SET, "Failed to store Private settings");
+        LOG_ERROR(HW_GPU, "Failed to store Private settings");
     }
 
     auto device_dir =
         Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir) / "system/save/8000000000000053";
     if (!StoreSettingsFile(device_dir, m_device_settings)) {
-        LOG_ERROR(Service_SET, "Failed to store Device settings");
+        LOG_ERROR(HW_GPU, "Failed to store Device settings");
     }
 
     auto appln_dir =
         Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir) / "system/save/8000000000000054";
     if (!StoreSettingsFile(appln_dir, m_appln_settings)) {
-        LOG_ERROR(Service_SET, "Failed to store ApplLn settings");
+        LOG_ERROR(HW_GPU, "Failed to store ApplLn settings");
     }
 }
 
@@ -1190,39 +1192,39 @@ Result ISystemSettingsServer::SetExternalSteadyClockSourceId(Common::UUID id) {
 }
 
 Result ISystemSettingsServer::GetUserSystemClockContext(
-    Service::PSC::Time::SystemClockContext& out_context) {
+    Service::Time::Clock::SystemClockContext& out_context) {
     out_context = m_system_settings.user_system_clock_context;
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::SetUserSystemClockContext(
-    Service::PSC::Time::SystemClockContext& context) {
+    Service::Time::Clock::SystemClockContext& context) {
     m_system_settings.user_system_clock_context = context;
     SetSaveNeeded();
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::GetDeviceTimeZoneLocationName(
-    Service::PSC::Time::LocationName& out_name) {
+    Service::Time::TimeZone::LocationName& out_name) {
     out_name = m_system_settings.device_time_zone_location_name;
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::SetDeviceTimeZoneLocationName(
-    Service::PSC::Time::LocationName& name) {
+    Service::Time::TimeZone::LocationName& name) {
     m_system_settings.device_time_zone_location_name = name;
     SetSaveNeeded();
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::GetNetworkSystemClockContext(
-    Service::PSC::Time::SystemClockContext& out_context) {
+    Service::Time::Clock::SystemClockContext& out_context) {
     out_context = m_system_settings.network_system_clock_context;
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::SetNetworkSystemClockContext(
-    Service::PSC::Time::SystemClockContext& context) {
+    Service::Time::Clock::SystemClockContext& context) {
     m_system_settings.network_system_clock_context = context;
     SetSaveNeeded();
     R_SUCCEED();
@@ -1251,26 +1253,26 @@ Result ISystemSettingsServer::GetExternalSteadyClockInternalOffset(s64& out_offs
 }
 
 Result ISystemSettingsServer::GetDeviceTimeZoneLocationUpdatedTime(
-    Service::PSC::Time::SteadyClockTimePoint& out_time_point) {
+    Service::Time::Clock::SteadyClockTimePoint& out_time_point) {
     out_time_point = m_system_settings.device_time_zone_location_updated_time;
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::SetDeviceTimeZoneLocationUpdatedTime(
-    Service::PSC::Time::SteadyClockTimePoint& time_point) {
+    Service::Time::Clock::SteadyClockTimePoint& time_point) {
     m_system_settings.device_time_zone_location_updated_time = time_point;
     SetSaveNeeded();
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::GetUserSystemClockAutomaticCorrectionUpdatedTime(
-    Service::PSC::Time::SteadyClockTimePoint& out_time_point) {
+    Service::Time::Clock::SteadyClockTimePoint& out_time_point) {
     out_time_point = m_system_settings.user_system_clock_automatic_correction_updated_time_point;
     R_SUCCEED();
 }
 
 Result ISystemSettingsServer::SetUserSystemClockAutomaticCorrectionUpdatedTime(
-    Service::PSC::Time::SteadyClockTimePoint out_time_point) {
+    Service::Time::Clock::SteadyClockTimePoint out_time_point) {
     m_system_settings.user_system_clock_automatic_correction_updated_time_point = out_time_point;
     SetSaveNeeded();
     R_SUCCEED();

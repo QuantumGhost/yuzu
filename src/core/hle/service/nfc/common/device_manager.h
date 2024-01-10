@@ -13,6 +13,7 @@
 #include "core/hle/service/nfc/nfc_types.h"
 #include "core/hle/service/nfp/nfp_types.h"
 #include "core/hle/service/service.h"
+#include "core/hle/service/time/clock_types.h"
 #include "hid_core/hid_types.h"
 
 namespace Service::NFC {
@@ -41,7 +42,7 @@ public:
                       std::span<MifareReadBlockData> read_data);
     Result WriteMifare(u64 device_handle,
                        std::span<const MifareWriteBlockParameter> write_parameters);
-    Result SendCommandByPassThrough(u64 device_handle, const s64& timeout,
+    Result SendCommandByPassThrough(u64 device_handle, const Time::Clock::TimeSpanType& timeout,
                                     std::span<const u8> command_data, std::span<u8> out_data);
 
     // Nfp device manager
@@ -91,7 +92,7 @@ private:
     const std::optional<std::shared_ptr<NfcDevice>> GetNfcDevice(u64 handle) const;
 
     bool is_initialized = false;
-    s64 time_since_last_error = 0;
+    u64 time_since_last_error = 0;
     mutable std::mutex mutex;
     std::array<std::shared_ptr<NfcDevice>, 10> devices{};
 

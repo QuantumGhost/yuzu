@@ -12,8 +12,9 @@
 namespace Common {
 
 struct UUID {
-    std::array<u8, 0x10> uuid;
+    std::array<u8, 0x10> uuid{};
 
+    /// Constructs an invalid UUID.
     constexpr UUID() = default;
 
     /// Constructs a UUID from a reference to a 128 bit array.
@@ -32,6 +33,14 @@ struct UUID {
      * an assert will be triggered and an invalid UUID is set instead.
      */
     explicit UUID(std::string_view uuid_string);
+
+    ~UUID() = default;
+
+    constexpr UUID(const UUID&) noexcept = default;
+    constexpr UUID(UUID&&) noexcept = default;
+
+    constexpr UUID& operator=(const UUID&) noexcept = default;
+    constexpr UUID& operator=(UUID&&) noexcept = default;
 
     /**
      * Returns whether the stored UUID is valid or not.
@@ -112,7 +121,6 @@ struct UUID {
     friend constexpr bool operator==(const UUID& lhs, const UUID& rhs) = default;
 };
 static_assert(sizeof(UUID) == 0x10, "UUID has incorrect size.");
-static_assert(std::is_trivial_v<UUID>);
 
 /// An invalid UUID. This UUID has all its bytes set to 0.
 constexpr UUID InvalidUUID = {};

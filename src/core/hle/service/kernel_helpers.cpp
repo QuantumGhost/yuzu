@@ -65,9 +65,6 @@ Kernel::KEvent* ServiceContext::CreateEvent(std::string&& name) {
 }
 
 void ServiceContext::CloseEvent(Kernel::KEvent* event) {
-    if (!event) {
-        return;
-    }
     event->GetReadableEvent().Close();
     event->Close();
 }

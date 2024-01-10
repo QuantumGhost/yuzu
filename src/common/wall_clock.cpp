@@ -18,39 +18,34 @@ namespace Common {
 
 class StandardWallClock final : public WallClock {
 public:
-    explicit StandardWallClock() {}
-
-    void Reset() override {
-        start_time = std::chrono::system_clock::now();
-    }
+    explicit StandardWallClock() : start_time{SteadyClock::Now()} {}
 
     std::chrono::nanoseconds GetTimeNS() const override {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
+        return SteadyClock::Now() - start_time;
     }
 
     std::chrono::microseconds GetTimeUS() const override {
-        return std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
+        return static_cast<std::chrono::microseconds>(GetHostTicksElapsed() / NsToUsRatio::den);
     }
 
     std::chrono::milliseconds GetTimeMS() const override {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
+        return static_cast<std::chrono::milliseconds>(GetHostTicksElapsed() / NsToMsRatio::den);
     }
 
-    s64 GetCNTPCT() const override {
-        return GetUptime() * NsToCNTPCTRatio::num / NsToCNTPCTRatio::den;
+    u64 GetCNTPCT() const override {
+        return GetHostTicksElapsed() * NsToCNTPCTRatio::num / NsToCNTPCTRatio::den;
     }
 
-    s64 GetGPUTick() const override {
-        return GetUptime() * NsToGPUTickRatio::num / NsToGPUTickRatio::den;
+    u64 GetGPUTick() const override {
+        return GetHostTicksElapsed() * NsToGPUTickRatio::num / NsToGPUTickRatio::den;
     }
 
-    s64 GetUptime() const override {
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   std::chrono::system_clock::now() - start_time)
-            .count();
+    u64 GetHostTicksNow() const override {
+        return static_cast<u64>(SteadyClock::Now().time_since_epoch().count());
+    }
+
+    u64 GetHostTicksElapsed() const override {
+        return static_cast<u64>(GetTimeNS().count());
     }
 
     bool IsNative() const override {
@@ -58,7 +53,7 @@ public:
     }
 
 private:
-    std::chrono::system_clock::time_point start_time{};
+    SteadyClock::time_point start_time;
 };
 
 std::unique_ptr<WallClock> CreateOptimalClock() {
