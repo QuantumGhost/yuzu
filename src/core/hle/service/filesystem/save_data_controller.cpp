@@ -40,7 +40,7 @@ Result SaveDataController::CreateSaveData(FileSys::VirtualDir* out_save_data,
                                           FileSys::SaveDataSpaceId space,
                                           const FileSys::SaveDataAttribute& attribute) {
     LOG_TRACE(Service_FS, "Creating Save Data for space_id={:01X}, save_struct={}", space,
-              save_struct.DebugInfo());
+              attribute.DebugInfo());
 
     auto save_data = factory->Create(space, attribute);
     if (save_data == nullptr) {
