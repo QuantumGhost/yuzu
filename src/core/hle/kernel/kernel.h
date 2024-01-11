@@ -5,7 +5,6 @@
 
 #include <array>
 #include <functional>
-#include <list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -117,9 +116,8 @@ public:
     /// Retrieves a shared pointer to the system resource limit instance.
     KResourceLimit* GetSystemResourceLimit();
 
-    /// Adds/removes the given pointer to an internal list of active processes.
+    /// Adds the given shared pointer to an internal list of active processes.
     void AppendNewProcess(KProcess* process);
-    void RemoveProcess(KProcess* process);
 
     /// Makes the given process the new application process.
     void MakeApplicationProcess(KProcess* process);
@@ -131,7 +129,7 @@ public:
     const KProcess* ApplicationProcess() const;
 
     /// Retrieves the list of processes.
-    std::list<KScopedAutoObject<KProcess>> GetProcessList();
+    const std::vector<KProcess*>& GetProcessList() const;
 
     /// Gets the sole instance of the global scheduler
     Kernel::GlobalSchedulerContext& GlobalSchedulerContext();

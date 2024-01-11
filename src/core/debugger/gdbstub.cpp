@@ -108,9 +108,9 @@ static std::string EscapeXML(std::string_view data) {
     return escaped;
 }
 
-GDBStub::GDBStub(DebuggerBackend& backend_, Core::System& system_, Kernel::KProcess* debug_process_)
-    : DebuggerFrontend(backend_), system{system_}, debug_process{debug_process_} {
-    if (GetProcess()->Is64Bit()) {
+GDBStub::GDBStub(DebuggerBackend& backend_, Core::System& system_)
+    : DebuggerFrontend(backend_), system{system_} {
+    if (system.ApplicationProcess()->Is64Bit()) {
         arch = std::make_unique<GDBStubA64>();
     } else {
         arch = std::make_unique<GDBStubA32>();
@@ -276,7 +276,7 @@ void GDBStub::ExecuteCommand(std::string_view packet, std::vector<DebuggerAction
         const size_t size{static_cast<size_t>(strtoll(command.data() + sep, nullptr, 16))};
 
         std::vector<u8> mem(size);
-        if (GetMemory().ReadBlock(addr, mem.data(), size)) {
+        if (system.ApplicationMemory().ReadBlock(addr, mem.data(), size)) {
             // Restore any bytes belonging to replaced instructions.
             auto it = replaced_instructions.lower_bound(addr);
             for (; it != replaced_instructions.end() && it->first < addr + size; it++) {
@@ -310,8 +310,8 @@ void GDBStub::ExecuteCommand(std::string_view packet, std::vector<DebuggerAction
         const auto mem_substr{std::string_view(command).substr(mem_sep)};
         const auto mem{Common::HexStringToVector(mem_substr, false)};
 
-        if (GetMemory().WriteBlock(addr, mem.data(), size)) {
-            Core::InvalidateInstructionCacheRange(GetProcess(), addr, size);
+        if (system.ApplicationMemory().WriteBlock(addr, mem.data(), size)) {
+            Core::InvalidateInstructionCacheRange(system.ApplicationProcess(), addr, size);
             SendReply(GDB_STUB_REPLY_OK);
         } else {
             SendReply(GDB_STUB_REPLY_ERR);
@@ -353,7 +353,7 @@ void GDBStub::HandleBreakpointInsert(std::string_view command) {
     const size_t addr{static_cast<size_t>(strtoll(command.data() + addr_sep, nullptr, 16))};
     const size_t size{static_cast<size_t>(strtoll(command.data() + size_sep, nullptr, 16))};
 
-    if (!GetMemory().IsValidVirtualAddressRange(addr, size)) {
+    if (!system.ApplicationMemory().IsValidVirtualAddressRange(addr, size)) {
         SendReply(GDB_STUB_REPLY_ERR);
         return;
     }
@@ -362,20 +362,22 @@ void GDBStub::HandleBreakpointInsert(std::string_view command) {
 
     switch (type) {
     case BreakpointType::Software:
-        replaced_instructions[addr] = GetMemory().Read32(addr);
-        GetMemory().Write32(addr, arch->BreakpointInstruction());
-        Core::InvalidateInstructionCacheRange(GetProcess(), addr, sizeof(u32));
+        replaced_instructions[addr] = system.ApplicationMemory().Read32(addr);
+        system.ApplicationMemory().Write32(addr, arch->BreakpointInstruction());
+        Core::InvalidateInstructionCacheRange(system.ApplicationProcess(), addr, sizeof(u32));
         success = true;
         break;
     case BreakpointType::WriteWatch:
-        success = GetProcess()->InsertWatchpoint(addr, size, Kernel::DebugWatchpointType::Write);
+        success = system.ApplicationProcess()->InsertWatchpoint(addr, size,
+                                                                Kernel::DebugWatchpointType::Write);
         break;
     case BreakpointType::ReadWatch:
-        success = GetProcess()->InsertWatchpoint(addr, size, Kernel::DebugWatchpointType::Read);
+        success = system.ApplicationProcess()->InsertWatchpoint(addr, size,
+                                                                Kernel::DebugWatchpointType::Read);
         break;
     case BreakpointType::AccessWatch:
-        success =
-            GetProcess()->InsertWatchpoint(addr, size, Kernel::DebugWatchpointType::ReadOrWrite);
+        success = system.ApplicationProcess()->InsertWatchpoint(
+            addr, size, Kernel::DebugWatchpointType::ReadOrWrite);
         break;
     case BreakpointType::Hardware:
     default:
@@ -398,7 +400,7 @@ void GDBStub::HandleBreakpointRemove(std::string_view command) {
     const size_t addr{static_cast<size_t>(strtoll(command.data() + addr_sep, nullptr, 16))};
     const size_t size{static_cast<size_t>(strtoll(command.data() + size_sep, nullptr, 16))};
 
-    if (!GetMemory().IsValidVirtualAddressRange(addr, size)) {
+    if (!system.ApplicationMemory().IsValidVirtualAddressRange(addr, size)) {
         SendReply(GDB_STUB_REPLY_ERR);
         return;
     }
@@ -409,22 +411,24 @@ void GDBStub::HandleBreakpointRemove(std::string_view command) {
     case BreakpointType::Software: {
         const auto orig_insn{replaced_instructions.find(addr)};
         if (orig_insn != replaced_instructions.end()) {
-            GetMemory().Write32(addr, orig_insn->second);
-            Core::InvalidateInstructionCacheRange(GetProcess(), addr, sizeof(u32));
+            system.ApplicationMemory().Write32(addr, orig_insn->second);
+            Core::InvalidateInstructionCacheRange(system.ApplicationProcess(), addr, sizeof(u32));
             replaced_instructions.erase(addr);
             success = true;
         }
         break;
     }
     case BreakpointType::WriteWatch:
-        success = GetProcess()->RemoveWatchpoint(addr, size, Kernel::DebugWatchpointType::Write);
+        success = system.ApplicationProcess()->RemoveWatchpoint(addr, size,
+                                                                Kernel::DebugWatchpointType::Write);
         break;
     case BreakpointType::ReadWatch:
-        success = GetProcess()->RemoveWatchpoint(addr, size, Kernel::DebugWatchpointType::Read);
+        success = system.ApplicationProcess()->RemoveWatchpoint(addr, size,
+                                                                Kernel::DebugWatchpointType::Read);
         break;
     case BreakpointType::AccessWatch:
-        success =
-            GetProcess()->RemoveWatchpoint(addr, size, Kernel::DebugWatchpointType::ReadOrWrite);
+        success = system.ApplicationProcess()->RemoveWatchpoint(
+            addr, size, Kernel::DebugWatchpointType::ReadOrWrite);
         break;
     case BreakpointType::Hardware:
     default:
@@ -462,10 +466,10 @@ void GDBStub::HandleQuery(std::string_view command) {
         const auto target_xml{arch->GetTargetXML()};
         SendReply(PaginateBuffer(target_xml, command.substr(30)));
     } else if (command.starts_with("Offsets")) {
-        const auto main_offset = Core::FindMainModuleEntrypoint(GetProcess());
+        const auto main_offset = Core::FindMainModuleEntrypoint(system.ApplicationProcess());
         SendReply(fmt::format("TextSeg={:x}", GetInteger(main_offset)));
     } else if (command.starts_with("Xfer:libraries:read::")) {
-        auto modules = Core::FindModules(GetProcess());
+        auto modules = Core::FindModules(system.ApplicationProcess());
 
         std::string buffer;
         buffer += R"(<?xml version="1.0"?>)";
@@ -479,7 +483,7 @@ void GDBStub::HandleQuery(std::string_view command) {
         SendReply(PaginateBuffer(buffer, command.substr(21)));
     } else if (command.starts_with("fThreadInfo")) {
         // beginning of list
-        const auto& threads = GetProcess()->GetThreadList();
+        const auto& threads = system.ApplicationProcess()->GetThreadList();
         std::vector<std::string> thread_ids;
         for (const auto& thread : threads) {
             thread_ids.push_back(fmt::format("{:x}", thread.GetThreadId()));
@@ -493,7 +497,7 @@ void GDBStub::HandleQuery(std::string_view command) {
         buffer += R"(<?xml version="1.0"?>)";
         buffer += "<threads>";
 
-        const auto& threads = GetProcess()->GetThreadList();
+        const auto& threads = system.ApplicationProcess()->GetThreadList();
         for (const auto& thread : threads) {
             auto thread_name{Core::GetThreadName(&thread)};
             if (!thread_name) {
@@ -609,7 +613,7 @@ void GDBStub::HandleRcmd(const std::vector<u8>& command) {
     std::string_view command_str{reinterpret_cast<const char*>(&command[0]), command.size()};
     std::string reply;
 
-    auto* process = GetProcess();
+    auto* process = system.ApplicationProcess();
     auto& page_table = process->GetPageTable();
 
     const char* commands = "Commands:\n"
@@ -710,7 +714,7 @@ void GDBStub::HandleRcmd(const std::vector<u8>& command) {
 }
 
 Kernel::KThread* GDBStub::GetThreadByID(u64 thread_id) {
-    auto& threads{GetProcess()->GetThreadList()};
+    auto& threads{system.ApplicationProcess()->GetThreadList()};
     for (auto& thread : threads) {
         if (thread.GetThreadId() == thread_id) {
             return std::addressof(thread);
@@ -777,14 +781,6 @@ void GDBStub::SendStatus(char status) {
     std::array<u8, 1> buf = {static_cast<u8>(status)};
     LOG_TRACE(Debug_GDBStub, "Writing status: {}", status);
     backend.WriteToClient(buf);
-}
-
-Kernel::KProcess* GDBStub::GetProcess() {
-    return debug_process;
-}
-
-Core::Memory::Memory& GDBStub::GetMemory() {
-    return GetProcess()->GetMemory();
 }
 
 } // namespace Core

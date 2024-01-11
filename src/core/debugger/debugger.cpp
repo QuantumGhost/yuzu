@@ -114,7 +114,7 @@ public:
     }
 
     Kernel::KThread* GetActiveThread() override {
-        return state->active_thread.GetPointerUnsafe();
+        return state->active_thread;
     }
 
 private:
@@ -147,14 +147,11 @@ private:
 
         std::scoped_lock lk{connection_lock};
 
-        // Find the process we are going to debug.
-        SetDebugProcess();
-
         // Ensure everything is stopped.
         PauseEmulation();
 
         // Set up the new frontend.
-        frontend = std::make_unique<GDBStub>(*this, system, debug_process.GetPointerUnsafe());
+        frontend = std::make_unique<GDBStub>(*this, system);
 
         // Set the new state. This will tear down any existing state.
         state = ConnectionState{
@@ -197,19 +194,14 @@ private:
             UpdateActiveThread();
 
             if (state->info.type == SignalType::Watchpoint) {
-                frontend->Watchpoint(std::addressof(*state->active_thread),
-                                     *state->info.watchpoint);
+                frontend->Watchpoint(state->active_thread, *state->info.watchpoint);
             } else {
-                frontend->Stopped(std::addressof(*state->active_thread));
+                frontend->Stopped(state->active_thread);
             }
 
             break;
         case SignalType::ShuttingDown:
             frontend->ShuttingDown();
-
-            // Release members.
-            state->active_thread.Reset(nullptr);
-            debug_process.Reset(nullptr);
 
             // Wait for emulation to shut down gracefully now.
             state->signal_pipe.close();
@@ -230,7 +222,7 @@ private:
                 stopped = true;
                 PauseEmulation();
                 UpdateActiveThread();
-                frontend->Stopped(state->active_thread.GetPointerUnsafe());
+                frontend->Stopped(state->active_thread);
                 break;
             }
             case DebuggerAction::Continue:
@@ -240,7 +232,7 @@ private:
                 MarkResumed([&] {
                     state->active_thread->SetStepState(Kernel::StepState::StepPending);
                     state->active_thread->Resume(Kernel::SuspendType::Debug);
-                    ResumeEmulation(state->active_thread.GetPointerUnsafe());
+                    ResumeEmulation(state->active_thread);
                 });
                 break;
             case DebuggerAction::StepThreadLocked: {
@@ -263,7 +255,6 @@ private:
     }
 
     void PauseEmulation() {
-        Kernel::KScopedLightLock ll{debug_process->GetListLock()};
         Kernel::KScopedSchedulerLock sl{system.Kernel()};
 
         // Put all threads to sleep on next scheduler round.
@@ -273,9 +264,6 @@ private:
     }
 
     void ResumeEmulation(Kernel::KThread* except = nullptr) {
-        Kernel::KScopedLightLock ll{debug_process->GetListLock()};
-        Kernel::KScopedSchedulerLock sl{system.Kernel()};
-
         // Wake up all threads.
         for (auto& thread : ThreadList()) {
             if (std::addressof(thread) == except) {
@@ -289,16 +277,15 @@ private:
 
     template <typename Callback>
     void MarkResumed(Callback&& cb) {
+        Kernel::KScopedSchedulerLock sl{system.Kernel()};
         stopped = false;
         cb();
     }
 
     void UpdateActiveThread() {
-        Kernel::KScopedLightLock ll{debug_process->GetListLock()};
-
         auto& threads{ThreadList()};
         for (auto& thread : threads) {
-            if (std::addressof(thread) == state->active_thread.GetPointerUnsafe()) {
+            if (std::addressof(thread) == state->active_thread) {
                 // Thread is still alive, no need to update.
                 return;
             }
@@ -306,18 +293,12 @@ private:
         state->active_thread = std::addressof(threads.front());
     }
 
-private:
-    void SetDebugProcess() {
-        debug_process = std::move(system.Kernel().GetProcessList().back());
-    }
-
     Kernel::KProcess::ThreadList& ThreadList() {
-        return debug_process->GetThreadList();
+        return system.ApplicationProcess()->GetThreadList();
     }
 
 private:
     System& system;
-    Kernel::KScopedAutoObject<Kernel::KProcess> debug_process;
     std::unique_ptr<DebuggerFrontend> frontend;
 
     boost::asio::io_context io_context;
@@ -329,7 +310,7 @@ private:
         boost::process::async_pipe signal_pipe;
 
         SignalInfo info;
-        Kernel::KScopedAutoObject<Kernel::KThread> active_thread;
+        Kernel::KThread* active_thread;
         std::array<u8, 4096> client_data;
         bool pipe_data;
     };

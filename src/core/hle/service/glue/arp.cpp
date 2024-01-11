@@ -15,10 +15,9 @@
 namespace Service::Glue {
 
 namespace {
-std::optional<u64> GetTitleIDForProcessID(Core::System& system, u64 process_id) {
-    auto list = system.Kernel().GetProcessList();
-
-    const auto iter = std::find_if(list.begin(), list.end(), [&process_id](auto& process) {
+std::optional<u64> GetTitleIDForProcessID(const Core::System& system, u64 process_id) {
+    const auto& list = system.Kernel().GetProcessList();
+    const auto iter = std::find_if(list.begin(), list.end(), [&process_id](const auto& process) {
         return process->GetProcessId() == process_id;
     });
 

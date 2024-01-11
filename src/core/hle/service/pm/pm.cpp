@@ -22,26 +22,27 @@ constexpr Result ResultProcessNotFound{ErrorModule::PM, 1};
 
 constexpr u64 NO_PROCESS_FOUND_PID{0};
 
-using ProcessList = std::list<Kernel::KScopedAutoObject<Kernel::KProcess>>;
-
-template <typename F>
-Kernel::KScopedAutoObject<Kernel::KProcess> SearchProcessList(ProcessList& process_list,
-                                                              F&& predicate) {
+std::optional<Kernel::KProcess*> SearchProcessList(
+    const std::vector<Kernel::KProcess*>& process_list,
+    std::function<bool(Kernel::KProcess*)> predicate) {
     const auto iter = std::find_if(process_list.begin(), process_list.end(), predicate);
 
     if (iter == process_list.end()) {
-        return nullptr;
+        return std::nullopt;
     }
 
-    return iter->GetPointerUnsafe();
+    return *iter;
 }
 
-void GetApplicationPidGeneric(HLERequestContext& ctx, ProcessList& process_list) {
-    auto process = SearchProcessList(process_list, [](auto& p) { return p->IsApplication(); });
+void GetApplicationPidGeneric(HLERequestContext& ctx,
+                              const std::vector<Kernel::KProcess*>& process_list) {
+    const auto process = SearchProcessList(process_list, [](const auto& proc) {
+        return proc->GetProcessId() == Kernel::KProcess::ProcessIdMin;
+    });
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(ResultSuccess);
-    rb.Push(process.IsNull() ? NO_PROCESS_FOUND_PID : process->GetProcessId());
+    rb.Push(process.has_value() ? (*process)->GetProcessId() : NO_PROCESS_FOUND_PID);
 }
 
 } // Anonymous namespace
@@ -79,7 +80,8 @@ private:
 
 class DebugMonitor final : public ServiceFramework<DebugMonitor> {
 public:
-    explicit DebugMonitor(Core::System& system_) : ServiceFramework{system_, "pm:dmnt"} {
+    explicit DebugMonitor(Core::System& system_)
+        : ServiceFramework{system_, "pm:dmnt"}, kernel{system_.Kernel()} {
         // clang-format off
         static const FunctionInfo functions[] = {
             {0, nullptr, "GetJitDebugProcessIdList"},
@@ -104,11 +106,12 @@ private:
 
         LOG_DEBUG(Service_PM, "called, program_id={:016X}", program_id);
 
-        auto list = kernel.GetProcessList();
-        auto process = SearchProcessList(
-            list, [program_id](auto& p) { return p->GetProgramId() == program_id; });
+        const auto process =
+            SearchProcessList(kernel.GetProcessList(), [program_id](const auto& proc) {
+                return proc->GetProgramId() == program_id;
+            });
 
-        if (process.IsNull()) {
+        if (!process.has_value()) {
             IPC::ResponseBuilder rb{ctx, 2};
             rb.Push(ResultProcessNotFound);
             return;
@@ -116,13 +119,12 @@ private:
 
         IPC::ResponseBuilder rb{ctx, 4};
         rb.Push(ResultSuccess);
-        rb.Push(process->GetProcessId());
+        rb.Push((*process)->GetProcessId());
     }
 
     void GetApplicationProcessId(HLERequestContext& ctx) {
         LOG_DEBUG(Service_PM, "called");
-        auto list = kernel.GetProcessList();
-        GetApplicationPidGeneric(ctx, list);
+        GetApplicationPidGeneric(ctx, kernel.GetProcessList());
     }
 
     void AtmosphereGetProcessInfo(HLERequestContext& ctx) {
@@ -133,10 +135,11 @@ private:
 
         LOG_WARNING(Service_PM, "(Partial Implementation) called, pid={:016X}", pid);
 
-        auto list = kernel.GetProcessList();
-        auto process = SearchProcessList(list, [pid](auto& p) { return p->GetProcessId() == pid; });
+        const auto process = SearchProcessList(kernel.GetProcessList(), [pid](const auto& proc) {
+            return proc->GetProcessId() == pid;
+        });
 
-        if (process.IsNull()) {
+        if (!process.has_value()) {
             IPC::ResponseBuilder rb{ctx, 2};
             rb.Push(ResultProcessNotFound);
             return;
@@ -156,7 +159,7 @@ private:
 
         OverrideStatus override_status{};
         ProgramLocation program_location{
-            .program_id = process->GetProgramId(),
+            .program_id = (*process)->GetProgramId(),
             .storage_id = 0,
         };
 
@@ -166,11 +169,14 @@ private:
         rb.PushRaw(program_location);
         rb.PushRaw(override_status);
     }
+
+    const Kernel::KernelCore& kernel;
 };
 
 class Info final : public ServiceFramework<Info> {
 public:
-    explicit Info(Core::System& system_) : ServiceFramework{system_, "pm:info"} {
+    explicit Info(Core::System& system_, const std::vector<Kernel::KProcess*>& process_list_)
+        : ServiceFramework{system_, "pm:info"}, process_list{process_list_} {
         static const FunctionInfo functions[] = {
             {0, &Info::GetProgramId, "GetProgramId"},
             {65000, &Info::AtmosphereGetProcessId, "AtmosphereGetProcessId"},
@@ -187,11 +193,11 @@ private:
 
         LOG_DEBUG(Service_PM, "called, process_id={:016X}", process_id);
 
-        auto list = kernel.GetProcessList();
-        auto process = SearchProcessList(
-            list, [process_id](auto& p) { return p->GetProcessId() == process_id; });
+        const auto process = SearchProcessList(process_list, [process_id](const auto& proc) {
+            return proc->GetProcessId() == process_id;
+        });
 
-        if (process.IsNull()) {
+        if (!process.has_value()) {
             IPC::ResponseBuilder rb{ctx, 2};
             rb.Push(ResultProcessNotFound);
             return;
@@ -199,7 +205,7 @@ private:
 
         IPC::ResponseBuilder rb{ctx, 4};
         rb.Push(ResultSuccess);
-        rb.Push(process->GetProgramId());
+        rb.Push((*process)->GetProgramId());
     }
 
     void AtmosphereGetProcessId(HLERequestContext& ctx) {
@@ -208,11 +214,11 @@ private:
 
         LOG_DEBUG(Service_PM, "called, program_id={:016X}", program_id);
 
-        auto list = system.Kernel().GetProcessList();
-        auto process = SearchProcessList(
-            list, [program_id](auto& p) { return p->GetProgramId() == program_id; });
+        const auto process = SearchProcessList(process_list, [program_id](const auto& proc) {
+            return proc->GetProgramId() == program_id;
+        });
 
-        if (process.IsNull()) {
+        if (!process.has_value()) {
             IPC::ResponseBuilder rb{ctx, 2};
             rb.Push(ResultProcessNotFound);
             return;
@@ -220,13 +226,16 @@ private:
 
         IPC::ResponseBuilder rb{ctx, 4};
         rb.Push(ResultSuccess);
-        rb.Push(process->GetProcessId());
+        rb.Push((*process)->GetProcessId());
     }
+
+    const std::vector<Kernel::KProcess*>& process_list;
 };
 
 class Shell final : public ServiceFramework<Shell> {
 public:
-    explicit Shell(Core::System& system_) : ServiceFramework{system_, "pm:shell"} {
+    explicit Shell(Core::System& system_)
+        : ServiceFramework{system_, "pm:shell"}, kernel{system_.Kernel()} {
         // clang-format off
         static const FunctionInfo functions[] = {
             {0, nullptr, "LaunchProgram"},
@@ -248,9 +257,10 @@ public:
 private:
     void GetApplicationProcessIdForShell(HLERequestContext& ctx) {
         LOG_DEBUG(Service_PM, "called");
-        auto list = kernel.GetProcessList();
-        GetApplicationPidGeneric(ctx, list);
+        GetApplicationPidGeneric(ctx, kernel.GetProcessList());
     }
+
+    const Kernel::KernelCore& kernel;
 };
 
 void LoopProcess(Core::System& system) {
@@ -258,7 +268,8 @@ void LoopProcess(Core::System& system) {
 
     server_manager->RegisterNamedService("pm:bm", std::make_shared<BootMode>(system));
     server_manager->RegisterNamedService("pm:dmnt", std::make_shared<DebugMonitor>(system));
-    server_manager->RegisterNamedService("pm:info", std::make_shared<Info>(system));
+    server_manager->RegisterNamedService(
+        "pm:info", std::make_shared<Info>(system, system.Kernel().GetProcessList()));
     server_manager->RegisterNamedService("pm:shell", std::make_shared<Shell>(system));
     ServerManager::RunServer(std::move(server_manager));
 }
