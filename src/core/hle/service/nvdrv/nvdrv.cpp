@@ -52,15 +52,15 @@ void LoopProcess(Nvnflinger::Nvnflinger& nvnflinger, Core::System& system) {
         return std::make_shared<NVDRV>(system, module, "nvdrv:a");
     };
     const auto NvdrvInterfaceFactoryForSysmodules = [&, module] {
-        return std::make_shared<NVDRV>(system, module, "nvdrv:a");
+        return std::make_shared<NVDRV>(system, module, "nvdrv:s");
     };
-    const auto NvdrvInterfaceFactory = [&, module] {
+    const auto NvdrvInterfaceFactoryForTesting = [&, module] {
         return std::make_shared<NVDRV>(system, module, "nvdrv:t");
     };
     server_manager->RegisterNamedService("nvdrv", NvdrvInterfaceFactoryForApplication);
     server_manager->RegisterNamedService("nvdrv:a", NvdrvInterfaceFactoryForApplets);
     server_manager->RegisterNamedService("nvdrv:s", NvdrvInterfaceFactoryForSysmodules);
-    server_manager->RegisterNamedService("nvdrv:t", NvdrvInterfaceFactory);
+    server_manager->RegisterNamedService("nvdrv:t", NvdrvInterfaceFactoryForTesting);
     server_manager->RegisterNamedService("nvmemp", std::make_shared<NVMEMP>(system));
     nvnflinger.SetNVDrvInstance(module);
     ServerManager::RunServer(std::move(server_manager));
@@ -122,7 +122,7 @@ NvResult Module::VerifyFD(DeviceFD fd) const {
     return NvResult::Success;
 }
 
-DeviceFD Module::Open(const std::string& device_name, size_t session_id) {
+DeviceFD Module::Open(const std::string& device_name, NvCore::SessionId session_id) {
     auto it = builders.find(device_name);
     if (it == builders.end()) {
         LOG_ERROR(Service_NVDRV, "Trying to open unknown device {}", device_name);

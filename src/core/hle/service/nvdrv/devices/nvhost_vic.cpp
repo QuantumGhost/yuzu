@@ -68,7 +68,7 @@ NvResult nvhost_vic::Ioctl3(DeviceFD fd, Ioctl command, std::span<const u8> inpu
     return NvResult::NotImplemented;
 }
 
-void nvhost_vic::OnOpen(size_t session_id, DeviceFD fd) {
+void nvhost_vic::OnOpen(NvCore::SessionId session_id, DeviceFD fd) {
     sessions[fd] = session_id;
 }
 
@@ -78,10 +78,7 @@ void nvhost_vic::OnClose(DeviceFD fd) {
     if (iter != host1x_file.fd_to_id.end()) {
         system.GPU().ClearCdmaInstance(iter->second);
     }
-    auto it = sessions.find(fd);
-    if (it != sessions.end()) {
-        sessions.erase(it);
-    }
+    sessions.erase(fd);
 }
 
 } // namespace Service::Nvidia::Devices
