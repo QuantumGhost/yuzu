@@ -26,7 +26,7 @@ public:
 
     ~TimeZoneService() override = default;
 
-    Result GetDeviceLocationName(LocationName& out_lcoation_name);
+    Result GetDeviceLocationName(LocationName& out_location_name);
     Result GetTotalLocationNameCount(u32& out_count);
     Result GetTimeZoneRuleVersion(RuleVersion& out_rule_version);
     Result GetDeviceLocationNameAndUpdatedTime(SteadyClockTimePoint& out_time_point,

@@ -55,9 +55,9 @@ Result MountTimeZoneBinary(Core::System& system) {
 
     nca = bis_system->GetEntry(TimeZoneBinaryId, FileSys::ContentRecordType::Data);
 
-    R_UNLESS(nca, ResultUnknown);
-
-    g_time_zone_binary_romfs = FileSys::ExtractRomFS(nca->GetRomFS());
+    if (nca) {
+        g_time_zone_binary_romfs = FileSys::ExtractRomFS(nca->GetRomFS());
+    }
 
     if (!g_time_zone_binary_romfs) {
         g_time_zone_binary_romfs = FileSys::ExtractRomFS(

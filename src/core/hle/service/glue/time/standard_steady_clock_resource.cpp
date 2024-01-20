@@ -16,12 +16,12 @@ namespace {
 [[maybe_unused]] constexpr u32 Max77620RtcSession = 0x3B000001;
 
 Result GetTimeInSeconds(Core::System& system, s64& out_time_s) {
+    out_time_s = std::chrono::duration_cast<std::chrono::seconds>(
+                     std::chrono::system_clock::now().time_since_epoch())
+                     .count();
+
     if (Settings::values.custom_rtc_enabled) {
-        out_time_s = Settings::values.custom_rtc.GetValue();
-    } else {
-        out_time_s = std::chrono::duration_cast<std::chrono::seconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
+        out_time_s += Settings::values.custom_rtc_offset.GetValue();
     }
     R_SUCCEED();
 }

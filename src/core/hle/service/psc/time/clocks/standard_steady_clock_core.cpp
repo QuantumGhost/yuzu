@@ -44,10 +44,11 @@ void StandardSteadyClockCore::GetContinuousAdjustment(
 
 void StandardSteadyClockCore::UpdateContinuousAdjustmentTime(s64 in_time) {
     auto ticks{m_system.CoreTiming().GetClockTicks()};
-    auto global_time_ns{ConvertToTimeSpan(ticks).count()};
-    auto expected_time{((global_time_ns - m_continuous_adjustment_time_point.rtc_offset) *
+    auto uptime_ns{ConvertToTimeSpan(ticks).count()};
+    auto adjusted_time{((uptime_ns - m_continuous_adjustment_time_point.rtc_offset) *
                         m_continuous_adjustment_time_point.diff_scale) >>
                        m_continuous_adjustment_time_point.shift_amount};
+    auto expected_time{adjusted_time + m_continuous_adjustment_time_point.lower};
 
     auto last_time_point{m_continuous_adjustment_time_point.upper};
     m_continuous_adjustment_time_point.upper = in_time;
@@ -57,7 +58,7 @@ void StandardSteadyClockCore::UpdateContinuousAdjustmentTime(s64 in_time) {
 
     auto new_diff{in_time < expected_time ? -55 : 55};
 
-    m_continuous_adjustment_time_point.rtc_offset = global_time_ns;
+    m_continuous_adjustment_time_point.rtc_offset = uptime_ns;
     m_continuous_adjustment_time_point.shift_amount = expected_time == in_time ? 0 : 14;
     m_continuous_adjustment_time_point.diff_scale = expected_time == in_time ? 0 : new_diff;
     m_continuous_adjustment_time_point.lower = expected_time;

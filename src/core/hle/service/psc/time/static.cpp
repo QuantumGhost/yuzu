@@ -459,14 +459,25 @@ Result StaticService::CalculateStandardUserSystemClockDifferenceByUser(s64& out_
                                                                        ClockSnapshot& b) {
     auto diff_s =
         std::chrono::seconds(b.user_context.offset) - std::chrono::seconds(a.user_context.offset);
-    out_time = std::chrono::duration_cast<std::chrono::nanoseconds>(diff_s).count();
 
-    if (a.user_context != b.user_context ||
-        (a.is_automatic_correction_enabled && b.is_automatic_correction_enabled) ||
-        !a.network_context.steady_time_point.IdMatches(b.network_context.steady_time_point)) {
+    if (a.user_context == b.user_context ||
+        !a.user_context.steady_time_point.IdMatches(b.user_context.steady_time_point)) {
         out_time = 0;
+        R_SUCCEED();
     }
 
+    if (!a.is_automatic_correction_enabled || !b.is_automatic_correction_enabled) {
+        out_time = std::chrono::duration_cast<std::chrono::nanoseconds>(diff_s).count();
+        R_SUCCEED();
+    }
+
+    if (a.network_context.steady_time_point.IdMatches(a.steady_clock_time_point) ||
+        b.network_context.steady_time_point.IdMatches(b.steady_clock_time_point)) {
+        out_time = 0;
+        R_SUCCEED();
+    }
+
+    out_time = std::chrono::duration_cast<std::chrono::nanoseconds>(diff_s).count();
     R_SUCCEED();
 }
 

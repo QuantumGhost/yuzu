@@ -6,6 +6,7 @@
 #include "core/core.h"
 #include "core/core_timing.h"
 
+#include "common/settings.h"
 #include "core/file_sys/vfs.h"
 #include "core/hle/kernel/svc.h"
 #include "core/hle/service/glue/time/manager.h"
@@ -105,10 +106,10 @@ TimeManager::TimeManager(Core::System& system)
     res = m_set_sys->GetUserSystemClockContext(user_clock_context);
     ASSERT(res == ResultSuccess);
 
-    // TODO this clock should initialise with this epoch time, and be updated somewhere else on
-    // first boot, but I haven't been able to find that point (likely via ntc's auto correct as it's
-    // defaulted to be enabled), and to get correct times we need to initialise with the current
-    // time instead.
+    // TODO the local clock should initialise with this epoch time, and be updated somewhere else on
+    // first boot to update it, but I haven't been able to find that point (likely via ntc's auto
+    // correct as it's defaulted to be enabled). So to get a time that isn't stuck in the past for
+    // first boot, grab the current real seconds.
     auto epoch_time{GetEpochTimeFromInitialYear(m_set_sys)};
     if (user_clock_context == Service::PSC::Time::SystemClockContext{}) {
         m_steady_clock_resource.GetRtcTimeInSeconds(epoch_time);
@@ -218,6 +219,21 @@ Result TimeManager::SetupTimeZoneServiceCore() {
     Service::PSC::Time::LocationName name{};
     auto res = m_set_sys->GetDeviceTimeZoneLocationName(name);
     ASSERT(res == ResultSuccess);
+
+    auto configured_zone = Settings::GetTimeZoneString(Settings::values.time_zone_index.GetValue());
+    Service::PSC::Time::LocationName new_name{};
+    std::memcpy(new_name.name.data(), configured_zone.data(),
+                std::min(new_name.name.size(), configured_zone.size()));
+    if (new_name.name != name.name) {
+        m_set_sys->SetDeviceTimeZoneLocationName(new_name);
+        name = new_name;
+
+        std::shared_ptr<Service::PSC::Time::SystemClock> local_clock;
+        m_time_sm->GetStandardLocalSystemClock(local_clock);
+        Service::PSC::Time::SystemClockContext context{};
+        local_clock->GetSystemClockContext(context);
+        m_set_sys->SetDeviceTimeZoneLocationUpdatedTime(context.steady_time_point);
+    }
 
     Service::PSC::Time::SteadyClockTimePoint time_point{};
     res = m_set_sys->GetDeviceTimeZoneLocationUpdatedTime(time_point);

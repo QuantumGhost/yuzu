@@ -436,7 +436,7 @@ Result StaticService::GetClockSnapshotFromSystemClockContext(
 
 Result StaticService::CalculateStandardUserSystemClockDifferenceByUser(
     s64& out_time, Service::PSC::Time::ClockSnapshot& a, Service::PSC::Time::ClockSnapshot& b) {
-    R_RETURN(m_wrapped_service->CalculateSpanBetween(out_time, a, b));
+    R_RETURN(m_wrapped_service->CalculateStandardUserSystemClockDifferenceByUser(out_time, a, b));
 }
 
 Result StaticService::CalculateSpanBetween(s64& out_time, Service::PSC::Time::ClockSnapshot& a,

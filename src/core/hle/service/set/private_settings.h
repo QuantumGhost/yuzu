@@ -9,7 +9,7 @@
 #include "common/common_funcs.h"
 #include "common/common_types.h"
 #include "common/uuid.h"
-#include "core/hle/service/time/clock_types.h"
+#include "core/hle/service/psc/time/common.h"
 
 namespace Service::Set {
 
@@ -29,14 +29,14 @@ static_assert(sizeof(InitialLaunchFlag) == 4, "InitialLaunchFlag is an invalid s
 struct InitialLaunchSettings {
     InitialLaunchFlag flags;
     INSERT_PADDING_BYTES(0x4);
-    Service::Time::Clock::SteadyClockTimePoint timestamp;
+    Service::PSC::Time::SteadyClockTimePoint timestamp;
 };
 static_assert(sizeof(InitialLaunchSettings) == 0x20, "InitialLaunchSettings is incorrect size");
 
 #pragma pack(push, 4)
 struct InitialLaunchSettingsPacked {
     InitialLaunchFlag flags;
-    Service::Time::Clock::SteadyClockTimePoint timestamp;
+    Service::PSC::Time::SteadyClockTimePoint timestamp;
 };
 #pragma pack(pop)
 static_assert(sizeof(InitialLaunchSettingsPacked) == 0x1C,

@@ -19,11 +19,8 @@ StandardUserSystemClockCore::~StandardUserSystemClockCore() {
 }
 
 Result StandardUserSystemClockCore::SetAutomaticCorrection(bool automatic_correction) {
-    if (m_automatic_correction == automatic_correction ||
-        !m_network_system_clock.CheckClockSourceMatches()) {
-        m_automatic_correction = automatic_correction;
-        R_SUCCEED();
-    }
+    R_SUCCEED_IF(m_automatic_correction == automatic_correction);
+    R_SUCCEED_IF(!m_network_system_clock.CheckClockSourceMatches());
 
     SystemClockContext context{};
     R_TRY(m_network_system_clock.GetContext(context));

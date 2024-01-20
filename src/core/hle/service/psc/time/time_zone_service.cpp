@@ -228,8 +228,8 @@ void TimeZoneService::Handle_ToPosixTimeWithMyRule(HLERequestContext& ctx) {
 
 // =============================== Implementations ===========================
 
-Result TimeZoneService::GetDeviceLocationName(LocationName& out_lcoation_name) {
-    R_RETURN(m_time_zone.GetLocationName(out_lcoation_name));
+Result TimeZoneService::GetDeviceLocationName(LocationName& out_location_name) {
+    R_RETURN(m_time_zone.GetLocationName(out_location_name));
 }
 
 Result TimeZoneService::GetTotalLocationNameCount(u32& out_count) {
