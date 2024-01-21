@@ -11,8 +11,6 @@ SystemClock::SystemClock(Core::System& system_, SystemClockCore& clock_core, boo
     : ServiceFramework{system_, "ISystemClock"}, m_system{system}, m_clock_core{clock_core},
       m_can_write_clock{can_write_clock}, m_can_write_uninitialized_clock{
                                               can_write_uninitialized_clock} {
-    SystemClockContext ctx{};
-    m_clock_core.GetContext(ctx);
     // clang-format off
     static const FunctionInfo functions[] = {
         {0, &SystemClock::Handle_GetCurrentTime, "GetCurrentTime"},
@@ -115,12 +113,12 @@ Result SystemClock::SetSystemClockContext(SystemClockContext& context) {
 }
 
 Result SystemClock::GetOperationEventReadableHandle(Kernel::KEvent** out_event) {
-    R_SUCCEED_IF(m_operation_event != nullptr);
+    if (!m_operation_event) {
+        m_operation_event = std::make_unique<OperationEvent>(m_system);
+        R_UNLESS(m_operation_event != nullptr, ResultFailed);
 
-    m_operation_event = std::make_unique<OperationEvent>(m_system);
-    R_UNLESS(m_operation_event != nullptr, ResultFailed);
-
-    m_clock_core.LinkOperationEvent(*m_operation_event);
+        m_clock_core.LinkOperationEvent(*m_operation_event);
+    }
 
     *out_event = m_operation_event->m_event;
     R_SUCCEED();

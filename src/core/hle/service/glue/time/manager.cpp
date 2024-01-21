@@ -7,6 +7,7 @@
 #include "core/core_timing.h"
 
 #include "common/settings.h"
+#include "common/time_zone.h"
 #include "core/file_sys/vfs.h"
 #include "core/hle/kernel/svc.h"
 #include "core/hle/service/glue/time/manager.h"
@@ -73,6 +74,26 @@ s64 GetEpochTimeFromInitialYear(std::shared_ptr<Service::Set::ISystemSettingsSer
     };
     return CalendarTimeToEpoch(calendar);
 }
+
+Service::PSC::Time::LocationName GetTimeZoneString(Service::PSC::Time::LocationName& in_name) {
+    auto configured_zone = Settings::GetTimeZoneString(Settings::values.time_zone_index.GetValue());
+
+    Service::PSC::Time::LocationName configured_name{};
+    std::memcpy(configured_name.name.data(), configured_zone.data(),
+                std::min(configured_name.name.size(), configured_zone.size()));
+
+    if (!IsTimeZoneBinaryValid(configured_name)) {
+        configured_zone = Common::TimeZone::FindSystemTimeZone();
+        configured_name = {};
+        std::memcpy(configured_name.name.data(), configured_zone.data(),
+                    std::min(configured_name.name.size(), configured_zone.size()));
+    }
+
+    ASSERT_MSG(IsTimeZoneBinaryValid(configured_name), "Invalid time zone!");
+
+    return configured_name;
+}
+
 } // namespace
 
 TimeManager::TimeManager(Core::System& system)
@@ -87,7 +108,6 @@ TimeManager::TimeManager(Core::System& system)
     m_set_sys =
         system.ServiceManager().GetService<Service::Set::ISystemSettingsServer>("set:sys", true);
 
-    ResetTimeZoneBinary();
     res = MountTimeZoneBinary(system);
     ASSERT(res == ResultSuccess);
 
@@ -220,13 +240,11 @@ Result TimeManager::SetupTimeZoneServiceCore() {
     auto res = m_set_sys->GetDeviceTimeZoneLocationName(name);
     ASSERT(res == ResultSuccess);
 
-    auto configured_zone = Settings::GetTimeZoneString(Settings::values.time_zone_index.GetValue());
-    Service::PSC::Time::LocationName new_name{};
-    std::memcpy(new_name.name.data(), configured_zone.data(),
-                std::min(new_name.name.size(), configured_zone.size()));
-    if (new_name.name != name.name) {
-        m_set_sys->SetDeviceTimeZoneLocationName(new_name);
-        name = new_name;
+    auto configured_zone = GetTimeZoneString(name);
+
+    if (configured_zone.name != name.name) {
+        m_set_sys->SetDeviceTimeZoneLocationName(configured_zone);
+        name = configured_zone;
 
         std::shared_ptr<Service::PSC::Time::SystemClock> local_clock;
         m_time_sm->GetStandardLocalSystemClock(local_clock);

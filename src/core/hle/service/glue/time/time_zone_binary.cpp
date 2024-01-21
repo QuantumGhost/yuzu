@@ -46,6 +46,8 @@ void ResetTimeZoneBinary() {
 }
 
 Result MountTimeZoneBinary(Core::System& system) {
+    ResetTimeZoneBinary();
+
     auto& fsc{system.GetFileSystemController()};
     std::unique_ptr<FileSys::NCA> nca{};
 
@@ -99,6 +101,9 @@ bool IsTimeZoneBinaryValid(Service::PSC::Time::LocationName& name) {
     GetTimeZoneZonePath(path, name);
 
     auto vfs_file{g_time_zone_binary_romfs->GetFileRelative(path)};
+    if (!vfs_file) {
+        return false;
+    }
     return vfs_file->GetSize() != 0;
 }
 
