@@ -284,9 +284,10 @@ void StaticService::Handle_GetClockSnapshotFromSystemClockContext(HLERequestCont
     LOG_DEBUG(Service_Time, "called.");
 
     IPC::RequestParser rp{ctx};
+    auto clock_type{rp.PopEnum<Service::PSC::Time::TimeType>()};
+    [[maybe_unused]] auto alignment{rp.Pop<u32>()};
     auto user_context{rp.PopRaw<Service::PSC::Time::SystemClockContext>()};
     auto network_context{rp.PopRaw<Service::PSC::Time::SystemClockContext>()};
-    auto clock_type{rp.PopEnum<Service::PSC::Time::TimeType>()};
 
     Service::PSC::Time::ClockSnapshot snapshot{};
     auto res =
