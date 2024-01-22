@@ -15,12 +15,12 @@ SteadyClock::SteadyClock(Core::System& system_, std::shared_ptr<TimeManager> man
     // clang-format off
          static const FunctionInfo functions[] = {
         {0, &SteadyClock::Handle_GetCurrentTimePoint, "GetCurrentTimePoint"},
-        {1, &SteadyClock::Handle_GetTestOffset, "GetTestOffset"},
-        {2, &SteadyClock::Handle_SetTestOffset, "SetTestOffset"},
-        {3, &SteadyClock::Handle_GetRtcValue, "GetRtcValue"},
-        {4, &SteadyClock::Handle_IsRtcResetDetected, "IsRtcResetDetected"},
-        {5, &SteadyClock::Handle_GetSetupResultValue, "GetSetupResultValue"},
-        {6, &SteadyClock::Handle_GetInternalOffset, "GetInternalOffset"},
+        {2, &SteadyClock::Handle_GetTestOffset, "GetTestOffset"},
+        {3, &SteadyClock::Handle_SetTestOffset, "SetTestOffset"},
+        {100, &SteadyClock::Handle_GetRtcValue, "GetRtcValue"},
+        {101, &SteadyClock::Handle_IsRtcResetDetected, "IsRtcResetDetected"},
+        {102, &SteadyClock::Handle_GetSetupResultValue, "GetSetupResultValue"},
+        {200, &SteadyClock::Handle_GetInternalOffset, "GetInternalOffset"},
     };
     // clang-format on
     RegisterHandlers(functions);

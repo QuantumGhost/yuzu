@@ -119,15 +119,21 @@ void ServiceManager::Handle_GetStaticServiceAsServiceManager(HLERequestContext& 
 void ServiceManager::Handle_SetupStandardSteadyClockCore(HLERequestContext& ctx) {
     LOG_DEBUG(Service_Time, "called.");
 
-    IPC::RequestParser rp{ctx};
-    auto clock_source_id{rp.PopRaw<Common::UUID>()};
-    auto rtc_offset{rp.Pop<s64>()};
-    auto internal_offset{rp.Pop<s64>()};
-    auto test_offset{rp.Pop<s64>()};
-    auto is_rtc_reset_detected{rp.Pop<bool>()};
+    struct Parameters {
+        bool reset_detected;
+        Common::UUID clock_source_id;
+        s64 rtc_offset;
+        s64 internal_offset;
+        s64 test_offset;
+    };
+    static_assert(sizeof(Parameters) == 0x30);
 
-    auto res = SetupStandardSteadyClockCore(clock_source_id, rtc_offset, internal_offset,
-                                            test_offset, is_rtc_reset_detected);
+    IPC::RequestParser rp{ctx};
+    auto params{rp.PopRaw<Parameters>()};
+
+    auto res = SetupStandardSteadyClockCore(params.clock_source_id, params.rtc_offset,
+                                            params.internal_offset, params.test_offset,
+                                            params.reset_detected);
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(res);
@@ -162,11 +168,16 @@ void ServiceManager::Handle_SetupStandardNetworkSystemClockCore(HLERequestContex
 void ServiceManager::Handle_SetupStandardUserSystemClockCore(HLERequestContext& ctx) {
     LOG_DEBUG(Service_Time, "called.");
 
-    IPC::RequestParser rp{ctx};
-    auto time_point{rp.PopRaw<SteadyClockTimePoint>()};
-    auto automatic_correction{rp.Pop<bool>()};
+    struct Parameters {
+        bool automatic_correction;
+        SteadyClockTimePoint time_point;
+    };
+    static_assert(sizeof(Parameters) == 0x20);
 
-    auto res = SetupStandardUserSystemClockCore(time_point, automatic_correction);
+    IPC::RequestParser rp{ctx};
+    auto params{rp.PopRaw<Parameters>()};
+
+    auto res = SetupStandardUserSystemClockCore(params.time_point, params.automatic_correction);
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(res);
@@ -175,16 +186,21 @@ void ServiceManager::Handle_SetupStandardUserSystemClockCore(HLERequestContext& 
 void ServiceManager::Handle_SetupTimeZoneServiceCore(HLERequestContext& ctx) {
     LOG_DEBUG(Service_Time, "called.");
 
+    struct Parameters {
+        u32 location_count;
+        LocationName name;
+        SteadyClockTimePoint time_point;
+        RuleVersion rule_version;
+    };
+    static_assert(sizeof(Parameters) == 0x50);
+
     IPC::RequestParser rp{ctx};
-    auto name{rp.PopRaw<LocationName>()};
-    auto time_point{rp.PopRaw<SteadyClockTimePoint>()};
-    auto rule_version{rp.PopRaw<RuleVersion>()};
-    auto location_count{rp.Pop<u32>()};
+    auto params{rp.PopRaw<Parameters>()};
 
     auto rule_buffer{ctx.ReadBuffer()};
 
-    auto res =
-        SetupTimeZoneServiceCore(name, time_point, rule_version, location_count, rule_buffer);
+    auto res = SetupTimeZoneServiceCore(params.name, params.time_point, params.rule_version,
+                                        params.location_count, rule_buffer);
 
     IPC::ResponseBuilder rb{ctx, 2};
     rb.Push(res);
@@ -286,11 +302,22 @@ void ServiceManager::Handle_GetClosestAlarmInfo(HLERequestContext& ctx) {
     s64 time{};
     auto res = GetClosestAlarmInfo(is_valid, alarm_info, time);
 
-    IPC::ResponseBuilder rb{ctx, 5 + sizeof(AlarmInfo) / sizeof(u32)};
+    struct OutParameters {
+        bool is_valid;
+        AlarmInfo alarm_info;
+        s64 time;
+    };
+    static_assert(sizeof(OutParameters) == 0x20);
+
+    OutParameters out_params{
+        .is_valid = is_valid,
+        .alarm_info = alarm_info,
+        .time = time,
+    };
+
+    IPC::ResponseBuilder rb{ctx, 2 + sizeof(OutParameters) / sizeof(u32)};
     rb.Push(res);
-    rb.PushRaw<AlarmInfo>(alarm_info);
-    rb.Push<bool>(is_valid);
-    rb.Push<s64>(time);
+    rb.PushRaw<OutParameters>(out_params);
 }
 
 // =============================== Implementations ===========================
