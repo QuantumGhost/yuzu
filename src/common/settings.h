@@ -422,8 +422,6 @@ struct Values {
         false,   true, &custom_rtc_enabled};
     SwitchableSetting<s64, false> custom_rtc_offset{
         linkage, 0, "custom_rtc_offset", Category::System, Specialization::Countable, true, true};
-    // Set on game boot, reset on stop. Seconds difference between current time and `custom_rtc`
-    s64 custom_rtc_differential;
     SwitchableSetting<bool> rng_seed_enabled{
         linkage, false, "rng_seed_enabled", Category::System, Specialization::Paired, true, true};
     SwitchableSetting<u32> rng_seed{
