@@ -89,7 +89,8 @@ Service::PSC::Time::LocationName GetTimeZoneString(Service::PSC::Time::LocationN
                     std::min(configured_name.name.size(), configured_zone.size()));
     }
 
-    ASSERT_MSG(IsTimeZoneBinaryValid(configured_name), "Invalid time zone!");
+    ASSERT_MSG(IsTimeZoneBinaryValid(configured_name), "Invalid time zone {}!",
+               configured_name.name.data());
 
     return configured_name;
 }

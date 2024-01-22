@@ -61,6 +61,16 @@ Result MountTimeZoneBinary(Core::System& system) {
         g_time_zone_binary_romfs = FileSys::ExtractRomFS(nca->GetRomFS());
     }
 
+    if (g_time_zone_binary_romfs) {
+        // Validate that the romfs is readable, using invalid firmware keys can cause this to get
+        // set but the files to be garbage. In that case, we want to hit the next path and
+        // synthesise them instead.
+        Service::PSC::Time::LocationName name{"Etc/GMT"};
+        if (!IsTimeZoneBinaryValid(name)) {
+            ResetTimeZoneBinary();
+        }
+    }
+
     if (!g_time_zone_binary_romfs) {
         g_time_zone_binary_romfs = FileSys::ExtractRomFS(
             FileSys::SystemArchive::SynthesizeSystemArchive(TimeZoneBinaryId));
@@ -102,6 +112,7 @@ bool IsTimeZoneBinaryValid(Service::PSC::Time::LocationName& name) {
 
     auto vfs_file{g_time_zone_binary_romfs->GetFileRelative(path)};
     if (!vfs_file) {
+        LOG_INFO(Service_Time, "Could not find timezone file {}", path);
         return false;
     }
     return vfs_file->GetSize() != 0;
