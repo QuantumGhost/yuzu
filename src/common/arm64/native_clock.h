@@ -11,8 +11,6 @@ class NativeClock final : public WallClock {
 public:
     explicit NativeClock();
 
-    void Reset() override;
-
     std::chrono::nanoseconds GetTimeNS() const override;
 
     std::chrono::microseconds GetTimeUS() const override;
@@ -42,7 +40,6 @@ private:
     FactorType ms_cntfrq_factor;
     FactorType guest_cntfrq_factor;
     FactorType gputick_cntfrq_factor;
-    s64 start_ticks;
 };
 
 } // namespace Common::Arm64

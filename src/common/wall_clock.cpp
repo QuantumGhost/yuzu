@@ -20,10 +20,6 @@ class StandardWallClock final : public WallClock {
 public:
     explicit StandardWallClock() {}
 
-    void Reset() override {
-        start_time = std::chrono::system_clock::now();
-    }
-
     std::chrono::nanoseconds GetTimeNS() const override {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::system_clock::now().time_since_epoch());
@@ -49,16 +45,13 @@ public:
 
     s64 GetUptime() const override {
         return std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   std::chrono::system_clock::now() - start_time)
+                   std::chrono::steady_clock::now().time_since_epoch())
             .count();
     }
 
     bool IsNative() const override {
         return false;
     }
-
-private:
-    std::chrono::system_clock::time_point start_time{};
 };
 
 std::unique_ptr<WallClock> CreateOptimalClock() {

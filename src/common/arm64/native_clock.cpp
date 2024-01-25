@@ -29,10 +29,6 @@ NativeClock::NativeClock() {
     gputick_cntfrq_factor = GetFixedPointFactor(GPUTickFreq, host_cntfrq);
 }
 
-void NativeClock::Reset() {
-    start_ticks = GetUptime();
-}
-
 std::chrono::nanoseconds NativeClock::GetTimeNS() const {
     return std::chrono::nanoseconds{MultiplyHigh(GetUptime(), ns_cntfrq_factor)};
 }
@@ -46,11 +42,11 @@ std::chrono::milliseconds NativeClock::GetTimeMS() const {
 }
 
 s64 NativeClock::GetCNTPCT() const {
-    return MultiplyHigh(GetUptime() - start_ticks, guest_cntfrq_factor);
+    return MultiplyHigh(GetUptime(), guest_cntfrq_factor);
 }
 
 s64 NativeClock::GetGPUTick() const {
-    return MultiplyHigh(GetUptime() - start_ticks, gputick_cntfrq_factor);
+    return MultiplyHigh(GetUptime(), gputick_cntfrq_factor);
 }
 
 s64 NativeClock::GetUptime() const {

@@ -19,8 +19,6 @@ public:
 
     virtual ~WallClock() = default;
 
-    virtual void Reset() = 0;
-
     /// @returns The time in nanoseconds since the construction of this clock.
     virtual std::chrono::nanoseconds GetTimeNS() const = 0;
 

@@ -15,10 +15,6 @@ NativeClock::NativeClock(u64 rdtsc_frequency_)
       cntpct_rdtsc_factor{GetFixedPoint64Factor(CNTFRQ, rdtsc_frequency)},
       gputick_rdtsc_factor{GetFixedPoint64Factor(GPUTickFreq, rdtsc_frequency)} {}
 
-void NativeClock::Reset() {
-    start_ticks = FencedRDTSC();
-}
-
 std::chrono::nanoseconds NativeClock::GetTimeNS() const {
     return std::chrono::nanoseconds{MultiplyHigh(GetUptime(), ns_rdtsc_factor)};
 }
@@ -32,11 +28,11 @@ std::chrono::milliseconds NativeClock::GetTimeMS() const {
 }
 
 s64 NativeClock::GetCNTPCT() const {
-    return MultiplyHigh(GetUptime() - start_ticks, cntpct_rdtsc_factor);
+    return MultiplyHigh(GetUptime(), cntpct_rdtsc_factor);
 }
 
 s64 NativeClock::GetGPUTick() const {
-    return MultiplyHigh(GetUptime() - start_ticks, gputick_rdtsc_factor);
+    return MultiplyHigh(GetUptime(), gputick_rdtsc_factor);
 }
 
 s64 NativeClock::GetUptime() const {

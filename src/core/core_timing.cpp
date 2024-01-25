@@ -66,7 +66,6 @@ void CoreTiming::Initialize(std::function<void()>&& on_thread_init_) {
     event_fifo_id = 0;
     shutting_down = false;
     cpu_ticks = 0;
-    clock->Reset();
     if (is_multicore) {
         timer_thread = std::make_unique<std::jthread>(ThreadEntry, std::ref(*this));
     }

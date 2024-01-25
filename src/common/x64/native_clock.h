@@ -11,8 +11,6 @@ class NativeClock final : public WallClock {
 public:
     explicit NativeClock(u64 rdtsc_frequency_);
 
-    void Reset() override;
-
     std::chrono::nanoseconds GetTimeNS() const override;
 
     std::chrono::microseconds GetTimeUS() const override;
@@ -28,7 +26,6 @@ public:
     bool IsNative() const override;
 
 private:
-    u64 start_ticks;
     u64 rdtsc_frequency;
 
     u64 ns_rdtsc_factor;
