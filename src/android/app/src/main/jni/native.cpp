@@ -35,9 +35,10 @@
 #include "core/crypto/key_manager.h"
 #include "core/file_sys/card_image.h"
 #include "core/file_sys/content_archive.h"
+#include "core/file_sys/fs_filesystem.h"
 #include "core/file_sys/submission_package.h"
-#include "core/file_sys/vfs.h"
-#include "core/file_sys/vfs_real.h"
+#include "core/file_sys/vfs/vfs.h"
+#include "core/file_sys/vfs/vfs_real.h"
 #include "core/frontend/applets/cabinet.h"
 #include "core/frontend/applets/controller.h"
 #include "core/frontend/applets/error.h"
@@ -154,7 +155,7 @@ void EmulationSession::SurfaceChanged() {
 }
 
 void EmulationSession::ConfigureFilesystemProvider(const std::string& filepath) {
-    const auto file = m_system.GetFilesystem()->OpenFile(filepath, FileSys::Mode::Read);
+    const auto file = m_system.GetFilesystem()->OpenFile(filepath, FileSys::OpenMode::Read);
     if (!file) {
         return;
     }
@@ -247,6 +248,7 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
     m_system.GetCpuManager().OnGpuReady();
     m_system.RegisterExitCallback([&] { HaltEmulation(); });
 
+    OnEmulationStarted();
     return Core::SystemResultStatus::Success;
 }
 
@@ -463,8 +465,8 @@ int Java_org_yuzu_yuzu_1emu_NativeLibrary_installFileToNand(JNIEnv* env, jobject
     };
 
     return static_cast<int>(
-        ContentManager::InstallNSP(&EmulationSession::GetInstance().System(),
-                                   EmulationSession::GetInstance().System().GetFilesystem().get(),
+        ContentManager::InstallNSP(EmulationSession::GetInstance().System(),
+                                   *EmulationSession::GetInstance().System().GetFilesystem(),
                                    GetJString(env, j_file), callback));
 }
 
@@ -474,8 +476,8 @@ jboolean Java_org_yuzu_yuzu_1emu_NativeLibrary_doesUpdateMatchProgram(JNIEnv* en
     u64 program_id = EmulationSession::GetProgramId(env, jprogramId);
     std::string updatePath = GetJString(env, jupdatePath);
     std::shared_ptr<FileSys::NSP> nsp = std::make_shared<FileSys::NSP>(
-        EmulationSession::GetInstance().System().GetFilesystem()->OpenFile(updatePath,
-                                                                           FileSys::Mode::Read));
+        EmulationSession::GetInstance().System().GetFilesystem()->OpenFile(
+            updatePath, FileSys::OpenMode::Read));
     for (const auto& item : nsp->GetNCAs()) {
         for (const auto& nca_details : item.second) {
             if (nca_details.second->GetName().ends_with(".cnmt.nca")) {
@@ -674,6 +676,11 @@ jstring Java_org_yuzu_yuzu_1emu_NativeLibrary_getCpuBackend(JNIEnv* env, jclass 
     return ToJString(env, "JIT");
 }
 
+jstring Java_org_yuzu_yuzu_1emu_NativeLibrary_getGpuDriver(JNIEnv* env, jobject jobj) {
+    return ToJString(env,
+                     EmulationSession::GetInstance().System().GPU().Renderer().GetDeviceVendor());
+}
+
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_applySettings(JNIEnv* env, jobject jobj) {
     EmulationSession::GetInstance().System().ApplySettings();
 }
@@ -713,7 +720,7 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_initializeEmptyUserDirectory(JNIEnv* 
                                                                         jobject instance) {
     const auto nand_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir);
     auto vfs_nand_dir = EmulationSession::GetInstance().System().GetFilesystem()->OpenDirectory(
-        Common::FS::PathToUTF8String(nand_dir), FileSys::Mode::Read);
+        Common::FS::PathToUTF8String(nand_dir), FileSys::OpenMode::Read);
 
     const auto user_id = EmulationSession::GetInstance().System().GetProfileManager().GetUser(
         static_cast<std::size_t>(0));
@@ -819,7 +826,7 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_removeUpdate(JNIEnv* env, jobject job
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_removeDLC(JNIEnv* env, jobject jobj,
                                                      jstring jprogramId) {
     auto program_id = EmulationSession::GetProgramId(env, jprogramId);
-    ContentManager::RemoveAllDLC(&EmulationSession::GetInstance().System(), program_id);
+    ContentManager::RemoveAllDLC(EmulationSession::GetInstance().System(), program_id);
 }
 
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_removeMod(JNIEnv* env, jobject jobj, jstring jprogramId,
@@ -829,8 +836,9 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_removeMod(JNIEnv* env, jobject jobj, 
                               program_id, GetJString(env, jname));
 }
 
-jobject Java_org_yuzu_yuzu_1emu_NativeLibrary_verifyInstalledContents(JNIEnv* env, jobject jobj,
-                                                                      jobject jcallback) {
+jobjectArray Java_org_yuzu_yuzu_1emu_NativeLibrary_verifyInstalledContents(JNIEnv* env,
+                                                                           jobject jobj,
+                                                                           jobject jcallback) {
     auto jlambdaClass = env->GetObjectClass(jcallback);
     auto jlambdaInvokeMethod = env->GetMethodID(
         jlambdaClass, "invoke", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
@@ -842,7 +850,7 @@ jobject Java_org_yuzu_yuzu_1emu_NativeLibrary_verifyInstalledContents(JNIEnv* en
 
     auto& session = EmulationSession::GetInstance();
     std::vector<std::string> result = ContentManager::VerifyInstalledContents(
-        &session.System(), session.GetContentProvider(), callback);
+        session.System(), *session.GetContentProvider(), callback);
     jobjectArray jresult =
         env->NewObjectArray(result.size(), IDCache::GetStringClass(), ToJString(env, ""));
     for (size_t i = 0; i < result.size(); ++i) {
@@ -863,7 +871,7 @@ jint Java_org_yuzu_yuzu_1emu_NativeLibrary_verifyGameContents(JNIEnv* env, jobje
     };
     auto& session = EmulationSession::GetInstance();
     return static_cast<jint>(
-        ContentManager::VerifyGameContents(&session.System(), GetJString(env, jpath), callback));
+        ContentManager::VerifyGameContents(session.System(), GetJString(env, jpath), callback));
 }
 
 jstring Java_org_yuzu_yuzu_1emu_NativeLibrary_getSavePath(JNIEnv* env, jobject jobj,
@@ -882,7 +890,7 @@ jstring Java_org_yuzu_yuzu_1emu_NativeLibrary_getSavePath(JNIEnv* env, jobject j
 
     const auto nandDir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir);
     auto vfsNandDir = system.GetFilesystem()->OpenDirectory(Common::FS::PathToUTF8String(nandDir),
-                                                            FileSys::Mode::Read);
+                                                            FileSys::OpenMode::Read);
 
     const auto user_save_data_path = FileSys::SaveDataFactory::GetFullPath(
         {}, vfsNandDir, FileSys::SaveDataSpaceId::NandUser, FileSys::SaveDataType::SaveData,
@@ -910,6 +918,12 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_addFileToFilesystemProvider(JNIEnv* e
 
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_clearFilesystemProvider(JNIEnv* env, jobject jobj) {
     EmulationSession::GetInstance().GetContentProvider()->ClearAllEntries();
+}
+
+jboolean Java_org_yuzu_yuzu_1emu_NativeLibrary_areKeysPresent(JNIEnv* env, jobject jobj) {
+    auto& system = EmulationSession::GetInstance().System();
+    system.GetFileSystemController().CreateFactories(*system.GetFilesystem());
+    return ContentManager::AreKeysPresent();
 }
 
 } // extern "C"

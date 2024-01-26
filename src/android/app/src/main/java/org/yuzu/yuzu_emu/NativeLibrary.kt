@@ -303,6 +303,11 @@ object NativeLibrary {
      */
     external fun getCpuBackend(): String
 
+    /**
+     * Returns the current GPU Driver.
+     */
+    external fun getGpuDriver(): String
+
     external fun applySettings()
 
     external fun logSettings()
@@ -613,6 +618,11 @@ object NativeLibrary {
      * Clears all files added to the manual filesystem provider in our EmulationSession instance
      */
     external fun clearFilesystemProvider()
+
+    /**
+     * Checks if all necessary keys are present for decryption
+     */
+    external fun areKeysPresent(): Boolean
 
     /**
      * Button type for use in onTouchEvent

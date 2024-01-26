@@ -35,8 +35,8 @@
 #include "configuration/configure_per_game.h"
 #include "configuration/configure_tas.h"
 #include "core/file_sys/romfs_factory.h"
-#include "core/file_sys/vfs.h"
-#include "core/file_sys/vfs_real.h"
+#include "core/file_sys/vfs/vfs.h"
+#include "core/file_sys/vfs/vfs_real.h"
 #include "core/frontend/applets/cabinet.h"
 #include "core/frontend/applets/controller.h"
 #include "core/frontend/applets/general_frontend.h"
@@ -56,7 +56,7 @@
 // These are wrappers to avoid the calls to CreateDirectory and CreateFile because of the Windows
 // defines.
 static FileSys::VirtualDir VfsFilesystemCreateDirectoryWrapper(
-    const FileSys::VirtualFilesystem& vfs, const std::string& path, FileSys::Mode mode) {
+    const FileSys::VirtualFilesystem& vfs, const std::string& path, FileSys::OpenMode mode) {
     return vfs->CreateDirectory(path, mode);
 }
 
@@ -423,7 +423,7 @@ GMainWindow::GMainWindow(std::unique_ptr<QtConfig> config_, bool has_broken_vulk
     RemoveCachedContents();
 
     // Gen keys if necessary
-    OnReinitializeKeys(ReinitializeKeyBehavior::NoWarning);
+    OnCheckFirmwareDecryption();
 
     game_list->LoadCompatibilityList();
     game_list->PopulateAsync(UISettings::values.game_dirs);
@@ -1574,8 +1574,6 @@ void GMainWindow::ConnectMenuEvents() {
     connect(multiplayer_state, &MultiplayerState::SaveConfig, this, &GMainWindow::OnSaveConfig);
 
     // Tools
-    connect_menu(ui->action_Rederive, std::bind(&GMainWindow::OnReinitializeKeys, this,
-                                                ReinitializeKeyBehavior::Warning));
     connect_menu(ui->action_Load_Album, &GMainWindow::OnAlbum);
     connect_menu(ui->action_Load_Cabinet_Nickname_Owner,
                  [this]() { OnCabinet(Service::NFP::CabinetMode::StartNicknameAndOwnerSettings); });
@@ -1882,7 +1880,7 @@ bool GMainWindow::SelectAndSetCurrentUser(
 
 void GMainWindow::ConfigureFilesystemProvider(const std::string& filepath) {
     // Ensure all NCAs are registered before launching the game
-    const auto file = vfs->OpenFile(filepath, FileSys::Mode::Read);
+    const auto file = vfs->OpenFile(filepath, FileSys::OpenMode::Read);
     if (!file) {
         return;
     }
@@ -2276,7 +2274,7 @@ void GMainWindow::OnGameListOpenFolder(u64 program_id, GameListOpenTarget target
         open_target = tr("Save Data");
         const auto nand_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir);
         auto vfs_nand_dir =
-            vfs->OpenDirectory(Common::FS::PathToUTF8String(nand_dir), FileSys::Mode::Read);
+            vfs->OpenDirectory(Common::FS::PathToUTF8String(nand_dir), FileSys::OpenMode::Read);
 
         if (has_user_save) {
             // User save data
@@ -2501,7 +2499,7 @@ void GMainWindow::RemoveUpdateContent(u64 program_id, InstalledEntryType type) {
 }
 
 void GMainWindow::RemoveAddOnContent(u64 program_id, InstalledEntryType type) {
-    const size_t count = ContentManager::RemoveAllDLC(system.get(), program_id);
+    const size_t count = ContentManager::RemoveAllDLC(*system, program_id);
     if (count == 0) {
         QMessageBox::warning(this, GetGameListErrorRemoving(type),
                              tr("There are no DLC installed for this title."));
@@ -2655,7 +2653,7 @@ void GMainWindow::RemoveCustomConfiguration(u64 program_id, const std::string& g
 void GMainWindow::RemoveCacheStorage(u64 program_id) {
     const auto nand_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::NANDDir);
     auto vfs_nand_dir =
-        vfs->OpenDirectory(Common::FS::PathToUTF8String(nand_dir), FileSys::Mode::Read);
+        vfs->OpenDirectory(Common::FS::PathToUTF8String(nand_dir), FileSys::OpenMode::Read);
 
     const auto cache_storage_path = FileSys::SaveDataFactory::GetFullPath(
         {}, vfs_nand_dir, FileSys::SaveDataSpaceId::NandUser, FileSys::SaveDataType::CacheStorage,
@@ -2675,7 +2673,8 @@ void GMainWindow::OnGameListDumpRomFS(u64 program_id, const std::string& game_pa
                                 "cancelled the operation."));
     };
 
-    const auto loader = Loader::GetLoader(*system, vfs->OpenFile(game_path, FileSys::Mode::Read));
+    const auto loader =
+        Loader::GetLoader(*system, vfs->OpenFile(game_path, FileSys::OpenMode::Read));
     if (loader == nullptr) {
         failed();
         return;
@@ -2719,7 +2718,7 @@ void GMainWindow::OnGameListDumpRomFS(u64 program_id, const std::string& game_pa
     const FileSys::PatchManager pm{title_id, system->GetFileSystemController(), installed};
     auto romfs = pm.PatchRomFS(base_nca.get(), base_romfs, type, packed_update_raw, false);
 
-    const auto out = VfsFilesystemCreateDirectoryWrapper(vfs, path, FileSys::Mode::ReadWrite);
+    const auto out = VfsFilesystemCreateDirectoryWrapper(vfs, path, FileSys::OpenMode::ReadWrite);
 
     if (out == nullptr) {
         failed();
@@ -2798,8 +2797,7 @@ void GMainWindow::OnGameListVerifyIntegrity(const std::string& game_path) {
         return progress.wasCanceled();
     };
 
-    const auto result =
-        ContentManager::VerifyGameContents(system.get(), game_path, QtProgressCallback);
+    const auto result = ContentManager::VerifyGameContents(*system, game_path, QtProgressCallback);
     progress.close();
     switch (result) {
     case ContentManager::GameVerificationResult::Success:
@@ -3018,7 +3016,7 @@ void GMainWindow::OnGameListCreateShortcut(u64 program_id, const std::string& ga
                                        system->GetContentProvider()};
         const auto control = pm.GetControlMetadata();
         const auto loader =
-            Loader::GetLoader(*system, vfs->OpenFile(game_path, FileSys::Mode::Read));
+            Loader::GetLoader(*system, vfs->OpenFile(game_path, FileSys::OpenMode::Read));
         game_title = fmt::format("{:016X}", program_id);
         if (control.first != nullptr) {
             game_title = control.first->GetApplicationName();
@@ -3268,7 +3266,7 @@ void GMainWindow::OnMenuInstallToNAND() {
                 return false;
             };
             future = QtConcurrent::run([this, &file, progress_callback] {
-                return ContentManager::InstallNSP(system.get(), vfs.get(), file.toStdString(),
+                return ContentManager::InstallNSP(*system, *vfs, file.toStdString(),
                                                   progress_callback);
             });
 
@@ -3371,7 +3369,7 @@ ContentManager::InstallResult GMainWindow::InstallNCA(const QString& filename) {
         }
         return false;
     };
-    return ContentManager::InstallNCA(vfs.get(), filename.toStdString(), registered_cache,
+    return ContentManager::InstallNCA(*vfs, filename.toStdString(), *registered_cache,
                                       static_cast<FileSys::TitleType>(index), progress_callback);
 }
 
@@ -4121,7 +4119,7 @@ void GMainWindow::OnVerifyInstalledContents() {
     };
 
     const std::vector<std::string> result =
-        ContentManager::VerifyInstalledContents(system.get(), provider.get(), QtProgressCallback);
+        ContentManager::VerifyInstalledContents(*system, *provider, QtProgressCallback);
     progress.close();
 
     if (result.empty()) {
@@ -4551,120 +4549,18 @@ void GMainWindow::OnMouseActivity() {
     }
 }
 
-void GMainWindow::OnReinitializeKeys(ReinitializeKeyBehavior behavior) {
-    if (behavior == ReinitializeKeyBehavior::Warning) {
-        const auto res = QMessageBox::information(
-            this, tr("Confirm Key Rederivation"),
-            tr("You are about to force rederive all of your keys. \nIf you do not know what "
-               "this "
-               "means or what you are doing, \nthis is a potentially destructive action. "
-               "\nPlease "
-               "make sure this is what you want \nand optionally make backups.\n\nThis will "
-               "delete "
-               "your autogenerated key files and re-run the key derivation module."),
-            QMessageBox::StandardButtons{QMessageBox::Ok, QMessageBox::Cancel});
-
-        if (res == QMessageBox::Cancel)
-            return;
-
-        const auto keys_dir = Common::FS::GetYuzuPath(Common::FS::YuzuPath::KeysDir);
-
-        Common::FS::RemoveFile(keys_dir / "prod.keys_autogenerated");
-        Common::FS::RemoveFile(keys_dir / "console.keys_autogenerated");
-        Common::FS::RemoveFile(keys_dir / "title.keys_autogenerated");
-    }
-
-    Core::Crypto::KeyManager& keys = Core::Crypto::KeyManager::Instance();
-    bool all_keys_present{true};
-
-    if (keys.BaseDeriveNecessary()) {
-        Core::Crypto::PartitionDataManager pdm{vfs->OpenDirectory("", FileSys::Mode::Read)};
-
-        const auto function = [this, &keys, &pdm] {
-            keys.PopulateFromPartitionData(pdm);
-
-            system->GetFileSystemController().CreateFactories(*vfs);
-            keys.DeriveETicket(pdm, system->GetContentProvider());
-        };
-
-        QString errors;
-        if (!pdm.HasFuses()) {
-            errors += tr("Missing fuses");
-        }
-        if (!pdm.HasBoot0()) {
-            errors += tr(" - Missing BOOT0");
-        }
-        if (!pdm.HasPackage2()) {
-            errors += tr(" - Missing BCPKG2-1-Normal-Main");
-        }
-        if (!pdm.HasProdInfo()) {
-            errors += tr(" - Missing PRODINFO");
-        }
-        if (!errors.isEmpty()) {
-            all_keys_present = false;
-            QMessageBox::warning(
-                this, tr("Derivation Components Missing"),
-                tr("Encryption keys are missing. "
-                   "<br>Please follow <a href='https://yuzu-emu.org/help/quickstart/'>the yuzu "
-                   "quickstart guide</a> to get all your keys, firmware and "
-                   "games.<br><br><small>(%1)</small>")
-                    .arg(errors));
-        }
-
-        QProgressDialog prog(this);
-        prog.setRange(0, 0);
-        prog.setLabelText(tr("Deriving keys...\nThis may take up to a minute depending \non your "
-                             "system's performance."));
-        prog.setWindowTitle(tr("Deriving Keys"));
-
-        prog.show();
-
-        auto future = QtConcurrent::run(function);
-        while (!future.isFinished()) {
-            QCoreApplication::processEvents();
-        }
-
-        prog.close();
-    }
-
+void GMainWindow::OnCheckFirmwareDecryption() {
     system->GetFileSystemController().CreateFactories(*vfs);
-
-    if (all_keys_present && !this->CheckSystemArchiveDecryption()) {
-        LOG_WARNING(Frontend, "Mii model decryption failed");
+    if (!ContentManager::AreKeysPresent()) {
         QMessageBox::warning(
-            this, tr("System Archive Decryption Failed"),
-            tr("Encryption keys failed to decrypt firmware. "
+            this, tr("Derivation Components Missing"),
+            tr("Encryption keys are missing. "
                "<br>Please follow <a href='https://yuzu-emu.org/help/quickstart/'>the yuzu "
                "quickstart guide</a> to get all your keys, firmware and "
                "games."));
     }
-
     SetFirmwareVersion();
-
-    if (behavior == ReinitializeKeyBehavior::Warning) {
-        game_list->PopulateAsync(UISettings::values.game_dirs);
-    }
-
     UpdateMenuState();
-}
-
-bool GMainWindow::CheckSystemArchiveDecryption() {
-    constexpr u64 MiiModelId = 0x0100000000000802;
-
-    auto bis_system = system->GetFileSystemController().GetSystemNANDContents();
-    if (!bis_system) {
-        // Not having system BIS files is not an error.
-        return true;
-    }
-
-    auto mii_nca = bis_system->GetEntry(MiiModelId, FileSys::ContentRecordType::Data);
-    if (!mii_nca) {
-        // Not having the Mii model is not an error.
-        return true;
-    }
-
-    // Return whether we are able to decrypt the RomFS of the Mii model.
-    return mii_nca->GetRomFS().get() != nullptr;
 }
 
 bool GMainWindow::CheckFirmwarePresence() {
