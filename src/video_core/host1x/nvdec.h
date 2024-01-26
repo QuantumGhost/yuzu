@@ -5,49 +5,33 @@
 
 #include <memory>
 #include <vector>
-
 #include "common/common_types.h"
-#include "video_core/cdma_pusher.h"
-#include "video_core/host1x/codecs/decoder.h"
+#include "video_core/host1x/codecs/codec.h"
 
 namespace Tegra {
 
 namespace Host1x {
+
 class Host1x;
 
-class Nvdec final : public CDmaPusher {
+class Nvdec {
 public:
-    explicit Nvdec(Host1x& host1x, s32 id, u32 syncpt);
+    explicit Nvdec(Host1x& host1x);
     ~Nvdec();
 
     /// Writes the method into the state, Invoke Execute() if encountered
-    void ProcessMethod(u32 method, u32 arg) override;
+    void ProcessMethod(u32 method, u32 argument);
 
-    std::shared_ptr<FFmpeg::Frame> GetFrame(u64 luma_offset) {
-        return decoder->GetFrame(luma_offset);
-    }
-
-    u32 GetSyncpoint() const {
-        return syncpoint;
-    }
-
-    void SetWait() {
-        wait_needed = true;
-    }
+    /// Return most recently decoded frame
+    [[nodiscard]] std::unique_ptr<FFmpeg::Frame> GetFrame();
 
 private:
-    /// Create the decoder when the codec id is set
-    void CreateDecoder(NvdecCommon::VideoCodec codec);
-
     /// Invoke codec to decode a frame
     void Execute();
 
-    s32 id;
-    u32 syncpoint;
-
-    NvdecCommon::NvdecRegisters regs{};
-    std::unique_ptr<Decoder> decoder;
-    bool wait_needed{false};
+    Host1x& host1x;
+    NvdecCommon::NvdecRegisters state;
+    std::unique_ptr<Codec> codec;
 };
 
 } // namespace Host1x
