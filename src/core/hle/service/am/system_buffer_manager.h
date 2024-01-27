@@ -37,7 +37,7 @@ public:
 
     void SetWindowVisibility(bool visible);
 
-    Result WriteApplicationCaptureBuffer(bool* out_was_written, s32* out_fbshare_layer_index);
+    Result WriteAppletCaptureBuffer(bool* out_was_written, s32* out_fbshare_layer_index);
 
 private:
     Kernel::KProcess* m_process{};

@@ -60,8 +60,8 @@ void SystemBufferManager::SetWindowVisibility(bool visible) {
     }
 }
 
-Result SystemBufferManager::WriteApplicationCaptureBuffer(bool* out_was_written,
-                                                          s32* out_fbshare_layer_index) {
+Result SystemBufferManager::WriteAppletCaptureBuffer(bool* out_was_written,
+                                                     s32* out_fbshare_layer_index) {
     // TODO
     R_SUCCEED();
 }

@@ -60,13 +60,12 @@ void IDisplayController::GetCallerAppletCaptureImageEx(HLERequestContext& ctx) {
     LOG_WARNING(Service_AM, "(STUBBED) called");
 
     OutputParameters params{};
-    const auto res = applet->system_buffer_manager.WriteApplicationCaptureBuffer(
+    const auto res = applet->system_buffer_manager.WriteAppletCaptureBuffer(
         &params.was_written, &params.fbshare_layer_index);
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(res);
-    rb.Push(params.was_written);
-    rb.Push(params.fbshare_layer_index);
+    rb.PushRaw(params);
 }
 
 void IDisplayController::TakeScreenShotOfOwnLayer(HLERequestContext& ctx) {
@@ -80,13 +79,12 @@ void IDisplayController::AcquireLastApplicationCaptureSharedBuffer(HLERequestCon
     LOG_WARNING(Service_AM, "(STUBBED) called");
 
     OutputParameters params{};
-    const auto res = applet->system_buffer_manager.WriteApplicationCaptureBuffer(
+    const auto res = applet->system_buffer_manager.WriteAppletCaptureBuffer(
         &params.was_written, &params.fbshare_layer_index);
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(res);
-    rb.Push(params.was_written);
-    rb.Push(params.fbshare_layer_index);
+    rb.PushRaw(params);
 }
 
 void IDisplayController::ReleaseLastApplicationCaptureSharedBuffer(HLERequestContext& ctx) {
@@ -100,13 +98,12 @@ void IDisplayController::AcquireLastForegroundCaptureSharedBuffer(HLERequestCont
     LOG_WARNING(Service_AM, "(STUBBED) called");
 
     OutputParameters params{};
-    const auto res = applet->system_buffer_manager.WriteApplicationCaptureBuffer(
+    const auto res = applet->system_buffer_manager.WriteAppletCaptureBuffer(
         &params.was_written, &params.fbshare_layer_index);
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(res);
-    rb.Push(params.was_written);
-    rb.Push(params.fbshare_layer_index);
+    rb.PushRaw(params);
 }
 
 void IDisplayController::ReleaseLastForegroundCaptureSharedBuffer(HLERequestContext& ctx) {
@@ -120,13 +117,12 @@ void IDisplayController::AcquireCallerAppletCaptureSharedBuffer(HLERequestContex
     LOG_WARNING(Service_AM, "(STUBBED) called");
 
     OutputParameters params{};
-    const auto res = applet->system_buffer_manager.WriteApplicationCaptureBuffer(
+    const auto res = applet->system_buffer_manager.WriteAppletCaptureBuffer(
         &params.was_written, &params.fbshare_layer_index);
 
     IPC::ResponseBuilder rb{ctx, 4};
     rb.Push(res);
-    rb.Push(params.was_written);
-    rb.Push(params.fbshare_layer_index);
+    rb.PushRaw(params);
 }
 
 void IDisplayController::ReleaseCallerAppletCaptureSharedBuffer(HLERequestContext& ctx) {

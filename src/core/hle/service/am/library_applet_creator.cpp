@@ -115,15 +115,10 @@ AppletProgramId AppletIdToProgramId(AppletId applet_id) {
     return std::make_shared<ILibraryAppletAccessor>(system, broker, applet);
 }
 
-std::shared_ptr<ILibraryAppletAccessor> CreateFrontendApplet(Core::System& system,
-                                                             std::shared_ptr<Applet> caller_applet,
-                                                             AppletId applet_id,
-                                                             LibraryAppletMode mode) {
+[[maybe_unused]] std::shared_ptr<ILibraryAppletAccessor> CreateFrontendApplet(
+    Core::System& system, std::shared_ptr<Applet> caller_applet, AppletId applet_id,
+    LibraryAppletMode mode) {
     const auto program_id = static_cast<u64>(AppletIdToProgramId(applet_id));
-    if (program_id == 0) {
-        // Unknown applet
-        return {};
-    }
 
     auto process = std::make_unique<Process>(system);
     auto applet = std::make_shared<Applet>(system, std::move(process));
