@@ -209,6 +209,12 @@ void EmulationSession::InitializeSystem(bool reload) {
     m_system.GetFileSystemController().CreateFactories(*m_vfs);
 }
 
+void EmulationSession::SetAppletId(int applet_id) {
+    m_applet_id = applet_id;
+    m_system.GetFrontendAppletHolder().SetCurrentAppletId(
+        static_cast<Service::AM::AppletId>(m_applet_id));
+}
+
 Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string& filepath) {
     std::scoped_lock lock(m_mutex);
 
@@ -240,7 +246,7 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
 
     // Load the ROM.
     Service::AM::FrontendAppletParameters params{
-        .applet_id = Service::AM::AppletId::Application,
+        .applet_id = static_cast<Service::AM::AppletId>(m_applet_id),
     };
     m_load_result = m_system.Load(EmulationSession::GetInstance().Window(), filepath, params);
     if (m_load_result != Core::SystemResultStatus::Success) {
@@ -327,6 +333,9 @@ void EmulationSession::RunEmulation() {
             }
         }
     }
+
+    // Reset current applet ID.
+    m_applet_id = static_cast<int>(Service::AM::AppletId::Application);
 }
 
 bool EmulationSession::IsHandheldOnly() {
@@ -759,8 +768,7 @@ jstring Java_org_yuzu_yuzu_1emu_NativeLibrary_getAppletLaunchPath(JNIEnv* env, j
 
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_setCurrentAppletId(JNIEnv* env, jclass clazz,
                                                               jint jappletId) {
-    EmulationSession::GetInstance().System().GetFrontendAppletHolder().SetCurrentAppletId(
-        static_cast<Service::AM::AppletId>(jappletId));
+    EmulationSession::GetInstance().SetAppletId(jappletId);
 }
 
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_setCabinetMode(JNIEnv* env, jclass clazz,
