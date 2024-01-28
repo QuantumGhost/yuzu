@@ -215,7 +215,8 @@ void EmulationSession::SetAppletId(int applet_id) {
         static_cast<Service::AM::AppletId>(m_applet_id));
 }
 
-Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string& filepath) {
+Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string& filepath,
+                                                               const std::size_t program_index) {
     std::scoped_lock lock(m_mutex);
 
     // Create the render window.
@@ -247,6 +248,7 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
     // Load the ROM.
     Service::AM::FrontendAppletParameters params{
         .applet_id = static_cast<Service::AM::AppletId>(m_applet_id),
+        .program_index = static_cast<s32>(program_index),
     };
     m_load_result = m_system.Load(EmulationSession::GetInstance().Window(), filepath, params);
     if (m_load_result != Core::SystemResultStatus::Success) {
@@ -258,12 +260,23 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
     m_system.GetCpuManager().OnGpuReady();
     m_system.RegisterExitCallback([&] { HaltEmulation(); });
 
+    // Register an ExecuteProgram callback such that Core can execute a sub-program
+    m_system.RegisterExecuteProgramCallback([&](std::size_t program_index_) {
+        m_next_program_index = program_index_;
+        EmulationSession::GetInstance().HaltEmulation();
+    });
+
     OnEmulationStarted();
     return Core::SystemResultStatus::Success;
 }
 
 void EmulationSession::ShutdownEmulation() {
     std::scoped_lock lock(m_mutex);
+
+    if (m_next_program_index != -1) {
+        ChangeProgram(m_next_program_index);
+        m_next_program_index = -1;
+    }
 
     m_is_running = false;
 
@@ -415,6 +428,12 @@ void EmulationSession::OnEmulationStopped(Core::SystemResultStatus result) {
                               static_cast<jint>(result));
 }
 
+void EmulationSession::ChangeProgram(std::size_t program_index) {
+    JNIEnv* env = IDCache::GetEnvForThread();
+    env->CallStaticVoidMethod(IDCache::GetNativeLibraryClass(), IDCache::GetOnProgramChanged(),
+                              static_cast<jint>(program_index));
+}
+
 u64 EmulationSession::GetProgramId(JNIEnv* env, jstring jprogramId) {
     auto program_id_string = GetJString(env, jprogramId);
     try {
@@ -424,7 +443,8 @@ u64 EmulationSession::GetProgramId(JNIEnv* env, jstring jprogramId) {
     }
 }
 
-static Core::SystemResultStatus RunEmulation(const std::string& filepath) {
+static Core::SystemResultStatus RunEmulation(const std::string& filepath,
+                                             const size_t program_index = 0) {
     MicroProfileOnThreadCreate("EmuThread");
     SCOPE_EXIT({ MicroProfileShutdown(); });
 
@@ -437,7 +457,7 @@ static Core::SystemResultStatus RunEmulation(const std::string& filepath) {
 
     SCOPE_EXIT({ EmulationSession::GetInstance().ShutdownEmulation(); });
 
-    jconst result = EmulationSession::GetInstance().InitializeEmulation(filepath);
+    jconst result = EmulationSession::GetInstance().InitializeEmulation(filepath, program_index);
     if (result != Core::SystemResultStatus::Success) {
         return result;
     }
@@ -702,11 +722,11 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_logSettings(JNIEnv* env, jobject jobj
     Settings::LogSettings();
 }
 
-void Java_org_yuzu_yuzu_1emu_NativeLibrary_run__Ljava_lang_String_2(JNIEnv* env, jclass clazz,
-                                                                    jstring j_path) {
+void Java_org_yuzu_yuzu_1emu_NativeLibrary_run(JNIEnv* env, jobject jobj, jstring j_path,
+                                               jint j_program_index) {
     const std::string path = GetJString(env, j_path);
 
-    const Core::SystemResultStatus result{RunEmulation(path)};
+    const Core::SystemResultStatus result{RunEmulation(path, j_program_index)};
     if (result != Core::SystemResultStatus::Success) {
         env->CallStaticVoidMethod(IDCache::GetNativeLibraryClass(),
                                   IDCache::GetExitEmulationActivity(), static_cast<int>(result));
