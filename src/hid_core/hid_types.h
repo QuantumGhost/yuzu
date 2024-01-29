@@ -299,12 +299,6 @@ enum class GyroscopeZeroDriftMode : u32 {
     Tight = 2,
 };
 
-// This is nn::settings::system::TouchScreenMode
-enum class TouchScreenMode : u32 {
-    Stylus = 0,
-    Standard = 1,
-};
-
 // This is nn::hid::TouchScreenModeForNx
 enum class TouchScreenModeForNx : u8 {
     UseSystemSetting,
@@ -353,18 +347,6 @@ struct TouchAttribute {
     };
 };
 static_assert(sizeof(TouchAttribute) == 0x4, "TouchAttribute is an invalid size");
-
-// This is nn::hid::TouchState
-struct TouchState {
-    u64 delta_time{};
-    TouchAttribute attribute{};
-    u32 finger{};
-    Common::Point<u32> position{};
-    u32 diameter_x{};
-    u32 diameter_y{};
-    u32 rotation_angle{};
-};
-static_assert(sizeof(TouchState) == 0x28, "Touchstate is an invalid size");
 
 struct TouchFinger {
     u64 last_touch{};
@@ -436,6 +418,16 @@ struct LedPattern {
         BitField<3, 1, u64> position4;
     };
 };
+
+struct SleepButtonState {
+    union {
+        u64 raw{};
+
+        // Buttons
+        BitField<0, 1, u64> sleep;
+    };
+};
+static_assert(sizeof(SleepButtonState) == 0x8, "SleepButtonState has incorrect size.");
 
 struct HomeButtonState {
     union {
@@ -742,5 +734,15 @@ struct UniquePadId {
     u64 id;
 };
 static_assert(sizeof(UniquePadId) == 0x8, "UniquePadId is an invalid size");
+
+// This is nn::hid::system::FirmwareVersion
+struct FirmwareVersion {
+    u8 major;
+    u8 minor;
+    u8 micro;
+    u8 revision;
+    std::array<char, 0xc> device_identifier;
+};
+static_assert(sizeof(FirmwareVersion) == 0x10, "FirmwareVersion is an invalid size");
 
 } // namespace Core::HID

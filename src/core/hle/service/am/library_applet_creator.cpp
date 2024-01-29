@@ -85,24 +85,26 @@ AppletProgramId AppletIdToProgramId(AppletId applet_id) {
     applet->library_applet_mode = mode;
 
     // Set focus state
-    applet->message_queue.PushMessage(AppletMessageQueue::AppletMessage::FocusStateChanged);
     switch (mode) {
     case LibraryAppletMode::AllForeground:
     case LibraryAppletMode::NoUI:
-        applet->message_queue.PushMessage(AppletMessageQueue::AppletMessage::ChangeIntoForeground);
         applet->focus_state = FocusState::InFocus;
         applet->hid_registration.EnableAppletToGetInput(true);
+        applet->message_queue.PushMessage(AppletMessageQueue::AppletMessage::ChangeIntoForeground);
+        applet->message_queue.PushMessage(AppletMessageQueue::AppletMessage::FocusStateChanged);
         break;
     case LibraryAppletMode::AllForegroundInitiallyHidden:
         applet->system_buffer_manager.SetWindowVisibility(false);
         applet->focus_state = FocusState::NotInFocus;
         applet->hid_registration.EnableAppletToGetInput(false);
+        applet->message_queue.PushMessage(AppletMessageQueue::AppletMessage::FocusStateChanged);
         break;
     case LibraryAppletMode::Background:
     case LibraryAppletMode::BackgroundIndirectDisplay:
     default:
         applet->focus_state = FocusState::Background;
         applet->hid_registration.EnableAppletToGetInput(true);
+        applet->message_queue.PushMessage(AppletMessageQueue::AppletMessage::FocusStateChanged);
         break;
     }
 
