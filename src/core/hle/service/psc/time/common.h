@@ -227,8 +227,7 @@ template <>
 struct fmt::formatter<Service::PSC::Time::LocationName> : fmt::formatter<fmt::string_view> {
     template <typename FormatContext>
     auto format(const Service::PSC::Time::LocationName& name, FormatContext& ctx) const {
-        std::string_view n{name.data(), name.size()};
-        return formatter<string_view>::format(n, ctx);
+        return formatter<string_view>::format(name.data(), ctx);
     }
 };
 
@@ -236,8 +235,7 @@ template <>
 struct fmt::formatter<Service::PSC::Time::RuleVersion> : fmt::formatter<fmt::string_view> {
     template <typename FormatContext>
     auto format(const Service::PSC::Time::RuleVersion& version, FormatContext& ctx) const {
-        std::string_view v{version.data(), version.size()};
-        return formatter<string_view>::format(v, ctx);
+        return formatter<string_view>::format(version.data(), ctx);
     }
 };
 
