@@ -219,7 +219,8 @@ void EmulationSession::SetAppletId(int applet_id) {
 }
 
 Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string& filepath,
-                                                               const std::size_t program_index) {
+                                                               const std::size_t program_index,
+                                                               const bool frontend_initiated) {
     std::scoped_lock lock(m_mutex);
 
     // Create the render window.
@@ -251,6 +252,8 @@ Core::SystemResultStatus EmulationSession::InitializeEmulation(const std::string
     // Load the ROM.
     Service::AM::FrontendAppletParameters params{
         .applet_id = static_cast<Service::AM::AppletId>(m_applet_id),
+        .launch_type = frontend_initiated ? Service::AM::LaunchType::FrontendInitiated
+                                          : Service::AM::LaunchType::ApplicationInitiated,
         .program_index = static_cast<s32>(program_index),
     };
     m_load_result = m_system.Load(EmulationSession::GetInstance().Window(), filepath, params);
@@ -447,7 +450,8 @@ u64 EmulationSession::GetProgramId(JNIEnv* env, jstring jprogramId) {
 }
 
 static Core::SystemResultStatus RunEmulation(const std::string& filepath,
-                                             const size_t program_index = 0) {
+                                             const size_t program_index,
+                                             const bool frontend_initiated) {
     MicroProfileOnThreadCreate("EmuThread");
     SCOPE_EXIT({ MicroProfileShutdown(); });
 
@@ -460,7 +464,8 @@ static Core::SystemResultStatus RunEmulation(const std::string& filepath,
 
     SCOPE_EXIT({ EmulationSession::GetInstance().ShutdownEmulation(); });
 
-    jconst result = EmulationSession::GetInstance().InitializeEmulation(filepath, program_index);
+    jconst result = EmulationSession::GetInstance().InitializeEmulation(filepath, program_index,
+                                                                        frontend_initiated);
     if (result != Core::SystemResultStatus::Success) {
         return result;
     }
@@ -757,10 +762,12 @@ void Java_org_yuzu_yuzu_1emu_NativeLibrary_logSettings(JNIEnv* env, jobject jobj
 }
 
 void Java_org_yuzu_yuzu_1emu_NativeLibrary_run(JNIEnv* env, jobject jobj, jstring j_path,
-                                               jint j_program_index) {
+                                               jint j_program_index,
+                                               jboolean j_frontend_initiated) {
     const std::string path = GetJString(env, j_path);
 
-    const Core::SystemResultStatus result{RunEmulation(path, j_program_index)};
+    const Core::SystemResultStatus result{
+        RunEmulation(path, j_program_index, j_frontend_initiated)};
     if (result != Core::SystemResultStatus::Success) {
         env->CallStaticVoidMethod(IDCache::GetNativeLibraryClass(),
                                   IDCache::GetExitEmulationActivity(), static_cast<int>(result));

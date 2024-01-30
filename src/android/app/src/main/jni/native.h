@@ -47,7 +47,8 @@ public:
     void InitializeSystem(bool reload);
     void SetAppletId(int applet_id);
     Core::SystemResultStatus InitializeEmulation(const std::string& filepath,
-                                                 const std::size_t program_index = 0);
+                                                 const std::size_t program_index,
+                                                 const bool frontend_initiated);
 
     bool IsHandheldOnly();
     void SetDeviceType([[maybe_unused]] int index, int type);
