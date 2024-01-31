@@ -127,7 +127,15 @@ TimeManager::TimeManager(Core::System& system)
     res = m_set_sys->GetUserSystemClockContext(user_clock_context);
     ASSERT(res == ResultSuccess);
 
+    // TODO the local clock should initialise with this epoch time, and be updated somewhere else on
+    // first boot to update it, but I haven't been able to find that point (likely via ntc's auto
+    // correct as it's defaulted to be enabled). So to get a time that isn't stuck in the past for
+    // first boot, grab the current real seconds.
     auto epoch_time{GetEpochTimeFromInitialYear(m_set_sys)};
+    if (user_clock_context == Service::PSC::Time::SystemClockContext{}) {
+        m_steady_clock_resource.GetRtcTimeInSeconds(epoch_time);
+    }
+
     res = m_time_m->SetupStandardLocalSystemClockCore(user_clock_context, epoch_time);
     ASSERT(res == ResultSuccess);
 
