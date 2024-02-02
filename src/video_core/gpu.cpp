@@ -250,30 +250,6 @@ struct GPU::Impl {
         gpu_thread.SubmitList(channel, std::move(entries));
     }
 
-    /// Push GPU command buffer entries to be processed
-    void PushCommandBuffer(u32 id, Tegra::ChCommandHeaderList& entries) {
-        if (!use_nvdec) {
-            return;
-        }
-
-        if (!cdma_pushers.contains(id)) {
-            cdma_pushers.insert_or_assign(id, std::make_unique<Tegra::CDmaPusher>(host1x));
-        }
-
-        // SubmitCommandBuffer would make the nvdec operations async, this is not currently working
-        // TODO(ameerj): RE proper async nvdec operation
-        // gpu_thread.SubmitCommandBuffer(std::move(entries));
-        cdma_pushers[id]->ProcessEntries(std::move(entries));
-    }
-
-    /// Frees the CDMAPusher instance to free up resources
-    void ClearCdmaInstance(u32 id) {
-        const auto iter = cdma_pushers.find(id);
-        if (iter != cdma_pushers.end()) {
-            cdma_pushers.erase(iter);
-        }
-    }
-
     /// Notify rasterizer that any caches of the specified region should be flushed to Switch memory
     void FlushRegion(DAddr addr, u64 size) {
         gpu_thread.FlushRegion(addr, size);
@@ -347,11 +323,21 @@ struct GPU::Impl {
         WaitForSyncOperation(wait_fence);
     }
 
+    std::vector<u8> GetAppletCaptureBuffer() {
+        std::vector<u8> out;
+
+        const auto wait_fence =
+            RequestSyncOperation([&] { out = renderer->GetAppletCaptureBuffer(); });
+        gpu_thread.TickGPU();
+        WaitForSyncOperation(wait_fence);
+
+        return out;
+    }
+
     GPU& gpu;
     Core::System& system;
     Host1x::Host1x& host1x;
 
-    std::map<u32, std::unique_ptr<Tegra::CDmaPusher>> cdma_pushers;
     std::unique_ptr<VideoCore::RendererBase> renderer;
     VideoCore::RasterizerInterface* rasterizer = nullptr;
     const bool use_nvdec;
@@ -505,6 +491,10 @@ void GPU::RequestComposite(std::vector<Tegra::FramebufferConfig>&& layers,
     impl->RequestComposite(std::move(layers), std::move(fences));
 }
 
+std::vector<u8> GPU::GetAppletCaptureBuffer() {
+    return impl->GetAppletCaptureBuffer();
+}
+
 u64 GPU::GetTicks() const {
     return impl->GetTicks();
 }
@@ -539,14 +529,6 @@ void GPU::ReleaseContext() {
 
 void GPU::PushGPUEntries(s32 channel, Tegra::CommandList&& entries) {
     impl->PushGPUEntries(channel, std::move(entries));
-}
-
-void GPU::PushCommandBuffer(u32 id, Tegra::ChCommandHeaderList& entries) {
-    impl->PushCommandBuffer(id, entries);
-}
-
-void GPU::ClearCdmaInstance(u32 id) {
-    impl->ClearCdmaInstance(id);
 }
 
 VideoCore::RasterizerDownloadArea GPU::OnCPURead(PAddr addr, u64 size) {

@@ -9,8 +9,10 @@
 
 namespace Tegra {
 
-Decoder::Decoder(Host1x::Host1x& host1x_, s32 id_, const Host1x::NvdecCommon::NvdecRegisters& regs_)
-    : host1x(host1x_), memory_manager{host1x.GMMU()}, regs{regs_}, id{id_} {}
+Decoder::Decoder(Host1x::Host1x& host1x_, s32 id_, const Host1x::NvdecCommon::NvdecRegisters& regs_,
+                 Host1x::FrameQueue& frame_queue_)
+    : host1x(host1x_), memory_manager{host1x.GMMU()}, regs{regs_}, id{id_}, frame_queue{
+                                                                                frame_queue_} {}
 
 Decoder::~Decoder() = default;
 
@@ -43,11 +45,11 @@ void Decoder::Decode() {
         }
 
         if (UsingDecodeOrder()) {
-            decode_order_frames.insert_or_assign(luma_top, std::move(frame));
-            decode_order_frames.insert_or_assign(luma_bottom, std::move(frame_copy));
+            frame_queue.PushDecodeOrder(id, luma_top, std::move(frame));
+            frame_queue.PushDecodeOrder(id, luma_bottom, std::move(frame_copy));
         } else {
-            presentation_order_frames.push(std::move(frame));
-            presentation_order_frames.push(std::move(frame_copy));
+            frame_queue.PushPresentOrder(id, luma_top, std::move(frame));
+            frame_queue.PushPresentOrder(id, luma_bottom, std::move(frame_copy));
         }
     } else {
         auto [luma_offset, chroma_offset] = GetProgressiveOffsets();
@@ -57,9 +59,9 @@ void Decoder::Decode() {
         }
 
         if (UsingDecodeOrder()) {
-            decode_order_frames.insert_or_assign(luma_offset, std::move(frame));
+            frame_queue.PushDecodeOrder(id, luma_offset, std::move(frame));
         } else {
-            presentation_order_frames.push(std::move(frame));
+            frame_queue.PushPresentOrder(id, luma_offset, std::move(frame));
         }
     }
 }

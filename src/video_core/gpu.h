@@ -215,6 +215,8 @@ public:
     void RequestComposite(std::vector<Tegra::FramebufferConfig>&& layers,
                           std::vector<Service::Nvidia::NvFence>&& fences);
 
+    std::vector<u8> GetAppletCaptureBuffer();
+
     /// Performs any additional setup necessary in order to begin GPU emulation.
     /// This can be used to launch any necessary threads and register any necessary
     /// core timing events.
@@ -231,15 +233,6 @@ public:
 
     /// Push GPU command entries to be processed
     void PushGPUEntries(s32 channel, Tegra::CommandList&& entries);
-
-    /// Push GPU command buffer entries to be processed
-    void PushCommandBuffer(u32 id, Tegra::ChCommandHeaderList& entries);
-
-    /// Frees the CDMAPusher instance to free up resources
-    void ClearCdmaInstance(u32 id);
-
-    /// Swap buffers (render frame)
-    void SwapBuffers(const Tegra::FramebufferConfig* framebuffer);
 
     /// Notify rasterizer that any caches of the specified region should be flushed to Switch memory
     [[nodiscard]] VideoCore::RasterizerDownloadArea OnCPURead(DAddr addr, u64 size);

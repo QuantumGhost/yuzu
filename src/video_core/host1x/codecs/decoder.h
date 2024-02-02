@@ -4,6 +4,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string_view>
 #include <unordered_map>
@@ -17,6 +18,7 @@ namespace Tegra {
 
 namespace Host1x {
 class Host1x;
+class FrameQueue;
 } // namespace Host1x
 
 class Decoder {
@@ -30,23 +32,6 @@ public:
         return decode_api.UsingDecodeOrder();
     }
 
-    std::shared_ptr<FFmpeg::Frame> GetFrame(u64 luma_offset) {
-        if (UsingDecodeOrder()) {
-            auto it = decode_order_frames.find(luma_offset);
-            if (it == decode_order_frames.end()) {
-                return {};
-            }
-            return decode_order_frames.extract(it).mapped();
-        }
-
-        if (presentation_order_frames.size() == 0) {
-            return {};
-        }
-        auto frame = std::move(presentation_order_frames.front());
-        presentation_order_frames.pop();
-        return frame;
-    }
-
     /// Returns the value of current_codec
     [[nodiscard]] Host1x::NvdecCommon::VideoCodec GetCurrentCodec() const {
         return codec;
@@ -57,7 +42,8 @@ public:
 
 protected:
     explicit Decoder(Host1x::Host1x& host1x, s32 id,
-                     const Host1x::NvdecCommon::NvdecRegisters& regs);
+                     const Host1x::NvdecCommon::NvdecRegisters& regs,
+                     Host1x::FrameQueue& frame_queue);
 
     virtual std::span<const u8> ComposeFrame() = 0;
     virtual std::tuple<u64, u64> GetProgressiveOffsets() = 0;
@@ -68,12 +54,10 @@ protected:
     Tegra::MemoryManager& memory_manager;
     const Host1x::NvdecCommon::NvdecRegisters& regs;
     s32 id;
+    Host1x::FrameQueue& frame_queue;
     Host1x::NvdecCommon::VideoCodec codec;
     FFmpeg::DecodeApi decode_api;
     bool initialized{};
-    std::queue<std::shared_ptr<FFmpeg::Frame>> presentation_order_frames;
-    std::unordered_map<u64, std::shared_ptr<FFmpeg::Frame>> decode_order_frames;
-
     bool vp9_hidden_frame{};
 };
 

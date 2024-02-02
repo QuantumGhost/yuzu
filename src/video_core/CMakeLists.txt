@@ -18,6 +18,7 @@ add_library(video_core STATIC
     buffer_cache/usage_tracker.h
     buffer_cache/word_manager.h
     cache_types.h
+    capture.h
     cdma_pusher.cpp
     cdma_pusher.h
     compatible_formats.cpp
@@ -59,8 +60,8 @@ add_library(video_core STATIC
     framebuffer_config.h
     fsr.cpp
     fsr.h
-    host1x/codecs/codec.cpp
-    host1x/codecs/codec.h
+    host1x/codecs/decoder.cpp
+    host1x/codecs/decoder.h
     host1x/codecs/h264.cpp
     host1x/codecs/h264.h
     host1x/codecs/vp8.cpp
@@ -79,8 +80,6 @@ add_library(video_core STATIC
     host1x/nvdec.cpp
     host1x/nvdec.h
     host1x/nvdec_common.h
-    host1x/sync_manager.cpp
-    host1x/sync_manager.h
     host1x/syncpoint_manager.cpp
     host1x/syncpoint_manager.h
     host1x/vic.cpp
@@ -101,6 +100,7 @@ add_library(video_core STATIC
     memory_manager.cpp
     memory_manager.h
     precompiled_headers.h
+    present.h
     pte_kind.h
     query_cache/bank_base.h
     query_cache/query_base.h
