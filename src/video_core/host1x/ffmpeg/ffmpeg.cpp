@@ -134,7 +134,7 @@ bool HardwareContext::InitializeForDecoder(DecoderContext& decoder_context,
                                            const Decoder& decoder) {
     const auto supported_types = GetSupportedDeviceTypes();
     for (const auto type : PreferredGpuDecoders) {
-        // AVPixelFormat hw_pix_fmt;
+        AVPixelFormat hw_pix_fmt;
 
         if (std::ranges::find(supported_types, type) == supported_types.end()) {
             LOG_DEBUG(HW_GPU, "{} explicitly unsupported", av_hwdevice_get_type_name(type));
@@ -145,11 +145,10 @@ bool HardwareContext::InitializeForDecoder(DecoderContext& decoder_context,
             continue;
         }
 
-        // Disable GPU decoding as it cannot return decode frame ordering which breaks everything.
-        // if (decoder.SupportsDecodingOnDevice(&hw_pix_fmt, type)) {
-        //    decoder_context.InitializeHardwareDecoder(*this, hw_pix_fmt);
-        //    return true;
-        //}
+        if (decoder.SupportsDecodingOnDevice(&hw_pix_fmt, type)) {
+            decoder_context.InitializeHardwareDecoder(*this, hw_pix_fmt);
+            return true;
+        }
     }
 
     LOG_INFO(HW_GPU, "Hardware decoding is disabled due to implementation issues, using CPU.");
