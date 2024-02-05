@@ -50,6 +50,7 @@ void Scheduler::Resume() {
 void Scheduler::Yield() {
     ASSERT(current_fifo != nullptr);
     Common::Fiber::YieldTo(current_fifo->context, *master_control);
+    gpu.BindChannel(current_fifo->bind_id);
 }
 
 void Scheduler::Push(s32 channel, CommandList&& entries) {
