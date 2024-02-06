@@ -6,7 +6,6 @@
 #include "common/settings.h"
 #include "core/core.h"
 #include "video_core/control/channel_state.h"
-#include "video_core/control/scheduler.h"
 #include "video_core/dma_pusher.h"
 #include "video_core/engines/fermi_2d.h"
 #include "video_core/engines/kepler_compute.h"
@@ -15,8 +14,6 @@
 #include "video_core/engines/maxwell_dma.h"
 #include "video_core/engines/puller.h"
 #include "video_core/gpu.h"
-#include "video_core/host1x/host1x.h"
-#include "video_core/host1x/syncpoint_manager.h"
 #include "video_core/memory_manager.h"
 #include "video_core/rasterizer_interface.h"
 
@@ -63,14 +60,11 @@ void Puller::ProcessBindMethod(const MethodCall& method_call) {
 }
 
 void Puller::ProcessFenceActionMethod() {
-    auto& syncpoint_manager = gpu.Host1x().GetSyncpointManager();
     switch (regs.fence_action.op) {
     case Puller::FenceOperation::Acquire:
-        while (regs.fence_value >
-               syncpoint_manager.GetGuestSyncpointValue(regs.fence_action.syncpoint_id)) {
-            rasterizer->ReleaseFences();
-            gpu.Scheduler().Yield();
-        }
+        // UNIMPLEMENTED_MSG("Channel Scheduling pending.");
+        // WaitFence(regs.fence_action.syncpoint_id, regs.fence_value);
+        rasterizer->ReleaseFences();
         break;
     case Puller::FenceOperation::Increment:
         rasterizer->SignalSyncPoint(regs.fence_action.syncpoint_id);
