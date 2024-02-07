@@ -36,10 +36,11 @@ namespace Tegra {
 class MemoryManager final {
 public:
     explicit MemoryManager(Core::System& system_, u64 address_space_bits_ = 40,
-                           u64 big_page_bits_ = 16, u64 page_bits_ = 12);
-    explicit MemoryManager(Core::System& system_, MaxwellDeviceMemoryManager& memory_,
-                           u64 address_space_bits_ = 40, u64 big_page_bits_ = 16,
+                           GPUVAddr split_address = 1ULL << 34, u64 big_page_bits_ = 16,
                            u64 page_bits_ = 12);
+    explicit MemoryManager(Core::System& system_, MaxwellDeviceMemoryManager& memory_,
+                           u64 address_space_bits_ = 40, GPUVAddr split_address = 1ULL << 34,
+                           u64 big_page_bits_ = 16, u64 page_bits_ = 12);
     ~MemoryManager();
 
     static constexpr bool HAS_FLUSH_INVALIDATION = true;
@@ -194,6 +195,7 @@ private:
     MaxwellDeviceMemoryManager& memory;
 
     const u64 address_space_bits;
+    GPUVAddr split_address;
     const u64 page_bits;
     u64 address_space_size;
     u64 page_size;
