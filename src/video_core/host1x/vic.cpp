@@ -100,10 +100,11 @@ Vic::Vic(Host1x& host1x_, s32 id_, u32 syncpt, FrameQueue& frame_queue_)
 
 Vic::~Vic() {
     LOG_INFO(HW_GPU, "Destroying vic {}", id);
+    frame_queue.Close(id);
 }
 
 void Vic::ProcessMethod(u32 method, u32 arg) {
-    LOG_TRACE(HW_GPU, "Vic method 0x{:X}", static_cast<u32>(method));
+    LOG_TRACE(HW_GPU, "Vic {} method 0x{:X}", id, static_cast<u32>(method));
     regs.reg_array[method] = arg;
 
     switch (static_cast<Method>(method * sizeof(u32))) {
@@ -140,7 +141,7 @@ void Vic::Execute() {
 
             auto frame = frame_queue.GetFrame(nvdec_id, luma_offset);
             if (!frame.get()) {
-                LOG_ERROR(HW_GPU, "Vic failed to get frame with offset 0x{:X}", luma_offset);
+                LOG_ERROR(HW_GPU, "Vic {} failed to get frame with offset 0x{:X}", id, luma_offset);
                 continue;
             }
 

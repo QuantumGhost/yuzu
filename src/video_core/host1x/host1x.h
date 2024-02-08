@@ -66,12 +66,18 @@ public:
     void PushPresentOrder(s32 fd, u64 offset, std::shared_ptr<FFmpeg::Frame>&& frame) {
         std::scoped_lock l{m_mutex};
         auto map = m_presentation_order.find(fd);
+        if (map == m_presentation_order.end()) {
+            return;
+        }
         map->second.emplace_back(offset, std::move(frame));
     }
 
     void PushDecodeOrder(s32 fd, u64 offset, std::shared_ptr<FFmpeg::Frame>&& frame) {
         std::scoped_lock l{m_mutex};
         auto map = m_decode_order.find(fd);
+        if (map == m_decode_order.end()) {
+            return;
+        }
         map->second.insert_or_assign(offset, std::move(frame));
     }
 
@@ -82,12 +88,12 @@ public:
 
         std::scoped_lock l{m_mutex};
         auto present_map = m_presentation_order.find(fd);
-        if (present_map->second.size() > 0) {
+        if (present_map != m_presentation_order.end() && present_map->second.size() > 0) {
             return GetPresentOrderLocked(fd);
         }
 
         auto decode_map = m_decode_order.find(fd);
-        if (decode_map->second.size() > 0) {
+        if (decode_map != m_decode_order.end() && decode_map->second.size() > 0) {
             return GetDecodeOrderLocked(fd, offset);
         }
 
@@ -97,7 +103,7 @@ public:
 private:
     std::shared_ptr<FFmpeg::Frame> GetPresentOrderLocked(s32 fd) {
         auto map = m_presentation_order.find(fd);
-        if (map->second.size() == 0) {
+        if (map == m_presentation_order.end() || map->second.size() == 0) {
             return {};
         }
         auto frame = std::move(map->second.front().second);
@@ -107,6 +113,9 @@ private:
 
     std::shared_ptr<FFmpeg::Frame> GetDecodeOrderLocked(s32 fd, u64 offset) {
         auto map = m_decode_order.find(fd);
+        if (map == m_decode_order.end() || map->second.size() == 0) {
+            return {};
+        }
         auto it = map->second.find(offset);
         if (it == map->second.end()) {
             return {};

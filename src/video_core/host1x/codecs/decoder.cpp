@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2020 yuzu Emulator Project
+// SPDX-FileCopyrightText: Copyright 2023 yuzu Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "common/assert.h"
@@ -40,7 +40,8 @@ void Decoder::Decode() {
         auto frame_copy = frame;
 
         if (!frame.get()) {
-            LOG_ERROR(HW_GPU, "Failed to decode interlaced frame for top 0x{:X} bottom 0x{:X}",
+            LOG_ERROR(HW_GPU,
+                      "Nvdec {} dailed to decode interlaced frame for top 0x{:X} bottom 0x{:X}", id,
                       luma_top, luma_bottom);
         }
 
@@ -55,7 +56,8 @@ void Decoder::Decode() {
         auto [luma_offset, chroma_offset] = GetProgressiveOffsets();
 
         if (!frame.get()) {
-            LOG_ERROR(HW_GPU, "Failed to decode progressive frame for luma 0x{:X}", luma_offset);
+            LOG_ERROR(HW_GPU, "Nvdec {} failed to decode progressive frame for luma 0x{:X}", id,
+                      luma_offset);
         }
 
         if (UsingDecodeOrder()) {
