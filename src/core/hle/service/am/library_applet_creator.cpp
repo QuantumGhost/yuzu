@@ -102,8 +102,14 @@ std::shared_ptr<ILibraryAppletAccessor> CreateGuestApplet(Core::System& system,
         return {};
     }
 
+    // TODO: enable other versions of applets
+    enum : u8 {
+        Firmware1600 = 15,
+        Firmware1700 = 16,
+    };
+
     auto process = std::make_unique<Process>(system);
-    if (!process->Initialize(program_id)) {
+    if (!process->Initialize(program_id, Firmware1600, Firmware1700)) {
         // Couldn't initialize the guest process
         return {};
     }

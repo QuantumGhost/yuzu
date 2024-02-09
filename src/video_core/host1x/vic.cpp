@@ -12,7 +12,10 @@
 #include <immintrin.h>
 #endif
 #elif defined(ARCHITECTURE_arm64)
-#include <arm_neon.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-int-conversion"
+#include <sse2neon.h>
+#pragma GCC diagnostic pop
 #endif
 
 extern "C" {
@@ -43,8 +46,6 @@ extern "C" {
 
 #if defined(ARCHITECTURE_x86_64)
 #include "common/x64/cpu_detect.h"
-#elif defined(ARCHITECTURE_arm64)
-// Some ARM64 detect
 #endif
 
 namespace Tegra::Host1x {
@@ -244,7 +245,9 @@ void Vic::ReadProgressiveY8__V8U8_N420(const SlotStruct& slot,
         DecodeLinear();
         return;
     }
+#endif
 
+#if defined(ARCHITECTURE_x86_64) || defined(ARCHITECTURE_arm64)
     const auto alpha =
         _mm_slli_epi64(_mm_set1_epi64x(static_cast<s64>(slot.config.planar_alpha.Value())), 48);
 
@@ -379,8 +382,6 @@ void Vic::ReadProgressiveY8__V8U8_N420(const SlotStruct& slot,
             // clang-format on
         }
     }
-#elif defined(ARCHITECTURE_arm64)
-    DecodeLinear();
 #else
     DecodeLinear();
 #endif
@@ -624,7 +625,9 @@ void Vic::Blend(const ConfigStruct& config, const SlotStruct& slot) {
             DecodeLinear();
             return;
         }
+#endif
 
+#if defined(ARCHITECTURE_x86_64) || defined(ARCHITECTURE_arm64)
         // Fill the columns, e.g
         // c0 = [00 00 00 00] [r2c0 r2c0 r2c0 r2c0] [r1c0 r1c0 r1c0 r1c0] [r0c0 r0c0 r0c0 r0c0]
 
@@ -767,8 +770,6 @@ void Vic::Blend(const ConfigStruct& config, const SlotStruct& slot) {
             }
         }
         // clang-format on
-#elif defined(ARCHITECTURE_arm64)
-        DecodeLinear();
 #else
         DecodeLinear();
 #endif
@@ -820,7 +821,9 @@ void Vic::WriteY8__V8U8_N420(const OutputSurfaceConfig& output_surface_config) {
             DecodeLinear(out_luma, out_chroma);
             return;
         }
+#endif
 
+#if defined(ARCHITECTURE_x86_64) || defined(ARCHITECTURE_arm64)
         // luma_mask   = [00 00] [00 00] [00 00] [FF FF] [00 00] [00 00] [00 00] [FF FF]
         const auto luma_mask = _mm_set_epi16(0, 0, 0, -1, 0, 0, 0, -1);
 
@@ -947,8 +950,6 @@ void Vic::WriteY8__V8U8_N420(const OutputSurfaceConfig& output_surface_config) {
                 // clang-format on
             }
         }
-#elif defined(ARCHITECTURE_arm64)
-        DecodeLinear(out_luma, out_chroma);
 #else
         DecodeLinear(out_luma, out_chroma);
 #endif
@@ -1079,7 +1080,9 @@ void Vic::WriteABGR(const OutputSurfaceConfig& output_surface_config) {
             DecodeLinear(out_buffer);
             return;
         }
+#endif
 
+#if defined(ARCHITECTURE_x86_64) || defined(ARCHITECTURE_arm64)
         for (u32 y = 0; y < surface_height; y++) {
             const auto src = y * surface_stride;
             const auto dst = y * out_luma_stride;
@@ -1144,8 +1147,6 @@ void Vic::WriteABGR(const OutputSurfaceConfig& output_surface_config) {
                 // clang-format on
             }
         }
-#elif defined(ARCHITECTURE_arm64)
-        DecodeLinear(out_buffer);
 #else
         DecodeLinear(out_buffer);
 #endif
