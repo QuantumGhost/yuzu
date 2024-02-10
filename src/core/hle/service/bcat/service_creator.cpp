@@ -18,9 +18,9 @@ IServiceCreator::IServiceCreator(Core::System& system_, const char* name_)
     : ServiceFramework{system_, name_}, fsc{system.GetFileSystemController()} {
     // clang-format off
     static const FunctionInfo functions[] = {
-        {0, C<&IServiceCreator::CreateBcatService>, "CreateBcatService"},
-        {1, C<&IServiceCreator::CreateDeliveryCacheStorageService>, "CreateDeliveryCacheStorageService"},
-        {2, C<&IServiceCreator::CreateDeliveryCacheStorageServiceWithApplicationId>, "CreateDeliveryCacheStorageServiceWithApplicationId"},
+        {0, D<&IServiceCreator::CreateBcatService>, "CreateBcatService"},
+        {1, D<&IServiceCreator::CreateDeliveryCacheStorageService>, "CreateDeliveryCacheStorageService"},
+        {2, D<&IServiceCreator::CreateDeliveryCacheStorageServiceWithApplicationId>, "CreateDeliveryCacheStorageServiceWithApplicationId"},
         {3, nullptr, "CreateDeliveryCacheProgressService"},
         {4, nullptr, "CreateDeliveryCacheProgressServiceWithApplicationId"},
     };

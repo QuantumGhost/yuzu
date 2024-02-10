@@ -14,9 +14,9 @@ IDeliveryCacheStorageService::IDeliveryCacheStorageService(Core::System& system_
     : ServiceFramework{system_, "IDeliveryCacheStorageService"}, root(std::move(root_)) {
     // clang-format off
     static const FunctionInfo functions[] = {
-        {0, C<&IDeliveryCacheStorageService::CreateFileService>, "CreateFileService"},
-        {1, C<&IDeliveryCacheStorageService::CreateDirectoryService>, "CreateDirectoryService"},
-        {2, C<&IDeliveryCacheStorageService::EnumerateDeliveryCacheDirectory>, "EnumerateDeliveryCacheDirectory"},
+        {0, D<&IDeliveryCacheStorageService::CreateFileService>, "CreateFileService"},
+        {1, D<&IDeliveryCacheStorageService::CreateDirectoryService>, "CreateDirectoryService"},
+        {10, D<&IDeliveryCacheStorageService::EnumerateDeliveryCacheDirectory>, "EnumerateDeliveryCacheDirectory"},
     };
     // clang-format on
 

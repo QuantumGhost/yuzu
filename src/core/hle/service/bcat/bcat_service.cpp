@@ -29,8 +29,8 @@ IBcatService::IBcatService(Core::System& system_, BcatBackend& backend_)
       }} {
     // clang-format off
         static const FunctionInfo functions[] = {
-            {10100, C<&IBcatService::RequestSyncDeliveryCache>, "RequestSyncDeliveryCache"},
-            {10101, C<&IBcatService::RequestSyncDeliveryCacheWithDirectoryName>, "RequestSyncDeliveryCacheWithDirectoryName"},
+            {10100, D<&IBcatService::RequestSyncDeliveryCache>, "RequestSyncDeliveryCache"},
+            {10101, D<&IBcatService::RequestSyncDeliveryCacheWithDirectoryName>, "RequestSyncDeliveryCacheWithDirectoryName"},
             {10200, nullptr, "CancelSyncDeliveryCacheRequest"},
             {20100, nullptr, "RequestSyncDeliveryCacheWithApplicationId"},
             {20101, nullptr, "RequestSyncDeliveryCacheWithApplicationIdAndDirectoryName"},
@@ -39,7 +39,7 @@ IBcatService::IBcatService(Core::System& system_, BcatBackend& backend_)
             {20400, nullptr, "RegisterSystemApplicationDeliveryTask"},
             {20401, nullptr, "UnregisterSystemApplicationDeliveryTask"},
             {20410, nullptr, "SetSystemApplicationDeliveryTaskTimer"},
-            {30100, C<&IBcatService::SetPassphrase>, "SetPassphrase"},
+            {30100, D<&IBcatService::SetPassphrase>, "SetPassphrase"},
             {30101, nullptr, "Unknown30101"},
             {30102, nullptr, "Unknown30102"},
             {30200, nullptr, "RegisterBackgroundDeliveryTask"},
@@ -47,11 +47,11 @@ IBcatService::IBcatService(Core::System& system_, BcatBackend& backend_)
             {30202, nullptr, "BlockDeliveryTask"},
             {30203, nullptr, "UnblockDeliveryTask"},
             {30210, nullptr, "SetDeliveryTaskTimer"},
-            {30300, C<&IBcatService::RegisterSystemApplicationDeliveryTasks>, "RegisterSystemApplicationDeliveryTasks"},
+            {30300, D<&IBcatService::RegisterSystemApplicationDeliveryTasks>, "RegisterSystemApplicationDeliveryTasks"},
             {90100, nullptr, "EnumerateBackgroundDeliveryTask"},
             {90101, nullptr, "Unknown90101"},
             {90200, nullptr, "GetDeliveryList"},
-            {90201, C<&IBcatService::ClearDeliveryCacheStorage>, "ClearDeliveryCacheStorage"},
+            {90201, D<&IBcatService::ClearDeliveryCacheStorage>, "ClearDeliveryCacheStorage"},
             {90202, nullptr, "ClearDeliveryTaskSubscriptionStatus"},
             {90300, nullptr, "GetPushNotificationLog"},
             {90301, nullptr, "Unknown90301"},

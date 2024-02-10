@@ -14,10 +14,10 @@ IDeliveryCacheFileService::IDeliveryCacheFileService(Core::System& system_,
     : ServiceFramework{system_, "IDeliveryCacheFileService"}, root(std::move(root_)) {
     // clang-format off
     static const FunctionInfo functions[] = {
-        {0, C<&IDeliveryCacheFileService::Open>, "Open"},
-        {1, C<&IDeliveryCacheFileService::Read>, "Read"},
-        {2, C<&IDeliveryCacheFileService::GetSize>, "GetSize"},
-        {3, C<&IDeliveryCacheFileService::GetDigest>, "GetDigest"},
+        {0, D<&IDeliveryCacheFileService::Open>, "Open"},
+        {1, D<&IDeliveryCacheFileService::Read>, "Read"},
+        {2, D<&IDeliveryCacheFileService::GetSize>, "GetSize"},
+        {3, D<&IDeliveryCacheFileService::GetDigest>, "GetDigest"},
     };
     // clang-format on
 
