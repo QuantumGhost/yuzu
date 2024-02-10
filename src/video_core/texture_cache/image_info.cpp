@@ -42,7 +42,6 @@ ImageInfo::ImageInfo(const TICEntry& config) noexcept {
         };
     }
     rescaleable = false;
-    is_sparse = config.is_sparse != 0;
     tile_width_spacing = config.tile_width_spacing;
     if (config.texture_type != TextureType::Texture2D &&
         config.texture_type != TextureType::Texture2DNoMipmap) {
