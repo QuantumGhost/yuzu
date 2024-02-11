@@ -65,8 +65,7 @@ void StandardVmCallbacks::MemoryWriteUnsafe(VAddr address, const void* data, u64
         return;
     }
 
-    if (system.ApplicationMemory().WriteBlock(address, data, size) &&
-        system.ApplicationProcess()->Is64Bit()) {
+    if (system.ApplicationMemory().WriteBlock(address, data, size)) {
         Core::InvalidateInstructionCacheRange(system.ApplicationProcess(), address, size);
     }
 }
