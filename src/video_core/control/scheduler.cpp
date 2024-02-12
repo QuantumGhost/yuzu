@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <utility>
 
 #include "common/assert.h"
 #include "common/fiber.h"
@@ -53,29 +54,30 @@ void Scheduler::Init() {
 }
 
 void Scheduler::Resume() {
-    bool pending_work;
-    do {
-        pending_work = false;
-        {
-            std::unique_lock lk(impl->scheduling_guard);
-            impl->current_fifo = nullptr;
-            auto it = impl->schedule_priority_queue.begin();
-            while (it != impl->schedule_priority_queue.end()) {
-                pending_work = ScheduleLevel(it->second);
-                if (pending_work) {
-                    break;
-                }
-                it = std::next(it);
-            }
-            if (pending_work) {
-                impl->must_reschedule = false;
-            }
+    while (UpdateHighestPriorityChannel()) {
+        impl->current_fifo->scheduled_count++;
+        Common::Fiber::YieldTo(impl->master_control, *impl->current_fifo->context);
+    }
+}
+
+bool Scheduler::UpdateHighestPriorityChannel() {
+    std::scoped_lock lk(impl->scheduling_guard);
+
+    // Clear needs to schedule state.
+    impl->must_reschedule = false;
+
+    // By default, we don't have a channel to schedule.
+    impl->current_fifo = nullptr;
+
+    // Check each level to see if we can schedule.
+    for (auto& level : impl->schedule_priority_queue) {
+        if (ScheduleLevel(level.second)) {
+            return true;
         }
-        if (impl->current_fifo) {
-            impl->current_fifo->scheduled_count++;
-            Common::Fiber::YieldTo(impl->master_control, *impl->current_fifo->context);
-        }
-    } while (pending_work);
+    }
+
+    // Nothing to schedule.
+    return false;
 }
 
 bool Scheduler::ScheduleLevel(std::list<size_t>& queue) {
@@ -83,34 +85,48 @@ bool Scheduler::ScheduleLevel(std::list<size_t>& queue) {
     size_t min_schedule_count = std::numeric_limits<size_t>::max();
     for (auto id : queue) {
         auto& fifo = impl->gpfifos[id];
-        std::scoped_lock lk2(fifo.guard);
-        if (!fifo.pending_work.empty() || fifo.is_running) {
-            if (fifo.scheduled_count > min_schedule_count) {
-                continue;
-            }
-            if (fifo.scheduled_count < fifo.yield_count) {
-                fifo.scheduled_count++;
-                continue;
-            }
-            min_schedule_count = fifo.scheduled_count;
-            impl->current_fifo = &fifo;
-            found_anything = true;
+        std::scoped_lock lk(fifo.guard);
+
+        // With no pending work and nothing running, this channel can't be scheduled.
+        if (fifo.pending_work.empty() && !fifo.is_running) {
+            continue;
         }
+        // Prioritize channels at current priority which have been run the least.
+        if (fifo.scheduled_count > min_schedule_count) {
+            continue;
+        }
+
+        // Try not to select the same channel we just yielded from.
+        if (fifo.scheduled_count < fifo.yield_count) {
+            fifo.scheduled_count++;
+            continue;
+        }
+
+        // Update best selection.
+        min_schedule_count = fifo.scheduled_count;
+        impl->current_fifo = &fifo;
+        found_anything = true;
     }
     return found_anything;
 }
 
 void Scheduler::ChangePriority(s32 channel_id, u32 new_priority) {
-    std::unique_lock lk(impl->scheduling_guard);
+    std::scoped_lock lk(impl->scheduling_guard);
+    // Ensure we are tracking this channel.
     auto fifo_it = impl->channel_gpfifo_ids.find(channel_id);
     if (fifo_it == impl->channel_gpfifo_ids.end()) {
         return;
     }
+
+    // Get the fifo and update its priority.
     const size_t fifo_id = fifo_it->second;
     auto& fifo = impl->gpfifos[fifo_id];
-    const auto old_priority = fifo.info->priority;
-    fifo.info->priority = new_priority;
+    const auto old_priority = std::exchange(fifo.info->priority, new_priority);
+
+    // Create the new level if needed.
     impl->schedule_priority_queue.try_emplace(new_priority);
+
+    // Remove the old level and add to the new level.
     impl->schedule_priority_queue[new_priority].push_back(fifo_id);
     impl->schedule_priority_queue[old_priority].remove_if(
         [fifo_id](size_t id) { return id == fifo_id; });
@@ -118,6 +134,8 @@ void Scheduler::ChangePriority(s32 channel_id, u32 new_priority) {
 
 void Scheduler::Yield() {
     ASSERT(impl->current_fifo != nullptr);
+
+    // Set yield count higher
     impl->current_fifo->yield_count = impl->current_fifo->scheduled_count + 1;
     Common::Fiber::YieldTo(impl->current_fifo->context, *impl->master_control);
     gpu.BindChannel(impl->current_fifo->bind_id);
@@ -126,50 +144,73 @@ void Scheduler::Yield() {
 void Scheduler::CheckStatus() {
     {
         std::unique_lock lk(impl->scheduling_guard);
+        // If no reschedule is needed, don't transfer control
         if (!impl->must_reschedule) {
             return;
         }
     }
+    // Transfer control to the scheduler
     Common::Fiber::YieldTo(impl->current_fifo->context, *impl->master_control);
     gpu.BindChannel(impl->current_fifo->bind_id);
 }
 
 void Scheduler::Push(s32 channel, CommandList&& entries) {
-    std::unique_lock lk(impl->scheduling_guard);
+    std::scoped_lock lk(impl->scheduling_guard);
+    // Get and ensure we have this channel.
     auto it = impl->channel_gpfifo_ids.find(channel);
     ASSERT(it != impl->channel_gpfifo_ids.end());
     auto gpfifo_id = it->second;
     auto& fifo = impl->gpfifos[gpfifo_id];
+    // Add the new new work to the channel.
     {
         std::scoped_lock lk2(fifo.guard);
         fifo.pending_work.emplace_back(std::move(entries));
     }
-    if (impl->current_fifo != nullptr && impl->current_fifo->info->priority < fifo.info->priority) {
-        impl->must_reschedule = true;
+
+    // If the current running FIFO is null or the one being pushed to then
+    // just return
+    if (impl->current_fifo == nullptr || impl->current_fifo == &fifo) {
+        return;
     }
+
+    // If the current fifo has higher or equal priority to the current fifo then return
+    if (impl->current_fifo->info->priority >= fifo.info->priority) {
+        return;
+    }
+    // Mark scheduler update as required.
+    impl->must_reschedule = true;
 }
 
 void Scheduler::ChannelLoop(size_t gpfifo_id, s32 channel_id) {
-    gpu.BindChannel(channel_id);
     auto& fifo = impl->gpfifos[gpfifo_id];
-    while (true) {
-        auto* channel_state = fifo.info.get();
-        fifo.guard.lock();
-        while (!fifo.pending_work.empty()) {
-            fifo.is_running = true;
-            {
-                CommandList&& entries = std::move(fifo.pending_work.front());
-                channel_state->dma_pusher->Push(std::move(entries));
-                fifo.pending_work.pop_front();
-            }
-            fifo.guard.unlock();
-            channel_state->dma_pusher->DispatchCalls();
-            CheckStatus();
-            fifo.guard.lock();
+    auto* channel_state = fifo.info.get();
+    const auto SendToPuller = [&] {
+        std::scoped_lock lk(fifo.guard);
+        if (fifo.pending_work.empty()) {
+            // Stop if no work available.
+            fifo.is_running = false;
+            return false;
         }
-        fifo.is_running = false;
-        fifo.guard.unlock();
+        // Otherwise, send work to puller and mark as running.
+        CommandList&& entries = std::move(fifo.pending_work.front());
+        channel_state->dma_pusher->Push(std::move(entries));
+        fifo.pending_work.pop_front();
+        fifo.is_running = true;
+        // Succeed.
+        return true;
+    };
+    // Inform the GPU about the current channel.
+    gpu.BindChannel(channel_id);
+    while (true) {
+        while (SendToPuller()) {
+            // Execute.
+            channel_state->dma_pusher->DispatchCalls();
+            // Reschedule.
+            CheckStatus();
+        }
+        // Return to host execution when all work is completed.
         Common::Fiber::YieldTo(fifo.context, *impl->master_control);
+        // Inform the GPU about the current channel.
         gpu.BindChannel(channel_id);
     }
 }

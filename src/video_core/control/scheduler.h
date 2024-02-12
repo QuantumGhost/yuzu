@@ -39,6 +39,7 @@ private:
     void ChannelLoop(size_t gpfifo_id, s32 channel_id);
     bool ScheduleLevel(std::list<size_t>& queue);
     void CheckStatus();
+    bool UpdateHighestPriorityChannel();
 
     struct SchedulerImpl;
     std::unique_ptr<SchedulerImpl> impl;
