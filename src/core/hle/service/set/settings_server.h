@@ -34,7 +34,7 @@ private:
     Result GetRegionCode(Out<SystemRegionCode> out_region_code);
 
     Result GetAvailableLanguageCodes2(
-        Out<s32> out_count, OutArray<LanguageCode, BufferAttr_HipcPointer> language_codes);
+        Out<s32> out_count, OutArray<LanguageCode, BufferAttr_HipcMapAlias> language_codes);
 
     Result GetAvailableLanguageCodeCount2(Out<s32> out_count);
 
