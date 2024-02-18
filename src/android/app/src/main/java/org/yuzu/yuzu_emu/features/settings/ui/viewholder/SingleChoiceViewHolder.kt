@@ -5,11 +5,13 @@ package org.yuzu.yuzu_emu.features.settings.ui.viewholder
 
 import android.view.View
 import org.yuzu.yuzu_emu.databinding.ListItemSettingBinding
+import org.yuzu.yuzu_emu.features.settings.model.view.IntSingleChoiceSetting
 import org.yuzu.yuzu_emu.features.settings.model.view.SettingsItem
 import org.yuzu.yuzu_emu.features.settings.model.view.SingleChoiceSetting
 import org.yuzu.yuzu_emu.features.settings.model.view.StringSingleChoiceSetting
 import org.yuzu.yuzu_emu.features.settings.ui.SettingsAdapter
 import org.yuzu.yuzu_emu.utils.NativeConfig
+import org.yuzu.yuzu_emu.utils.ViewUtils.setVisible
 
 class SingleChoiceViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
     SettingViewHolder(binding.root, adapter) {
@@ -17,40 +19,38 @@ class SingleChoiceViewHolder(val binding: ListItemSettingBinding, adapter: Setti
 
     override fun bind(item: SettingsItem) {
         setting = item
-        binding.textSettingName.setText(item.nameId)
-        if (item.descriptionId != 0) {
-            binding.textSettingDescription.setText(item.descriptionId)
-            binding.textSettingDescription.visibility = View.VISIBLE
-        } else {
-            binding.textSettingDescription.visibility = View.GONE
-        }
+        binding.textSettingName.text = setting.title
+        binding.textSettingDescription.setVisible(item.description.isNotEmpty())
+        binding.textSettingDescription.text = item.description
 
-        binding.textSettingValue.visibility = View.VISIBLE
-        if (item is SingleChoiceSetting) {
-            val resMgr = binding.textSettingValue.context.resources
-            val values = resMgr.getIntArray(item.valuesId)
-            for (i in values.indices) {
-                if (values[i] == item.getSelectedValue()) {
-                    binding.textSettingValue.text = resMgr.getStringArray(item.choicesId)[i]
-                    break
+        binding.textSettingValue.setVisible(true)
+        when (item) {
+            is SingleChoiceSetting -> {
+                val resMgr = binding.textSettingValue.context.resources
+                val values = resMgr.getIntArray(item.valuesId)
+                for (i in values.indices) {
+                    if (values[i] == item.getSelectedValue()) {
+                        binding.textSettingValue.text = resMgr.getStringArray(item.choicesId)[i]
+                        break
+                    }
                 }
             }
-        } else if (item is StringSingleChoiceSetting) {
-            for (i in item.values.indices) {
-                if (item.values[i] == item.getSelectedValue()) {
-                    binding.textSettingValue.text = item.choices[i]
-                    break
-                }
+
+            is StringSingleChoiceSetting -> {
+                binding.textSettingValue.text = item.getSelectedValue()
+            }
+
+            is IntSingleChoiceSetting -> {
+                binding.textSettingValue.text = item.getChoiceAt(item.getSelectedValue())
             }
         }
-
-        binding.buttonClear.visibility = if (setting.setting.global ||
-            !NativeConfig.isPerGameConfigLoaded()
-        ) {
-            View.GONE
-        } else {
-            View.VISIBLE
+        if (binding.textSettingValue.text.isEmpty()) {
+            binding.textSettingValue.setVisible(false)
         }
+
+        binding.buttonClear.setVisible(
+            !setting.setting.global || NativeConfig.isPerGameConfigLoaded()
+        )
         binding.buttonClear.setOnClickListener {
             adapter.onClearClick(setting, bindingAdapterPosition)
         }
@@ -63,16 +63,25 @@ class SingleChoiceViewHolder(val binding: ListItemSettingBinding, adapter: Setti
             return
         }
 
-        if (setting is SingleChoiceSetting) {
-            adapter.onSingleChoiceClick(
-                (setting as SingleChoiceSetting),
+        when (setting) {
+            is SingleChoiceSetting -> adapter.onSingleChoiceClick(
+                setting as SingleChoiceSetting,
                 bindingAdapterPosition
             )
-        } else if (setting is StringSingleChoiceSetting) {
-            adapter.onStringSingleChoiceClick(
-                (setting as StringSingleChoiceSetting),
-                bindingAdapterPosition
-            )
+
+            is StringSingleChoiceSetting -> {
+                adapter.onStringSingleChoiceClick(
+                    setting as StringSingleChoiceSetting,
+                    bindingAdapterPosition
+                )
+            }
+
+            is IntSingleChoiceSetting -> {
+                adapter.onIntSingleChoiceClick(
+                    setting as IntSingleChoiceSetting,
+                    bindingAdapterPosition
+                )
+            }
         }
     }
 

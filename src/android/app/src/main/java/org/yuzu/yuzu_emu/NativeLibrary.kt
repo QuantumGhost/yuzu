@@ -3,24 +3,21 @@
 
 package org.yuzu.yuzu_emu
 
-import android.app.Dialog
 import android.content.DialogInterface
 import android.net.Uri
-import android.os.Bundle
 import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.view.Surface
 import android.view.View
 import android.widget.TextView
 import androidx.annotation.Keep
-import androidx.fragment.app.DialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.lang.ref.WeakReference
 import org.yuzu.yuzu_emu.activities.EmulationActivity
+import org.yuzu.yuzu_emu.fragments.CoreErrorDialogFragment
 import org.yuzu.yuzu_emu.utils.DocumentsTree
 import org.yuzu.yuzu_emu.utils.FileUtil
 import org.yuzu.yuzu_emu.utils.Log
-import org.yuzu.yuzu_emu.utils.SerializableHelper.serializable
 import org.yuzu.yuzu_emu.model.InstallResult
 import org.yuzu.yuzu_emu.model.Patch
 import org.yuzu.yuzu_emu.model.GameVerificationResult
@@ -30,34 +27,6 @@ import org.yuzu.yuzu_emu.model.GameVerificationResult
  * with the native side of the Yuzu code.
  */
 object NativeLibrary {
-    /**
-     * Default controller id for each device
-     */
-    const val Player1Device = 0
-    const val Player2Device = 1
-    const val Player3Device = 2
-    const val Player4Device = 3
-    const val Player5Device = 4
-    const val Player6Device = 5
-    const val Player7Device = 6
-    const val Player8Device = 7
-    const val ConsoleDevice = 8
-
-    /**
-     * Controller type for each device
-     */
-    const val ProController = 3
-    const val Handheld = 4
-    const val JoyconDual = 5
-    const val JoyconLeft = 6
-    const val JoyconRight = 7
-    const val GameCube = 8
-    const val Pokeball = 9
-    const val NES = 10
-    const val SNES = 11
-    const val N64 = 12
-    const val SegaGenesis = 13
-
     @JvmField
     var sEmulationActivity = WeakReference<EmulationActivity?>(null)
 
@@ -126,112 +95,6 @@ object NativeLibrary {
         } else {
             FileUtil.getFilename(Uri.parse(path))
         }
-
-    /**
-     * Returns true if pro controller isn't available and handheld is
-     */
-    external fun isHandheldOnly(): Boolean
-
-    /**
-     * Changes controller type for a specific device.
-     *
-     * @param Device The input descriptor of the gamepad.
-     * @param Type The NpadStyleIndex of the gamepad.
-     */
-    external fun setDeviceType(Device: Int, Type: Int): Boolean
-
-    /**
-     * Handles event when a gamepad is connected.
-     *
-     * @param Device The input descriptor of the gamepad.
-     */
-    external fun onGamePadConnectEvent(Device: Int): Boolean
-
-    /**
-     * Handles event when a gamepad is disconnected.
-     *
-     * @param Device The input descriptor of the gamepad.
-     */
-    external fun onGamePadDisconnectEvent(Device: Int): Boolean
-
-    /**
-     * Handles button press events for a gamepad.
-     *
-     * @param Device The input descriptor of the gamepad.
-     * @param Button Key code identifying which button was pressed.
-     * @param Action Mask identifying which action is happening (button pressed down, or button released).
-     * @return If we handled the button press.
-     */
-    external fun onGamePadButtonEvent(Device: Int, Button: Int, Action: Int): Boolean
-
-    /**
-     * Handles joystick movement events.
-     *
-     * @param Device The device ID of the gamepad.
-     * @param Axis   The axis ID
-     * @param x_axis The value of the x-axis represented by the given ID.
-     * @param y_axis The value of the y-axis represented by the given ID.
-     */
-    external fun onGamePadJoystickEvent(
-        Device: Int,
-        Axis: Int,
-        x_axis: Float,
-        y_axis: Float
-    ): Boolean
-
-    /**
-     * Handles motion events.
-     *
-     * @param delta_timestamp         The finger id corresponding to this event
-     * @param gyro_x,gyro_y,gyro_z    The value of the accelerometer sensor.
-     * @param accel_x,accel_y,accel_z The value of the y-axis
-     */
-    external fun onGamePadMotionEvent(
-        Device: Int,
-        delta_timestamp: Long,
-        gyro_x: Float,
-        gyro_y: Float,
-        gyro_z: Float,
-        accel_x: Float,
-        accel_y: Float,
-        accel_z: Float
-    ): Boolean
-
-    /**
-     * Signals and load a nfc tag
-     *
-     * @param data         Byte array containing all the data from a nfc tag
-     */
-    external fun onReadNfcTag(data: ByteArray?): Boolean
-
-    /**
-     * Removes current loaded nfc tag
-     */
-    external fun onRemoveNfcTag(): Boolean
-
-    /**
-     * Handles touch press events.
-     *
-     * @param finger_id The finger id corresponding to this event
-     * @param x_axis    The value of the x-axis.
-     * @param y_axis    The value of the y-axis.
-     */
-    external fun onTouchPressed(finger_id: Int, x_axis: Float, y_axis: Float)
-
-    /**
-     * Handles touch movement.
-     *
-     * @param x_axis The value of the instantaneous x-axis.
-     * @param y_axis The value of the instantaneous y-axis.
-     */
-    external fun onTouchMoved(finger_id: Int, x_axis: Float, y_axis: Float)
-
-    /**
-     * Handles touch release events.
-     *
-     * @param finger_id The finger id corresponding to this event
-     */
-    external fun onTouchReleased(finger_id: Int)
 
     external fun setAppDirectory(directory: String)
 
@@ -318,46 +181,13 @@ object NativeLibrary {
         ErrorUnknown
     }
 
-    private var coreErrorAlertResult = false
-    private val coreErrorAlertLock = Object()
-
-    class CoreErrorDialogFragment : DialogFragment() {
-        override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-            val title = requireArguments().serializable<String>("title")
-            val message = requireArguments().serializable<String>("message")
-
-            return MaterialAlertDialogBuilder(requireActivity())
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton(R.string.continue_button, null)
-                .setNegativeButton(R.string.abort_button) { _: DialogInterface?, _: Int ->
-                    coreErrorAlertResult = false
-                    synchronized(coreErrorAlertLock) { coreErrorAlertLock.notify() }
-                }
-                .create()
-        }
-
-        override fun onDismiss(dialog: DialogInterface) {
-            coreErrorAlertResult = true
-            synchronized(coreErrorAlertLock) { coreErrorAlertLock.notify() }
-        }
-
-        companion object {
-            fun newInstance(title: String?, message: String?): CoreErrorDialogFragment {
-                val frag = CoreErrorDialogFragment()
-                val args = Bundle()
-                args.putString("title", title)
-                args.putString("message", message)
-                frag.arguments = args
-                return frag
-            }
-        }
-    }
+    var coreErrorAlertResult = false
+    val coreErrorAlertLock = Object()
 
     private fun onCoreErrorImpl(title: String, message: String) {
         val emulationActivity = sEmulationActivity.get()
         if (emulationActivity == null) {
-            error("[NativeLibrary] EmulationActivity not present")
+            Log.error("[NativeLibrary] EmulationActivity not present")
             return
         }
 
@@ -373,7 +203,7 @@ object NativeLibrary {
     fun onCoreError(error: CoreError?, details: String): Boolean {
         val emulationActivity = sEmulationActivity.get()
         if (emulationActivity == null) {
-            error("[NativeLibrary] EmulationActivity not present")
+            Log.error("[NativeLibrary] EmulationActivity not present")
             return false
         }
 
@@ -404,7 +234,7 @@ object NativeLibrary {
         }
 
         // Show the AlertDialog on the main thread.
-        emulationActivity.runOnUiThread(Runnable { onCoreErrorImpl(title, message) })
+        emulationActivity.runOnUiThread { onCoreErrorImpl(title, message) }
 
         // Wait for the lock to notify that it is complete.
         synchronized(coreErrorAlertLock) { coreErrorAlertLock.wait() }
@@ -629,46 +459,4 @@ object NativeLibrary {
      * Checks if all necessary keys are present for decryption
      */
     external fun areKeysPresent(): Boolean
-
-    /**
-     * Button type for use in onTouchEvent
-     */
-    object ButtonType {
-        const val BUTTON_A = 0
-        const val BUTTON_B = 1
-        const val BUTTON_X = 2
-        const val BUTTON_Y = 3
-        const val STICK_L = 4
-        const val STICK_R = 5
-        const val TRIGGER_L = 6
-        const val TRIGGER_R = 7
-        const val TRIGGER_ZL = 8
-        const val TRIGGER_ZR = 9
-        const val BUTTON_PLUS = 10
-        const val BUTTON_MINUS = 11
-        const val DPAD_LEFT = 12
-        const val DPAD_UP = 13
-        const val DPAD_RIGHT = 14
-        const val DPAD_DOWN = 15
-        const val BUTTON_SL = 16
-        const val BUTTON_SR = 17
-        const val BUTTON_HOME = 18
-        const val BUTTON_CAPTURE = 19
-    }
-
-    /**
-     * Stick type for use in onTouchEvent
-     */
-    object StickType {
-        const val STICK_L = 0
-        const val STICK_R = 1
-    }
-
-    /**
-     * Button states
-     */
-    object ButtonState {
-        const val RELEASED = 0
-        const val PRESSED = 1
-    }
 }

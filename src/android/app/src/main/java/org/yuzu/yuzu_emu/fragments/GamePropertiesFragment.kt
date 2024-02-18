@@ -3,11 +3,9 @@
 
 package org.yuzu.yuzu_emu.fragments
 
-import android.annotation.SuppressLint
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.os.Bundle
-import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,9 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
@@ -46,7 +42,9 @@ import org.yuzu.yuzu_emu.utils.FileUtil
 import org.yuzu.yuzu_emu.utils.GameIconUtils
 import org.yuzu.yuzu_emu.utils.GpuDriverHelper
 import org.yuzu.yuzu_emu.utils.MemoryUtil
+import org.yuzu.yuzu_emu.utils.ViewUtils.marquee
 import org.yuzu.yuzu_emu.utils.ViewUtils.updateMargins
+import org.yuzu.yuzu_emu.utils.collect
 import java.io.BufferedOutputStream
 import java.io.File
 
@@ -76,8 +74,6 @@ class GamePropertiesFragment : Fragment() {
         return binding.root
     }
 
-    // This is using the correct scope, lint is just acting up
-    @SuppressLint("UnsafeRepeatOnLifecycleDetector")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         homeViewModel.setNavigationVisibility(visible = false, animated = true)
@@ -107,13 +103,7 @@ class GamePropertiesFragment : Fragment() {
 
         GameIconUtils.loadGameIcon(args.game, binding.imageGameScreen)
         binding.title.text = args.game.title
-        binding.title.postDelayed(
-            {
-                binding.title.ellipsize = TextUtils.TruncateAt.MARQUEE
-                binding.title.isSelected = true
-            },
-            3000
-        )
+        binding.title.marquee()
 
         binding.buttonStart.setOnClickListener {
             LaunchGameDialogFragment.newInstance(args.game)
@@ -122,28 +112,14 @@ class GamePropertiesFragment : Fragment() {
 
         reloadList()
 
-        viewLifecycleOwner.lifecycleScope.apply {
-            launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    homeViewModel.openImportSaves.collect {
-                        if (it) {
-                            importSaves.launch(arrayOf("application/zip"))
-                            homeViewModel.setOpenImportSaves(false)
-                        }
-                    }
-                }
-            }
-            launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    homeViewModel.reloadPropertiesList.collect {
-                        if (it) {
-                            reloadList()
-                            homeViewModel.reloadPropertiesList(false)
-                        }
-                    }
-                }
-            }
-        }
+        homeViewModel.openImportSaves.collect(
+            viewLifecycleOwner,
+            resetState = { homeViewModel.setOpenImportSaves(false) }
+        ) { if (it) importSaves.launch(arrayOf("application/zip")) }
+        homeViewModel.reloadPropertiesList.collect(
+            viewLifecycleOwner,
+            resetState = { homeViewModel.reloadPropertiesList(false) }
+        ) { if (it) reloadList() }
 
         setInsets()
     }

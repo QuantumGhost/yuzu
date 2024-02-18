@@ -3,7 +3,6 @@
 
 package org.yuzu.yuzu_emu.fragments
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -18,14 +17,9 @@ import androidx.core.view.updatePadding
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import info.debatty.java.stringsimilarity.Jaccard
 import info.debatty.java.stringsimilarity.JaroWinkler
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import java.util.Locale
 import org.yuzu.yuzu_emu.R
 import org.yuzu.yuzu_emu.YuzuApplication
@@ -35,6 +29,8 @@ import org.yuzu.yuzu_emu.layout.AutofitGridLayoutManager
 import org.yuzu.yuzu_emu.model.Game
 import org.yuzu.yuzu_emu.model.GamesViewModel
 import org.yuzu.yuzu_emu.model.HomeViewModel
+import org.yuzu.yuzu_emu.utils.ViewUtils.setVisible
+import org.yuzu.yuzu_emu.utils.collect
 
 class SearchFragment : Fragment() {
     private var _binding: FragmentSearchBinding? = null
@@ -58,8 +54,6 @@ class SearchFragment : Fragment() {
         return binding.root
     }
 
-    // This is using the correct scope, lint is just acting up
-    @SuppressLint("UnsafeRepeatOnLifecycleDetector")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         homeViewModel.setNavigationVisibility(visible = true, animated = true)
@@ -81,42 +75,18 @@ class SearchFragment : Fragment() {
         binding.chipGroup.setOnCheckedStateChangeListener { _, _ -> filterAndSearch() }
 
         binding.searchText.doOnTextChanged { text: CharSequence?, _: Int, _: Int, _: Int ->
-            if (text.toString().isNotEmpty()) {
-                binding.clearButton.visibility = View.VISIBLE
-            } else {
-                binding.clearButton.visibility = View.INVISIBLE
-            }
+            binding.clearButton.setVisible(text.toString().isNotEmpty())
             filterAndSearch()
         }
 
-        viewLifecycleOwner.lifecycleScope.apply {
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    gamesViewModel.searchFocused.collect {
-                        if (it) {
-                            focusSearch()
-                            gamesViewModel.setSearchFocused(false)
-                        }
-                    }
-                }
-            }
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    gamesViewModel.games.collectLatest { filterAndSearch() }
-                }
-            }
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    gamesViewModel.searchedGames.collect {
-                        (binding.gridGamesSearch.adapter as GameAdapter).submitList(it)
-                        if (it.isEmpty()) {
-                            binding.noResultsView.visibility = View.VISIBLE
-                        } else {
-                            binding.noResultsView.visibility = View.GONE
-                        }
-                    }
-                }
-            }
+        gamesViewModel.searchFocused.collect(
+            viewLifecycleOwner,
+            resetState = { gamesViewModel.setSearchFocused(false) }
+        ) { if (it) focusSearch() }
+        gamesViewModel.games.collect(viewLifecycleOwner) { filterAndSearch() }
+        gamesViewModel.searchedGames.collect(viewLifecycleOwner) {
+            (binding.gridGamesSearch.adapter as GameAdapter).submitList(it)
+            binding.noResultsView.setVisible(it.isNotEmpty())
         }
 
         binding.clearButton.setOnClickListener { binding.searchText.setText("") }

@@ -10,6 +10,7 @@ import org.yuzu.yuzu_emu.features.settings.model.view.SettingsItem
 import org.yuzu.yuzu_emu.features.settings.model.view.SwitchSetting
 import org.yuzu.yuzu_emu.features.settings.ui.SettingsAdapter
 import org.yuzu.yuzu_emu.utils.NativeConfig
+import org.yuzu.yuzu_emu.utils.ViewUtils.setVisible
 
 class SwitchSettingViewHolder(val binding: ListItemSettingSwitchBinding, adapter: SettingsAdapter) :
     SettingViewHolder(binding.root, adapter) {
@@ -18,28 +19,19 @@ class SwitchSettingViewHolder(val binding: ListItemSettingSwitchBinding, adapter
 
     override fun bind(item: SettingsItem) {
         setting = item as SwitchSetting
-        binding.textSettingName.setText(item.nameId)
-        if (item.descriptionId != 0) {
-            binding.textSettingDescription.setText(item.descriptionId)
-            binding.textSettingDescription.visibility = View.VISIBLE
-        } else {
-            binding.textSettingDescription.text = ""
-            binding.textSettingDescription.visibility = View.GONE
-        }
+        binding.textSettingName.text = setting.title
+        binding.textSettingDescription.setVisible(setting.description.isNotEmpty())
+        binding.textSettingDescription.text = setting.description
 
         binding.switchWidget.setOnCheckedChangeListener(null)
         binding.switchWidget.isChecked = setting.getIsChecked(setting.needsRuntimeGlobal)
         binding.switchWidget.setOnCheckedChangeListener { _: CompoundButton, _: Boolean ->
-            adapter.onBooleanClick(item, binding.switchWidget.isChecked, bindingAdapterPosition)
+            adapter.onBooleanClick(setting, binding.switchWidget.isChecked, bindingAdapterPosition)
         }
 
-        binding.buttonClear.visibility = if (setting.setting.global ||
-            !NativeConfig.isPerGameConfigLoaded()
-        ) {
-            View.GONE
-        } else {
-            View.VISIBLE
-        }
+        binding.buttonClear.setVisible(
+            !setting.setting.global || NativeConfig.isPerGameConfigLoaded()
+        )
         binding.buttonClear.setOnClickListener {
             adapter.onClearClick(setting, bindingAdapterPosition)
         }

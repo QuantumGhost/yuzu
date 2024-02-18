@@ -5,11 +5,11 @@ package org.yuzu.yuzu_emu.features.settings.ui.viewholder
 
 import android.view.View
 import androidx.core.content.res.ResourcesCompat
-import org.yuzu.yuzu_emu.NativeLibrary
 import org.yuzu.yuzu_emu.databinding.ListItemSettingBinding
 import org.yuzu.yuzu_emu.features.settings.model.view.RunnableSetting
 import org.yuzu.yuzu_emu.features.settings.model.view.SettingsItem
 import org.yuzu.yuzu_emu.features.settings.ui.SettingsAdapter
+import org.yuzu.yuzu_emu.utils.ViewUtils.setVisible
 
 class RunnableViewHolder(val binding: ListItemSettingBinding, adapter: SettingsAdapter) :
     SettingViewHolder(binding.root, adapter) {
@@ -17,34 +17,28 @@ class RunnableViewHolder(val binding: ListItemSettingBinding, adapter: SettingsA
 
     override fun bind(item: SettingsItem) {
         setting = item as RunnableSetting
-        if (item.iconId != 0) {
-            binding.icon.visibility = View.VISIBLE
+        binding.icon.setVisible(setting.iconId != 0)
+        if (setting.iconId != 0) {
             binding.icon.setImageDrawable(
                 ResourcesCompat.getDrawable(
                     binding.icon.resources,
-                    item.iconId,
+                    setting.iconId,
                     binding.icon.context.theme
                 )
             )
-        } else {
-            binding.icon.visibility = View.GONE
         }
 
-        binding.textSettingName.setText(item.nameId)
-        if (item.descriptionId != 0) {
-            binding.textSettingDescription.setText(item.descriptionId)
-            binding.textSettingDescription.visibility = View.VISIBLE
-        } else {
-            binding.textSettingDescription.visibility = View.GONE
-        }
-        binding.textSettingValue.visibility = View.GONE
-        binding.buttonClear.visibility = View.GONE
+        binding.textSettingName.text = setting.title
+        binding.textSettingDescription.setVisible(setting.description.isNotEmpty())
+        binding.textSettingDescription.text = item.description
+        binding.textSettingValue.setVisible(false)
+        binding.buttonClear.setVisible(false)
 
         setStyle(setting.isEditable, binding)
     }
 
     override fun onClick(clicked: View) {
-        if (!setting.isRuntimeRunnable && !NativeLibrary.isRunning()) {
+        if (setting.isRunnable) {
             setting.runnable.invoke()
         }
     }

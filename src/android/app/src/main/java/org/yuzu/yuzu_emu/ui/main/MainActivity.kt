@@ -19,9 +19,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
@@ -30,7 +27,6 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
 import java.io.File
 import java.io.FilenameFilter
-import kotlinx.coroutines.launch
 import org.yuzu.yuzu_emu.HomeNavigationDirections
 import org.yuzu.yuzu_emu.NativeLibrary
 import org.yuzu.yuzu_emu.R
@@ -47,6 +43,7 @@ import org.yuzu.yuzu_emu.model.InstallResult
 import org.yuzu.yuzu_emu.model.TaskState
 import org.yuzu.yuzu_emu.model.TaskViewModel
 import org.yuzu.yuzu_emu.utils.*
+import org.yuzu.yuzu_emu.utils.ViewUtils.setVisible
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.util.zip.ZipEntry
@@ -139,41 +136,22 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
 
         // Prevents navigation from being drawn for a short time on recreation if set to hidden
         if (!homeViewModel.navigationVisible.value.first) {
-            binding.navigationView.visibility = View.INVISIBLE
-            binding.statusBarShade.visibility = View.INVISIBLE
+            binding.navigationView.setVisible(visible = false, gone = false)
+            binding.statusBarShade.setVisible(visible = false, gone = false)
         }
 
-        lifecycleScope.apply {
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    homeViewModel.navigationVisible.collect { showNavigation(it.first, it.second) }
-                }
+        homeViewModel.navigationVisible.collect(this) { showNavigation(it.first, it.second) }
+        homeViewModel.statusBarShadeVisible.collect(this) { showStatusBarShade(it) }
+        homeViewModel.contentToInstall.collect(
+            this,
+            resetState = { homeViewModel.setContentToInstall(null) }
+        ) {
+            if (it != null) {
+                installContent(it)
             }
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    homeViewModel.statusBarShadeVisible.collect { showStatusBarShade(it) }
-                }
-            }
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    homeViewModel.contentToInstall.collect {
-                        if (it != null) {
-                            installContent(it)
-                            homeViewModel.setContentToInstall(null)
-                        }
-                    }
-                }
-            }
-            launch {
-                repeatOnLifecycle(Lifecycle.State.CREATED) {
-                    homeViewModel.checkKeys.collect {
-                        if (it) {
-                            checkKeys()
-                            homeViewModel.setCheckKeys(false)
-                        }
-                    }
-                }
-            }
+        }
+        homeViewModel.checkKeys.collect(this, resetState = { homeViewModel.setCheckKeys(false) }) {
+            if (it) checkKeys()
         }
 
         setInsets()
@@ -214,18 +192,14 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
 
     private fun showNavigation(visible: Boolean, animated: Boolean) {
         if (!animated) {
-            if (visible) {
-                binding.navigationView.visibility = View.VISIBLE
-            } else {
-                binding.navigationView.visibility = View.INVISIBLE
-            }
+            binding.navigationView.setVisible(visible)
             return
         }
 
         val smallLayout = resources.getBoolean(R.bool.small_layout)
         binding.navigationView.animate().apply {
             if (visible) {
-                binding.navigationView.visibility = View.VISIBLE
+                binding.navigationView.setVisible(true)
                 duration = 300
                 interpolator = PathInterpolator(0.05f, 0.7f, 0.1f, 1f)
 
@@ -264,7 +238,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
             }
         }.withEndAction {
             if (!visible) {
-                binding.navigationView.visibility = View.INVISIBLE
+                binding.navigationView.setVisible(visible = false, gone = false)
             }
         }.start()
     }
@@ -272,7 +246,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
     private fun showStatusBarShade(visible: Boolean) {
         binding.statusBarShade.animate().apply {
             if (visible) {
-                binding.statusBarShade.visibility = View.VISIBLE
+                binding.statusBarShade.setVisible(true)
                 binding.statusBarShade.translationY = binding.statusBarShade.height.toFloat() * -2
                 duration = 300
                 translationY(0f)
@@ -284,7 +258,7 @@ class MainActivity : AppCompatActivity(), ThemeProvider {
             }
         }.withEndAction {
             if (!visible) {
-                binding.statusBarShade.visibility = View.INVISIBLE
+                binding.statusBarShade.setVisible(visible = false, gone = false)
             }
         }.start()
     }
