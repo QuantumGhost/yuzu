@@ -58,6 +58,7 @@ add_library(core STATIC
     file_sys/fs_operate_range.h
     file_sys/fs_path.h
     file_sys/fs_path_utility.h
+    file_sys/fs_save_data_types.h
     file_sys/fs_string_util.h
     file_sys/fsa/fs_i_directory.h
     file_sys/fsa/fs_i_file.h
@@ -493,23 +494,33 @@ add_library(core STATIC
     hle/service/apm/apm_controller.h
     hle/service/apm/apm_interface.cpp
     hle/service/apm/apm_interface.h
-    hle/service/audio/audin_u.cpp
-    hle/service/audio/audin_u.h
-    hle/service/audio/audio.cpp
-    hle/service/audio/audio.h
     hle/service/audio/audio_controller.cpp
     hle/service/audio/audio_controller.h
-    hle/service/audio/audout_u.cpp
-    hle/service/audio/audout_u.h
-    hle/service/audio/audrec_a.cpp
-    hle/service/audio/audrec_a.h
-    hle/service/audio/audrec_u.cpp
-    hle/service/audio/audrec_u.h
-    hle/service/audio/audren_u.cpp
-    hle/service/audio/audren_u.h
+    hle/service/audio/audio_device.cpp
+    hle/service/audio/audio_device.h
+    hle/service/audio/audio_in_manager.cpp
+    hle/service/audio/audio_in_manager.h
+    hle/service/audio/audio_in.cpp
+    hle/service/audio/audio_in.h
+    hle/service/audio/audio_out_manager.cpp
+    hle/service/audio/audio_out_manager.h
+    hle/service/audio/audio_out.cpp
+    hle/service/audio/audio_out.h
+    hle/service/audio/audio_renderer_manager.cpp
+    hle/service/audio/audio_renderer_manager.h
+    hle/service/audio/audio_renderer.cpp
+    hle/service/audio/audio_renderer.h
+    hle/service/audio/audio.cpp
+    hle/service/audio/audio.h
     hle/service/audio/errors.h
-    hle/service/audio/hwopus.cpp
-    hle/service/audio/hwopus.h
+    hle/service/audio/final_output_recorder_manager_for_applet.cpp
+    hle/service/audio/final_output_recorder_manager_for_applet.h
+    hle/service/audio/final_output_recorder_manager.cpp
+    hle/service/audio/final_output_recorder_manager.h
+    hle/service/audio/hardware_opus_decoder_manager.cpp
+    hle/service/audio/hardware_opus_decoder_manager.h
+    hle/service/audio/hardware_opus_decoder.cpp
+    hle/service/audio/hardware_opus_decoder.h
     hle/service/bcat/backend/backend.cpp
     hle/service/bcat/backend/backend.h
     hle/service/bcat/bcat.cpp
@@ -599,6 +610,10 @@ add_library(core STATIC
     hle/service/filesystem/fsp/fs_i_file.h
     hle/service/filesystem/fsp/fs_i_filesystem.cpp
     hle/service/filesystem/fsp/fs_i_filesystem.h
+    hle/service/filesystem/fsp/fs_i_multi_commit_manager.cpp
+    hle/service/filesystem/fsp/fs_i_multi_commit_manager.h
+    hle/service/filesystem/fsp/fs_i_save_data_info_reader.cpp
+    hle/service/filesystem/fsp/fs_i_save_data_info_reader.h
     hle/service/filesystem/fsp/fs_i_storage.cpp
     hle/service/filesystem/fsp/fs_i_storage.h
     hle/service/filesystem/fsp/fsp_ldr.cpp
@@ -607,7 +622,7 @@ add_library(core STATIC
     hle/service/filesystem/fsp/fsp_pr.h
     hle/service/filesystem/fsp/fsp_srv.cpp
     hle/service/filesystem/fsp/fsp_srv.h
-    hle/service/filesystem/fsp/fsp_util.h
+    hle/service/filesystem/fsp/fsp_types.h
     hle/service/filesystem/romfs_controller.cpp
     hle/service/filesystem/romfs_controller.h
     hle/service/filesystem/save_data_controller.cpp
@@ -864,8 +879,20 @@ add_library(core STATIC
     hle/service/nvnflinger/ui/graphic_buffer.cpp
     hle/service/nvnflinger/ui/graphic_buffer.h
     hle/service/nvnflinger/window.h
+    hle/service/olsc/daemon_controller.cpp
+    hle/service/olsc/daemon_controller.h
+    hle/service/olsc/native_handle_holder.cpp
+    hle/service/olsc/native_handle_holder.h
+    hle/service/olsc/olsc_service_for_application.cpp
+    hle/service/olsc/olsc_service_for_application.h
+    hle/service/olsc/olsc_service_for_system_service.cpp
+    hle/service/olsc/olsc_service_for_system_service.h
     hle/service/olsc/olsc.cpp
     hle/service/olsc/olsc.h
+    hle/service/olsc/remote_storage_controller.cpp
+    hle/service/olsc/remote_storage_controller.h
+    hle/service/olsc/transfer_task_list_controller.cpp
+    hle/service/olsc/transfer_task_list_controller.h
     hle/service/omm/omm.cpp
     hle/service/omm/omm.h
     hle/service/omm/operation_mode_manager.cpp
@@ -885,16 +912,35 @@ add_library(core STATIC
     hle/service/os/mutex.h
     hle/service/pcie/pcie.cpp
     hle/service/pcie/pcie.h
+    hle/service/pctl/parental_control_service_factory.cpp
+    hle/service/pctl/parental_control_service_factory.h
+    hle/service/pctl/parental_control_service.cpp
+    hle/service/pctl/parental_control_service.h
     hle/service/pctl/pctl.cpp
     hle/service/pctl/pctl.h
-    hle/service/pctl/pctl_module.cpp
-    hle/service/pctl/pctl_module.h
+    hle/service/pctl/pctl_results.h
+    hle/service/pctl/pctl_types.h
     hle/service/pcv/pcv.cpp
     hle/service/pcv/pcv.h
     hle/service/pm/pm.cpp
     hle/service/pm/pm.h
     hle/service/prepo/prepo.cpp
     hle/service/prepo/prepo.h
+    hle/service/psc/ovln/ovln_types.h
+    hle/service/psc/ovln/receiver_service.cpp
+    hle/service/psc/ovln/receiver_service.h
+    hle/service/psc/ovln/receiver.cpp
+    hle/service/psc/ovln/receiver.h
+    hle/service/psc/ovln/sender_service.cpp
+    hle/service/psc/ovln/sender_service.h
+    hle/service/psc/ovln/sender.cpp
+    hle/service/psc/ovln/sender.h
+    hle/service/psc/pm_control.cpp
+    hle/service/psc/pm_control.h
+    hle/service/psc/pm_module.cpp
+    hle/service/psc/pm_module.h
+    hle/service/psc/pm_service.cpp
+    hle/service/psc/pm_service.h
     hle/service/psc/psc.cpp
     hle/service/psc/psc.h
     hle/service/psc/time/alarms.cpp
