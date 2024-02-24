@@ -26,7 +26,7 @@
 namespace Service::Set {
 
 namespace {
-constexpr u32 SETTINGS_VERSION{3u};
+constexpr u32 SETTINGS_VERSION{4u};
 constexpr auto SETTINGS_MAGIC = Common::MakeMagic('y', 'u', 'z', 'u', '_', 's', 'e', 't');
 struct SettingsHeader {
     u64 magic;
@@ -306,6 +306,9 @@ ISystemSettingsServer::ISystemSettingsServer(Core::System& system_)
     RegisterHandlers(functions);
 
     SetupSettings();
+
+    m_system_settings.region_code =
+        static_cast<SystemRegionCode>(Settings::values.region_index.GetValue());
 
     // TODO: Remove this when starter applet is fully functional
     EulaVersion eula_version{
